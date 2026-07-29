@@ -1,0 +1,207 @@
+<!-- @dsCard group="Màn" name="Màn Dự án" subtitle="Toàn cảnh — thứ tự nhìn 1 → 2 → 3" -->
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>Màn Dự án</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Font nạp bằng <link> ở <head> (index.html cho app, khối page() cho preview),
+   KHÔNG phải @import ở đây: @import bắt trình duyệt tải xong file CSS này rồi mới
+   bắt đầu tải font — hai vòng nối tiếp trước khi trang vẽ được — và khi máy không
+   có mạng thì nó treo cả trang cho tới lúc DNS bỏ cuộc, dù dữ liệu đều ở localhost. */
+
+:root {
+  --bg: #eef1f6;
+  --surface: #ffffff;
+  --surface-2: #f3f5f9;
+  --surface-3: #e8ecf3;
+  --border: #e3e7ef;
+  --border-strong: #ccd2df;
+  --text: #171a21;
+  --text-2: #545b6b;
+  --text-3: #636a77;
+  --accent: #4f46e5;
+  --accent-ink: #4338ca;
+  --ok: #15803d;
+  --warn: #b45309;
+  --crit: #dc2626;
+  --now: #dc2626;
+  --soon: #b45309;
+  --later: #6b7280;
+  --accent-weak: rgb(79 70 229 / 0.08);
+  --accent-line: rgb(79 70 229 / 0.28);
+  --accent-hover: rgb(79 70 229 / 0.14);
+  --ok-weak: rgb(21 128 61 / 0.10);
+  --pip-ink: #ffffff;
+  --chip-l: 30%;
+  --scrim: rgb(23 26 33 / 0.34);
+  --overlay: rgb(23 26 33 / 0.40);
+  --shadow-sm: 0 1px 2px rgb(23 26 33 / 0.05), 0 1px 3px rgb(23 26 33 / 0.06);
+  --shadow: 0 2px 4px rgb(23 26 33 / 0.04), 0 8px 24px rgb(23 26 33 / 0.07);
+  --shadow-drawer: -26px 0 60px -30px rgb(23 26 33 / 0.30);
+  --sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  --r: 12px;
+  --r-sm: 8px;
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --rail-w: 220px;
+  color-scheme: light;
+}
+
+/* Nền tối. Cùng bộ tên biến — component đọc token nên tự lật theo, không một dòng
+   CSS component nào biết mình đang ở nền nào. Lớp .theme-dark để preview lật được
+   từng khối mà không phải đụng vào thẻ html. */
+:root[data-theme="dark"], .theme-dark {
+  --bg: #0e1016;
+  --surface: #171a21;
+  --surface-2: #1e222c;
+  --surface-3: #272c38;
+  --border: #262b37;
+  --border-strong: #39414f;
+  --text: #eceef4;
+  --text-2: #a6adbb;
+  --text-3: #8f96a4;
+  --accent: #8b83f7;
+  --accent-ink: #b4aefb;
+  --ok: #46c47c;
+  --warn: #e0a24a;
+  --crit: #f26b64;
+  --now: #f26b64;
+  --soon: #e0a24a;
+  --later: #7c8393;
+  --accent-weak: rgb(139 131 247 / 0.16);
+  --accent-line: rgb(139 131 247 / 0.34);
+  --accent-hover: rgb(139 131 247 / 0.26);
+  --ok-weak: rgb(70 196 124 / 0.14);
+  --pip-ink: #14161c;
+  --chip-l: 72%;
+  --scrim: rgb(0 0 0 / 0.58);
+  --overlay: rgb(0 0 0 / 0.62);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.5);
+  --shadow: 0 2px 6px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.55);
+  --shadow-drawer: -26px 0 60px -28px rgb(0 0 0 / 0.7);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: var(--s5);
+  background: var(--bg); color: var(--text);
+  font: 14px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.011em; }
+code, .mono { font-family: var(--mono); font-size: 0.92em; }
+
+/* Nhãn: sans thường, viết hoa đầu câu. Nhãn 9px MONO IN HOA GIÃN CHỮ là thứ
+   làm cả trang vừa khó đọc vừa ra chất HUD — bỏ hẳn, không có ngoại lệ. */
+.label { font-size: 12px; color: var(--text-3); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-sm); }
+.spec { margin-top: var(--s4); padding-top: var(--s3); border-top: 1px solid var(--border);
+        font-size: 12.5px; line-height: 1.65; color: var(--text-3); }
+.spec b { color: var(--text-2); font-weight: 600; }
+.row { display: flex; gap: var(--s3); flex-wrap: wrap; align-items: center; }
+.stack { display: grid; gap: var(--s4); }
+
+/* Trạng thái = chấm + chữ. Chưa bao giờ là mảng màu, và không bao giờ chỉ màu. */
+.st { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-2); }
+.st::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--text-3)); flex: none; }
+.st.ok { --c: var(--ok); } .st.warn { --c: var(--warn); } .st.crit { --c: var(--crit); }
+
+.btn { font: 500 13px var(--sans); padding: 7px 13px; border-radius: var(--r-sm); cursor: pointer;
+       border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); }
+.btn:hover { background: var(--surface-3); }
+.btn.primary { background: var(--accent-weak); border-color: var(--accent-line); color: var(--accent-ink); }
+.btn.primary:hover { background: var(--accent-hover); }
+.btn.quiet { background: none; border-color: transparent; color: var(--text-2); }
+.btn.quiet:hover { background: var(--surface-2); color: var(--text); }
+.app { display: grid; grid-template-columns: 216px 1fr; gap: 0; height: 620px;
+          background: var(--bg); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+   .rail { border-right: 1px solid var(--border); padding: var(--s3); display: grid; gap: 2px; align-content: start; }
+   .brand { padding: var(--s2) var(--s3) var(--s4); font-size: 14px; font-weight: 700; }
+   .brand span { display: block; font-size: 11.5px; font-weight: 400; color: var(--text-3); }
+   .ni { display: flex; align-items: center; padding: 8px var(--s3); border-radius: var(--r-sm); font-size: 13.5px; color: var(--text-2); }
+   .ni.active { background: var(--surface-3); color: var(--text); font-weight: 500; }
+   .ni b { margin-left: auto; font: 500 12px var(--mono); color: var(--text-3); }
+   .ni b.crit { color: var(--crit); } .ni b.warn { color: var(--warn); }
+   main { display: flex; flex-direction: column; min-width: 0; }
+   .top { display: flex; align-items: center; gap: var(--s4); padding: var(--s3) var(--s5); border-bottom: 1px solid var(--border); }
+   .top h1 { font-size: 18px; } .sub { font-size: 12.5px; color: var(--text-3); margin-top: 2px; }
+   .q { margin-left: auto; width: 250px; padding: 7px 11px; border-radius: var(--r-sm);
+        background: var(--surface); border: 1px solid var(--border); color: var(--text); font: 13px var(--sans); outline: none; }
+   .scroll { padding: var(--s4) var(--s5); overflow: hidden; }
+   .lead { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--crit);
+           border-radius: var(--r); padding: var(--s4) var(--s5) var(--s5); margin-bottom: var(--s4); }
+   .lead-top { display: flex; align-items: center; margin-bottom: var(--s3); }
+   .lead-time { margin-left: auto; font: 12px var(--mono); color: var(--text-3); }
+   .lead-say { margin: 0; font-size: 19px; line-height: 1.5; font-weight: 500; max-width: 62ch; }
+   .lead-why { margin: var(--s2) 0 0; font-size: 13.5px; color: var(--text-2); }
+   .lead-act { display: flex; gap: var(--s2); margin-top: var(--s4); }
+   .grid { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); align-items: start; }
+   .pc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); }
+   .pc header { display: flex; align-items: center; gap: var(--s2); padding: var(--s3) var(--s3) 0; }
+   .pc h3 { font-size: 14.5px; flex: 1; min-width: 0; }
+   .pc .meta { padding: 4px var(--s3) 0; font-size: 11.5px; color: var(--text-3); }
+   .pc .body { padding: var(--s3) var(--s3) 0; }
+   .pc .focus { margin: 4px 0 var(--s3); font-size: 13.5px; line-height: 1.5; }
+   .pc .next { margin: 0; display: flex; gap: 8px; font-size: 12.5px; color: var(--text-2);
+               background: var(--surface-2); border-radius: var(--r-sm); padding: 8px 10px; }
+   .pc .next .ar { color: var(--accent-ink); flex: none; }
+   .pc footer { display: flex; padding: var(--s3); font-size: 12px; color: var(--text-3); }
+   .pc footer .sess { margin-left: auto; }</style></head>
+<body>
+<div class="app">
+  <nav class="rail">
+    <div class="brand">NOW<span>sở chỉ huy</span></div>
+    <a class="ni active">Dự án<b>5</b></a><a class="ni">Phiên<b>5</b></a>
+    <a class="ni">Quyết định<b class="crit">1</b></a><a class="ni">Đã xong</a>
+    <a class="ni">Thống kê</a><a class="ni">Sức khoẻ<b class="warn">2</b></a>
+  </nav>
+  <main>
+    <header class="top">
+      <div><h1>Dự án</h1><div class="sub">Cập nhật 10:14 · 5 dự án · 35 phiên</div></div>
+      <input class="q" placeholder="Tìm dự án, phiên, quyết định">
+      <span class="st ok">Trực tiếp</span>
+    </header>
+    <div class="scroll">
+      <section class="lead">
+        <div class="lead-top"><span class="st crit">Đang chặn</span><span class="lead-time">10:14</span></div>
+        <p class="lead-say">Có 1 quyết định đang chặn tronsave/services — treo 7 ngày.</p>
+        <p class="lead-why">ops_* soak đủ 7 ngày, còn mismatch không? Cho flip enforce theo runbook §5 chưa?</p>
+        <div class="lead-act"><button class="btn primary">Chép “chốt enforce-flip”</button><button class="btn quiet">Xem tất cả quyết định →</button></div>
+      </section>
+      <div class="grid">
+        <article class="pc"><header><h3>tronsave/services</h3><span class="st crit">Đang chặn</span></header>
+          <div class="meta mono">dev-ready · 16 commit sau mốc</div>
+          <div class="body"><div class="label">Đang làm</div>
+            <p class="focus">Vận hành ADR 021 buy-dual-resource trên dev → tắt DRY_RUN</p>
+            <p class="next"><span class="ar">→</span>Chạy script Task 8 trong Compass shell</p></div>
+          <footer><span>1 quyết định · 6 hàng đợi</span><span class="sess">0/22 thức</span></footer></article>
+        <article class="pc"><header><h3>longwavefinder</h3><span class="st ok">Ổn</span></header>
+          <div class="meta mono">main · sạch</div>
+          <div class="body"><div class="label">Đang làm</div>
+            <p class="focus">Dashboard đã lên web — chờ buổi sáng tự động đầu tiên</p>
+            <p class="next"><span class="ar">→</span>Sáng mai sau 7:20 mở data/daily.log</p></div>
+          <footer><span>4 hàng đợi</span><span class="sess">1/3 thức</span></footer></article>
+        <article class="pc"><header><h3>savefee-be</h3><span class="st warn">Cần cập nhật</span></header>
+          <div class="meta mono">feat/adr011 · 8 ngày trước</div>
+          <div class="body"><div class="label">Đang làm</div>
+            <p class="focus">PR #91 — metrics &amp; observability ADR 011, chờ merge</p>
+            <p class="next"><span class="ar">→</span>Review + merge PR #91</p></div>
+          <footer><span>3 quyết định · 5 hàng đợi</span><span class="sess">0/5 thức</span></footer></article>
+      </div>
+    </div>
+  </main>
+</div>
+<p class="spec" style="max-width:900px">
+  <b>Thứ tự nhìn giờ chỉ có ba tầng.</b> ① Khối tóm tắt — nền sáng hơn, viền trái màu trạng thái,
+  chữ 19px, là thứ duy nhất được to. ② Lưới thẻ dự án — cùng một cỡ, phân biệt nhau bằng chấm
+  trạng thái. ③ Chữ phụ và mono — lùi hẳn về sau.<br>
+  Bản cũ chen giữa ① và ② một dải XP + hạng + chuỗi ngày rộng ngang và cũng sáng, nên mắt
+  không biết dừng ở đâu. Dải đó bỏ hẳn; số liệu thật đã có màn Thống kê.
+</p>
+</body></html>

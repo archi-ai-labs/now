@@ -1,0 +1,29 @@
+<!-- Nguồn của icon web app (Safari → Add to Dock). Render ra PNG bằng
+     `node design/icon.mjs` — macOS đọc PNG, không đọc SVG cho icon Dock.
+
+     Nền chàm ĐẶC, mark trắng: cùng lý do đã ghi ở favicon trong `public/index.html`
+     — icon là ảnh tĩnh, không lật theo nền, mà nó phải đọc được cả trên Dock sáng
+     lẫn Dock tối. Icon nền gần-đen theo tông HUD thì chìm nghỉm vào Dock tối.
+
+     Chỉ có mark ◈, không có chữ "NOW": ở cỡ Dock (~48px thật) bốn chữ cái thành vệt
+     xám. Mark một mình khớp `.brand-mark` ở thanh rail, và đó mới là thứ nhận ra được
+     khi liếc ⌘Tab.
+
+     Tràn viền (không chừa lề): macOS tự cắt góc bo theo khuôn app của nó. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <!-- accent → accent-ink của nền sáng (design/tokens.json). -->
+      <stop offset="0" stop-color="#5b53ea"/>
+      <stop offset="1" stop-color="#4338ca"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+
+  <!-- ◈ = viên kim cương rỗng bọc viên kim cương đặc. Vẽ tay bằng polygon chứ không
+       đặt ký tự U+25C8: font hệ thống có thể thiếu glyph và icon thành ô tofu. -->
+  <polygon points="512,206 818,512 512,818 206,512"
+           fill="none" stroke="#ffffff" stroke-width="52" stroke-linejoin="round"/>
+  <polygon points="512,392 632,512 512,632 392,512" fill="#ffffff"/>
+</svg>

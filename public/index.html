@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NOW — sở chỉ huy</title>
+
+<!-- Font tải TRƯỚC stylesheet, bằng <link> chứ không phải `@import` trong CSS.
+     `@import` nằm đầu file thì trình duyệt phải tải xong styles.css, đọc dòng đầu,
+     RỒI mới bắt đầu tải font — hai vòng nối tiếp nhau trước khi trang vẽ được nhịp
+     nào. Nặng hơn: đây là dashboard mở suốt ngày, kể cả lúc máy không có mạng —
+     khi đó `@import` treo cho tới lúc DNS bỏ cuộc và cả trang trắng theo, dù mọi
+     dữ liệu đều nằm ở localhost. Tách ra <link> thì font hỏng chỉ là font hỏng. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="/styles.css">
+
+<!-- Chạy như app riêng trên Dock: Safari → File → Add to Dock. `short_name` trong
+     manifest là cái tên hiện dưới icon Dock — bỏ nó đi thì macOS lấy <title> và nhãn
+     thành "NOW — sở chỉ huy" tràn ra ngoài. -->
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<meta name="apple-mobile-web-app-title" content="NOW">
+
+<!-- Màu thanh tiêu đề của cửa sổ web app. Phải đi TRƯỚC khối script dưới đây để nó có
+     cái mà sửa, và phải đổi theo nền: để cố định một màu thì nửa số lần dùng sẽ có một
+     dải sáng nằm trên HUD tối (hoặc ngược lại). Giá trị = `--bg` của nền đang bật. -->
+<meta name="theme-color" content="#eef1f6">
+
+<!-- Đặt nền TRƯỚC khi trang vẽ nhịp đầu. `app.js` là module nên bị hoãn tới sau khi
+     dựng xong DOM — để nó lo việc này thì mỗi lần mở màn hình loé trắng một cái rồi
+     mới sập sang tối. Bốn dòng chặn ở đây rẻ hơn cú nháy đó. -->
+<script>
+  try {
+    var t = localStorage.getItem('now-theme');
+    if (t) {
+      document.documentElement.setAttribute('data-theme', t);
+      document.querySelector('meta[name=theme-color]').content = t === 'dark' ? '#0e1016' : '#eef1f6';
+    }
+  } catch (e) { /* chế độ riêng tư chặn localStorage — dùng nền mặc định */ }
+</script>
+<!-- Nền chàm đặc + chữ trắng: favicon là ảnh tĩnh, không lật theo nền được, nên nó
+     phải đọc được trên CẢ thanh tab sáng lẫn tối. Nền amber trên nền gần-đen của bản
+     cũ biến mất hẳn khi trình duyệt để theme sáng. -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%234f46e5'/><text x='16' y='22' font-size='16' text-anchor='middle' font-family='ui-monospace,monospace' font-weight='700' fill='%23ffffff'>N</text></svg>">
+</head>
+<body>
+<!-- Bỏ qua thanh điều hướng. Sáu mục nav đứng trước nội dung ở MỌI màn, nên không
+     có lối tắt này thì dùng bàn phím phải Tab qua chúng mỗi lần đổi màn. -->
+<a class="skip" href="#view" data-i18n="skip">Tới nội dung</a>
+<div id="app">
+  <nav class="rail" aria-label="Màn hình">
+    <div class="brand">
+      <div class="brand-mark">◈</div>
+      <div>
+        <div class="brand-title">NOW</div>
+        <div class="brand-sub" data-i18n="brand.sub">sở chỉ huy</div>
+      </div>
+    </div>
+    <div id="nav"></div>
+    <div class="rail-foot">
+      <div><kbd>1</kbd>–<kbd>7</kbd> <span data-i18n="foot.switch">đổi màn</span></div>
+      <div><kbd>/</kbd> <span data-i18n="foot.find">tìm</span> · <kbd>c</kbd> <span data-i18n="foot.copy">chép việc</span></div>
+      <button class="help-open" id="helpopen"><kbd>?</kbd> <span data-i18n="foot.allkeys">tất cả phím tắt</span></button>
+    </div>
+  </nav>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h1 class="view-title" id="vtitle">Dự án</h1>
+        <div class="view-sub" id="vsub" data-i18n="top.connecting">đang nối…</div>
+      </div>
+      <!-- Ô này LỌC MÀN ĐANG XEM, không tìm xuyên màn. Placeholder cũ ("tìm dự án,
+           phiên, quyết định") hứa đúng cái nó không làm: gõ tên một phiên khi đang
+           ở màn Dự án thì ra bảng rỗng, và người gõ kết luận là không có phiên nào. -->
+      <div class="search">
+        <label class="vh" for="q" data-i18n="top.filterLabel">Lọc trong màn đang xem</label>
+        <input id="q" type="search" placeholder="lọc trong màn đang xem" data-i18n-ph="top.filterPh" autocomplete="off" spellcheck="false">
+      </div>
+      <button class="pulse tgl" id="theme" title="Nền sáng / tối (t)"><span class="ti">◐</span><span id="theme-t">tối</span></button>
+      <button class="pulse tgl" id="lang" title="Ngôn ngữ (l)"><span class="ti" id="lang-flag" aria-hidden="true">🇻🇳</span><span id="lang-t">VI</span></button>
+      <!-- Nút phong cách chart KHÔNG ở đây. Thanh này chỉ chứa thứ đổi cả trang — nền,
+           ngôn ngữ, quét lại. Phong cách chart chỉ đổi hình của chart, nên nó đứng ngay
+           trên đầu chart (xem `skinSwitch()` trong `lib/chart.js`). -->
+      <button class="pulse" id="pulse" title="Bấm để quét lại (r)" data-i18n-title="top.pulseTitle"><span class="dot"></span><span id="pulse-t" data-i18n="top.connect">nối</span></button>
+    </header>
+
+    <div class="offline" id="offline" role="status" aria-live="polite" hidden>
+      <span class="ic" aria-hidden="true">⚠</span>
+      <span><span data-i18n="off.pre">Mất kết nối tới server — đang xem ảnh chụp lúc</span> <b id="off-t">—</b><span data-i18n="off.post">, không còn tự cập nhật.</span></span>
+      <button class="btn" id="offretry" data-i18n="off.retry">Thử lại</button>
+    </div>
+
+    <div class="scroll" id="scroll">
+      <section class="butler hudp" id="butler" aria-labelledby="btxt">
+        <div class="in">
+          <div class="butler-body">
+            <div class="butler-h">
+              <span class="ulabel" data-i18n="butler.label">Các việc đáng làm lúc này</span>
+              <span class="rule"></span>
+              <span class="clock" id="bclock"></span>
+            </div>
+            <!-- HAI ô cố định, không phải một chỗ nói mà hai loại việc tranh nhau: việc
+                 đáng làm và hạn mức token không nằm trên cùng một thang gấp, nên ép
+                 chúng vào một câu thì thứ thua cuộc biến mất khỏi trang. Cả hai ô do
+                 `briefing()` dựng — xem `lib/butler.js`.
+
+                 Ô ĐẦU xoay vòng tối đa ba việc bằng hai nút ‹ ›: cùng lý do đó lặp lại
+                 một tầng sâu hơn — board cũ không so được với quyết định đang treo,
+                 nhưng nó cũng không hết hỏng chỉ vì có quyết định treo. -->
+            <div class="butler-slots" id="bslots"></div>
+          </div>
+          <!-- Hạn mức luôn nằm cạnh câu chính, kể cả những ngày thong thả, vì nó sai
+               được theo CẢ HAI chiều: cạn giữa chừng thì không còn gì làm ngoài chờ,
+               còn tiêu chậm quá thì phần thừa mất trắng lúc reset. Khi nó thành thứ
+               gấp nhất, câu chính bên trái tự nói về nó (xem `butler.js`). -->
+          <aside class="butler-quota" id="bquota" aria-label="Hạn mức đã tiêu" data-i18n-aria="quota.title" hidden></aside>
+        </div>
+      </section>
+      <div id="view"></div>
+    </div>
+  </main>
+</div>
+
+<div class="tip" id="tip" role="status" hidden></div>
+
+<div class="scrim" id="scrim"></div>
+<!-- `inert` khi đóng. Ngăn kéo chỉ bị đẩy ra ngoài màn bằng `translate`, nên ba nút
+     trong này VẪN nằm trong tab order: Tab từ ô tìm là rơi vào ba nút vô hình ở
+     đâu đó bên phải màn hình, bấm Enter thì lật dự án trong một bảng không ai thấy.
+     `app.js` gỡ/gắn lại thuộc tính này mỗi lần mở/đóng. -->
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dtitle" inert>
+  <div class="drawer-head">
+    <h2 id="dtitle"></h2>
+    <div class="drawer-nav" id="dnav">
+      <button class="x" data-step="-1" title="Dự án trước (←)" aria-label="Dự án trước" data-i18n-title="drawer.prev" data-i18n-aria="drawer.prevAria">‹</button>
+      <span class="pos" id="dpos"></span>
+      <button class="x" data-step="1" title="Dự án sau (→)" aria-label="Dự án sau" data-i18n-title="drawer.next" data-i18n-aria="drawer.nextAria">›</button>
+    </div>
+    <button class="x" id="dclose" title="Đóng (esc)" aria-label="Đóng bảng chi tiết" data-i18n-title="drawer.close" data-i18n-aria="drawer.closeAria">✕</button>
+  </div>
+  <div class="drawer-body" id="dbody"></div>
+</aside>
+
+<div class="help" id="help" role="dialog" aria-modal="true" aria-labelledby="help-h" hidden>
+  <div class="help-card hudp"><div class="in">
+    <div class="help-h"><span class="ulabel" id="help-h" data-i18n="help.title">Phím tắt</span><button class="x" id="helpclose" aria-label="Đóng bảng phím tắt" data-i18n-aria="help.close">✕</button></div>
+    <dl class="help-list">
+      <dt><kbd>1</kbd>…<kbd>7</kbd></dt><dd data-i18n="help.switch">đổi màn</dd>
+      <dt><kbd>c</kbd></dt><dd data-i18n="help.copy">chép việc quản gia đang đề xuất</dd>
+      <dt><kbd>o</kbd></dt><dd data-i18n="help.open">mở board dự án đầu danh sách</dd>
+      <dt><kbd>/</kbd></dt><dd data-i18n="help.find">tìm trong màn đang xem</dd>
+      <dt><kbd>r</kbd></dt><dd data-i18n="help.refresh">quét lại ngay</dd>
+      <dt><kbd>t</kbd></dt><dd data-i18n="help.theme">đổi nền sáng / tối</dd>
+      <dt><kbd>l</kbd></dt><dd data-i18n="help.lang">đổi ngôn ngữ</dd>
+      <dt><kbd>s</kbd></dt><dd data-i18n="help.skin">đổi phong cách chart</dd>
+      <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd data-i18n="help.step">lật dự án khi bảng chi tiết đang mở</dd>
+      <dt><kbd>esc</kbd></dt><dd data-i18n="help.esc">đóng bảng · xoá ô tìm</dd>
+      <dt><kbd>?</kbd></dt><dd data-i18n="help.self">bảng này</dd>
+    </dl>
+  </div></div>
+</div>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>

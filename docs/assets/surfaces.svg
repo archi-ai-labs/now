@@ -1,0 +1,51 @@
+<!-- Minh hoạ bảng "Ba bề mặt làm việc" trong ARCHITECTURE.md — không phải ảnh trang trí,
+     nội dung ba ô khớp đúng bảng đó, sửa bảng thì phải sửa cả ảnh này. Cùng bảng màu
+     dark-HUD với banner.svg cho nhất quán. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 420" width="900" height="420" role="img" aria-label="Ba bề mặt làm việc gộp vào một dashboard">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8b83f7"/>
+    </marker>
+  </defs>
+
+  <rect width="900" height="420" rx="20" fill="#0e1016"/>
+
+  <!-- Ba nguồn. Mô tả xuống 2 dòng — đo bằng getComputedTextLength() thật: bản một
+       dòng của Cursor (304px) và Antigravity (324px) tràn ra ngoài mép ô (ô chỉ có
+       ~260px chỗ chứa chữ), không phải lỗi vẽ lệch toạ độ mà là chữ dài hơn ô. -->
+  <g font-family="ui-sans-serif, -apple-system, Segoe UI, sans-serif">
+    <g>
+      <rect x="40" y="26" width="280" height="104" rx="10" fill="#171a21" stroke="#262b37" stroke-width="1.5"/>
+      <text x="60" y="62" font-size="18" font-weight="600" fill="#eceef4">Claude Desktop · Terminal</text>
+      <text x="60" y="86" font-size="13" fill="#a6adbb">đơn vị: phiên Claude Code</text>
+      <text x="60" y="106" font-size="13" fill="#a6adbb">· có tiêu token</text>
+    </g>
+    <g>
+      <rect x="40" y="158" width="280" height="104" rx="10" fill="#171a21" stroke="#262b37" stroke-width="1.5"/>
+      <text x="60" y="194" font-size="18" font-weight="600" fill="#eceef4">Cursor · VS Code</text>
+      <text x="60" y="218" font-size="13" fill="#a6adbb">đơn vị: thư mục mở + phiên bên trong</text>
+      <text x="60" y="238" font-size="13" fill="#a6adbb">· có tiêu token</text>
+    </g>
+    <g>
+      <rect x="40" y="290" width="280" height="104" rx="10" fill="#171a21" stroke="#262b37" stroke-width="1.5"/>
+      <text x="60" y="326" font-size="18" font-weight="600" fill="#eceef4">Antigravity</text>
+      <text x="60" y="350" font-size="13" fill="#a6adbb">đơn vị: hội thoại agent riêng</text>
+      <text x="60" y="370" font-size="13" fill="#a6adbb">· KHÔNG tiêu token Claude</text>
+    </g>
+
+    <!-- Ba đường hội tụ về đúng một điểm (560,210) — KHÔNG gắn đầu mũi tên ở đây, vì
+         3 marker chồng nhau ở 3 góc xoay khác nhau tại cùng một điểm vẽ ra một cụm
+         răng cưa trông như lệch. Chỉ một đoạn ngắn sau điểm hội tụ mới có mũi tên. -->
+    <path d="M320,78 C420,78 420,210 560,210" fill="none" stroke="#8b83f7" stroke-width="2.5"/>
+    <path d="M320,210 L560,210" fill="none" stroke="#8b83f7" stroke-width="2.5"/>
+    <path d="M320,342 C420,342 420,210 560,210" fill="none" stroke="#8b83f7" stroke-width="2.5"/>
+    <path d="M560,210 L578,210" fill="none" stroke="#8b83f7" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+    <!-- Đích: dashboard -->
+    <rect x="580" y="130" width="280" height="160" rx="12" fill="#171a21" stroke="#8b83f7" stroke-width="2"/>
+    <polygon points="720,168 748,196 720,224 692,196" fill="none" stroke="#8b83f7" stroke-width="6" stroke-linejoin="round"/>
+    <polygon points="720,186 730,196 720,206 710,196" fill="#8b83f7"/>
+    <text x="720" y="252" font-size="18" font-weight="700" fill="#eceef4" text-anchor="middle">NOW dashboard</text>
+    <text x="720" y="272" font-size="12.5" fill="#a6adbb" text-anchor="middle">chỉ đọc · một trang · sống</text>
+  </g>
+</svg>

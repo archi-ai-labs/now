@@ -1,0 +1,178 @@
+<!-- @dsCard group="Chart" name="Chart" subtitle="Cột & thanh — một màu, nhãn chọn lọc" -->
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>Chart</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Font nạp bằng <link> ở <head> (index.html cho app, khối page() cho preview),
+   KHÔNG phải @import ở đây: @import bắt trình duyệt tải xong file CSS này rồi mới
+   bắt đầu tải font — hai vòng nối tiếp trước khi trang vẽ được — và khi máy không
+   có mạng thì nó treo cả trang cho tới lúc DNS bỏ cuộc, dù dữ liệu đều ở localhost. */
+
+:root {
+  --bg: #eef1f6;
+  --surface: #ffffff;
+  --surface-2: #f3f5f9;
+  --surface-3: #e8ecf3;
+  --border: #e3e7ef;
+  --border-strong: #ccd2df;
+  --text: #171a21;
+  --text-2: #545b6b;
+  --text-3: #636a77;
+  --accent: #4f46e5;
+  --accent-ink: #4338ca;
+  --ok: #15803d;
+  --warn: #b45309;
+  --crit: #dc2626;
+  --now: #dc2626;
+  --soon: #b45309;
+  --later: #6b7280;
+  --accent-weak: rgb(79 70 229 / 0.08);
+  --accent-line: rgb(79 70 229 / 0.28);
+  --accent-hover: rgb(79 70 229 / 0.14);
+  --ok-weak: rgb(21 128 61 / 0.10);
+  --pip-ink: #ffffff;
+  --chip-l: 30%;
+  --scrim: rgb(23 26 33 / 0.34);
+  --overlay: rgb(23 26 33 / 0.40);
+  --shadow-sm: 0 1px 2px rgb(23 26 33 / 0.05), 0 1px 3px rgb(23 26 33 / 0.06);
+  --shadow: 0 2px 4px rgb(23 26 33 / 0.04), 0 8px 24px rgb(23 26 33 / 0.07);
+  --shadow-drawer: -26px 0 60px -30px rgb(23 26 33 / 0.30);
+  --sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  --r: 12px;
+  --r-sm: 8px;
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --rail-w: 220px;
+  color-scheme: light;
+}
+
+/* Nền tối. Cùng bộ tên biến — component đọc token nên tự lật theo, không một dòng
+   CSS component nào biết mình đang ở nền nào. Lớp .theme-dark để preview lật được
+   từng khối mà không phải đụng vào thẻ html. */
+:root[data-theme="dark"], .theme-dark {
+  --bg: #0e1016;
+  --surface: #171a21;
+  --surface-2: #1e222c;
+  --surface-3: #272c38;
+  --border: #262b37;
+  --border-strong: #39414f;
+  --text: #eceef4;
+  --text-2: #a6adbb;
+  --text-3: #8f96a4;
+  --accent: #8b83f7;
+  --accent-ink: #b4aefb;
+  --ok: #46c47c;
+  --warn: #e0a24a;
+  --crit: #f26b64;
+  --now: #f26b64;
+  --soon: #e0a24a;
+  --later: #7c8393;
+  --accent-weak: rgb(139 131 247 / 0.16);
+  --accent-line: rgb(139 131 247 / 0.34);
+  --accent-hover: rgb(139 131 247 / 0.26);
+  --ok-weak: rgb(70 196 124 / 0.14);
+  --pip-ink: #14161c;
+  --chip-l: 72%;
+  --scrim: rgb(0 0 0 / 0.58);
+  --overlay: rgb(0 0 0 / 0.62);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.5);
+  --shadow: 0 2px 6px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.55);
+  --shadow-drawer: -26px 0 60px -28px rgb(0 0 0 / 0.7);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: var(--s5);
+  background: var(--bg); color: var(--text);
+  font: 14px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.011em; }
+code, .mono { font-family: var(--mono); font-size: 0.92em; }
+
+/* Nhãn: sans thường, viết hoa đầu câu. Nhãn 9px MONO IN HOA GIÃN CHỮ là thứ
+   làm cả trang vừa khó đọc vừa ra chất HUD — bỏ hẳn, không có ngoại lệ. */
+.label { font-size: 12px; color: var(--text-3); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-sm); }
+.spec { margin-top: var(--s4); padding-top: var(--s3); border-top: 1px solid var(--border);
+        font-size: 12.5px; line-height: 1.65; color: var(--text-3); }
+.spec b { color: var(--text-2); font-weight: 600; }
+.row { display: flex; gap: var(--s3); flex-wrap: wrap; align-items: center; }
+.stack { display: grid; gap: var(--s4); }
+
+/* Trạng thái = chấm + chữ. Chưa bao giờ là mảng màu, và không bao giờ chỉ màu. */
+.st { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-2); }
+.st::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--text-3)); flex: none; }
+.st.ok { --c: var(--ok); } .st.warn { --c: var(--warn); } .st.crit { --c: var(--crit); }
+
+.btn { font: 500 13px var(--sans); padding: 7px 13px; border-radius: var(--r-sm); cursor: pointer;
+       border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); }
+.btn:hover { background: var(--surface-3); }
+.btn.primary { background: var(--accent-weak); border-color: var(--accent-line); color: var(--accent-ink); }
+.btn.primary:hover { background: var(--accent-hover); }
+.btn.quiet { background: none; border-color: transparent; color: var(--text-2); }
+.btn.quiet:hover { background: var(--surface-2); color: var(--text); }
+.two { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); align-items: start; }
+   .p { padding: var(--s4); }
+   .ct { font-size: 14px; font-weight: 600; } .cs { font-size: 12.5px; color: var(--text-3); margin-top: 2px; }
+   .plot { display: grid; grid-template-columns: 22px 1fr; gap: 9px; padding: var(--s4) 0 20px; --h: 130px; }
+   .y { position: relative; height: var(--h); }
+   .y span { position: absolute; right: 0; bottom: var(--p); translate: 0 50%; font: 11px var(--mono); color: var(--text-3); font-variant-numeric: tabular-nums; }
+   .area { position: relative; height: var(--h); }
+   .gl { position: absolute; left: 0; right: 0; bottom: var(--p); height: 1px; background: var(--border); }
+   .cols { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 2px; }
+   .col { position: relative; flex: 1; height: 100%; display: flex; align-items: flex-end; justify-content: center; }
+   .col > i { width: min(24px, 100%); background: var(--accent); border-radius: 4px 4px 0 0; }
+   .col.dim > i { opacity: 0.4; }
+   .pk { position: absolute; left: 50%; bottom: var(--p); translate: -50% 0; margin-bottom: 5px; font: 600 12px var(--mono); }
+   .x { position: absolute; top: 100%; left: 50%; translate: -50% 0; margin-top: 6px; font: 11px var(--mono); color: var(--text-3); }
+   .rows { margin-top: var(--s4); display: grid; }
+   .r { display: grid; grid-template-columns: minmax(0,120px) 1fr 26px; gap: 10px; align-items: center; padding: 6px 0; }
+   .r .l { font-size: 12.5px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+   .r .tr { height: 12px; background: var(--surface-3); border-radius: 2px; display: flex; }
+   .r .tr > i { background: var(--accent); border-radius: 0 4px 4px 0; }
+   .r b { font: 600 12.5px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }</style></head>
+<body>
+<h2 style="font-size:15px;margin-bottom:var(--s3)">Chart</h2>
+<div class="two">
+  <div class="card p">
+    <div class="ct">Việc xong theo ngày</div><div class="cs">4 ngày · 3 ngày bị đếm thiếu (cột mờ)</div>
+    <div class="plot">
+      <div class="y"><span style="--p:100%">15</span><span style="--p:66.6%">10</span><span style="--p:33.3%">5</span><span style="--p:0%">0</span></div>
+      <div class="area">
+        <i class="gl" style="--p:100%"></i><i class="gl" style="--p:66.6%"></i><i class="gl" style="--p:33.3%"></i><i class="gl" style="--p:0%"></i>
+        <div class="cols">
+          <div class="col dim"><i style="height:6.6%"></i><span class="x">20/7</span></div>
+          <div class="col dim"><i style="height:33.3%"></i><span class="x">21/7</span></div>
+          <div class="col dim"><i style="height:80%"></i><span class="x">22/7</span></div>
+          <div class="col"><b class="pk" style="--p:93.3%">14</b><i style="height:93.3%"></i><span class="x">23/7</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card p">
+    <div class="ct">Hàng đợi theo dự án</div><div class="cs">21 mục đang xếp hàng</div>
+    <div class="rows">
+      <div class="r"><span class="l">tronsave/services</span><span class="tr"><i style="width:100%"></i></span><b>6</b></div>
+      <div class="r"><span class="l">savefee-be</span><span class="tr"><i style="width:83.3%"></i></span><b>5</b></div>
+      <div class="r"><span class="l">longwavefinder</span><span class="tr"><i style="width:66.6%"></i></span><b>4</b></div>
+      <div class="r"><span class="l">game-ai-evolution</span><span class="tr"><i style="width:66.6%"></i></span><b>4</b></div>
+      <div class="r"><span class="l">Bé Chơi &amp; Học</span><span class="tr"><i style="width:33.3%"></i></span><b>2</b></div>
+    </div>
+  </div>
+</div>
+<p class="spec">
+  <b>Chart giữ nguyên luật đã dựng</b> — một chart một màu, chỉ cột đỉnh được ghi số, cột/thanh
+  dày tối đa 24px, bo 4px ở đầu dữ liệu và vuông ở chân, lưới nét tóc 1px liền, mỗi chart kèm
+  bảng số. Chỉ đổi <b>màu</b>: bỏ amber/cyan/violet, dùng màu nhấn chàm.<br>
+  <b>Cột mờ</b> = ngày board đã quên bớt nên đang bị đếm thiếu — giữ nguyên, đây là chỗ chart
+  dễ nói dối nhất.
+</p>
+</body></html>

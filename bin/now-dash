@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Mở NOW dashboard. Nếu nó chưa chạy thì nhờ launchd dựng lên.
+#
+# Bản trước tự `nohup node server.js &` ở đây, và đó chính là cái bẫy của B16: tiến trình
+# sinh ra là CON của terminal (hoặc của phiên Claude đang gọi lệnh này), nên nó chết theo
+# cái cửa sổ đã đẻ ra nó. Giờ chỉ có MỘT nơi được phép dựng server: LaunchAgent
+# dev.hoanluu.now-dash — nó treo thẳng dưới launchd, không dưới ai khác.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PORT="${NOW_PORT:-4400}"
+URL="http://localhost:${PORT}"
+LABEL="dev.hoanluu.now-dash"
+PLIST="$HOME/Library/LaunchAgents/${LABEL}.plist"
+
+alive() { curl -sf -o /dev/null --max-time 1 "${URL}/api/ping"; }
+
+if alive; then
+  echo "Dashboard đã chạy sẵn ở ${URL}"
+else
+  if [[ -f "$PLIST" ]]; then
+    echo "Nhờ launchd dựng ${LABEL} …"
+    # bootstrap cho lần đầu (chưa đăng ký), kickstart cho lần sau (đã đăng ký nhưng đang
+    # dừng). Cái nào cũng có thể "thất bại" vì lý do vô hại nên nuốt lỗi rồi đo bằng ping.
+    launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null || true
+    launchctl kickstart "gui/$(id -u)/${LABEL}" 2>/dev/null || true
+  else
+    echo "Chưa cài LaunchAgent — xem docs/RUNNING.md. Tạm chạy ở tiền cảnh (Ctrl-C để dừng):"
+    exec "${ROOT}/bin/now-dash-service"
+  fi
+
+  # Lượt quét đầu mất 4–6 giây; cổng mở trước khi quét xong nên ping ăn sớm hơn thế.
+  for _ in $(seq 1 60); do
+    alive && break
+    sleep 0.25
+  done
+  alive || { echo "Không lên được. Log: ~/.now-dashboard/service.err.log" >&2; exit 1; }
+fi
+
+open "$URL" 2>/dev/null || echo "Mở thủ công: ${URL}"

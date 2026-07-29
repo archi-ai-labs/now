@@ -1,0 +1,1639 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   NOW — sở chỉ huy
+
+   Khối TÓM TẮT ở trên cùng nói một câu và đưa luôn nút để làm điều nó vừa nói.
+   Mọi thứ còn lại là bảng biểu phục vụ câu đó.
+
+   Chữ trên màn hình luôn là đúng thuật ngữ sếp sẽ nói lại với Claude (dự án,
+   phiên, quyết định, worktree, `chốt <mã>`, `/now update`) — đặt tên riêng kiểu
+   RPG thì lúc mở terminal sếp quên mất từ thật.
+
+   Bốn lỗi của bản HUD cũ, đã gỡ (2026-07-23, `chốt d-game` + `chốt d-accent`):
+     1 · ỒN        → một màu nhấn duy nhất cho thứ bấm được; trạng thái là chấm +
+                     chữ, không phải mảng màu phát sáng. Không text-shadow màu,
+                     không panel vát góc, không lưới nền.
+     2 · CHỮ NHỎ   → nền 14px/1.6, nhãn sans 12px viết thường. Nhãn 9px mono IN
+                     HOA giãn chữ bị bỏ hẳn, không ngoại lệ.
+     3 · KHÔNG RÕ NHÌN ĐÂU → mỗi màn đúng MỘT khối được to.
+     4 · CHẤT GAME → trạng thái nói bằng chữ, không bằng hạng chữ cái hay dấu !!
+
+   Màu nhấn là CHÀM chứ không phải amber vì amber cách `--warn` đúng 7° hue:
+   "bấm được" và "đang cảnh báo" mà cùng màu thì kênh màu mất nghĩa. Chàm cách
+   mọi màu trạng thái rất xa ở cả hai nền.
+
+   HAI NỀN, MỘT BỘ TÊN BIẾN. Nền sáng là mặc định; nền tối gắn ở
+   `html[data-theme="dark"]` (phím `t`, nhớ qua localStorage). Không một dòng CSS
+   nào dưới đây được biết mình đang ở nền nào — hễ phải viết hex thẳng vào một
+   quy tắc là đã sai, vì hex đó chỉ đúng ở một nền.
+
+   Token dưới đây SINH RA từ `design/tokens.json` — đừng sửa tay ở đây, sửa ở đó
+   rồi `node design/build.mjs --css`.
+   Mono cho DỮ LIỆU, sans cho CHỮ ĐỌC.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Font nạp bằng <link> ở <head> (index.html cho app, khối page() cho preview),
+   KHÔNG phải @import ở đây: @import bắt trình duyệt tải xong file CSS này rồi mới
+   bắt đầu tải font — hai vòng nối tiếp trước khi trang vẽ được — và khi máy không
+   có mạng thì nó treo cả trang cho tới lúc DNS bỏ cuộc, dù dữ liệu đều ở localhost. */
+
+:root {
+  --bg: #eef1f6;
+  --surface: #ffffff;
+  --surface-2: #f3f5f9;
+  --surface-3: #e8ecf3;
+  --border: #e3e7ef;
+  --border-strong: #ccd2df;
+  --text: #171a21;
+  --text-2: #545b6b;
+  --text-3: #636a77;
+  --accent: #4f46e5;
+  --accent-ink: #4338ca;
+  --ok: #15803d;
+  --warn: #b45309;
+  --crit: #dc2626;
+  --cheer: #a21caf;
+  --now: #dc2626;
+  --soon: #b45309;
+  --later: #6b7280;
+  --accent-weak: rgb(79 70 229 / 0.08);
+  --accent-line: rgb(79 70 229 / 0.28);
+  --accent-hover: rgb(79 70 229 / 0.14);
+  --ok-weak: rgb(21 128 61 / 0.10);
+  --pip-ink: #ffffff;
+  --chip-l: 30%;
+  --scrim: rgb(23 26 33 / 0.34);
+  --overlay: rgb(23 26 33 / 0.40);
+  --shadow-sm: 0 1px 2px rgb(23 26 33 / 0.05), 0 1px 3px rgb(23 26 33 / 0.06);
+  --shadow: 0 2px 4px rgb(23 26 33 / 0.04), 0 8px 24px rgb(23 26 33 / 0.07);
+  --shadow-drawer: -26px 0 60px -30px rgb(23 26 33 / 0.30);
+  --sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  --r: 12px;
+  --r-sm: 8px;
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --rail-w: 220px;
+  color-scheme: light;
+}
+
+/* Nền tối. Cùng bộ tên biến — component đọc token nên tự lật theo, không một dòng
+   CSS component nào biết mình đang ở nền nào. Lớp .theme-dark để preview lật được
+   từng khối mà không phải đụng vào thẻ html. */
+:root[data-theme="dark"], .theme-dark {
+  --bg: #0e1016;
+  --surface: #171a21;
+  --surface-2: #1e222c;
+  --surface-3: #272c38;
+  --border: #262b37;
+  --border-strong: #39414f;
+  --text: #eceef4;
+  --text-2: #a6adbb;
+  --text-3: #8f96a4;
+  --accent: #8b83f7;
+  --accent-ink: #b4aefb;
+  --ok: #46c47c;
+  --warn: #e0a24a;
+  --crit: #f26b64;
+  --cheer: #e879f9;
+  --now: #f26b64;
+  --soon: #e0a24a;
+  --later: #7c8393;
+  --accent-weak: rgb(139 131 247 / 0.16);
+  --accent-line: rgb(139 131 247 / 0.34);
+  --accent-hover: rgb(139 131 247 / 0.26);
+  --ok-weak: rgb(70 196 124 / 0.14);
+  --pip-ink: #14161c;
+  --chip-l: 72%;
+  --scrim: rgb(0 0 0 / 0.58);
+  --overlay: rgb(0 0 0 / 0.62);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.5);
+  --shadow: 0 2px 6px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.55);
+  --shadow-drawer: -26px 0 60px -28px rgb(0 0 0 / 0.7);
+  color-scheme: dark;
+}
+
+/* Bí danh cho tên cũ dùng rải rác khắp file. Giữ lại để một lượt đổi hệ màu không
+   phải sửa 680 dòng cùng lúc — chỗ nào đụng tới thì đổi dần sang tên mới.
+
+   Chúng khai ở `:root` và trỏ vào token bằng `var()`, nên tự lật theo nền: nền
+   tối cũng gắn trên `:root` (`html[data-theme]`) nên `--surface` mà bí danh đọc
+   đã là bản tối rồi. Đừng lật nền bằng class trên một khối con — bí danh đã tính
+   xong ở gốc và sẽ kẹt lại màu nền sáng. */
+:root {
+  --panel: var(--surface);
+  --panel-2: var(--surface-2);
+  --panel-3: var(--surface-3);
+  --line: var(--border);
+  --line-soft: var(--border);
+  --dim: var(--text-2);
+  --faint: var(--text-3);
+  --amber: var(--accent);
+  --gold: var(--accent-ink);
+  --cyan: var(--accent);
+  --violet: var(--accent-ink);
+  --bad: var(--crit);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+
+body {
+  margin: 0; color: var(--text);
+  font: 14px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* Cùng lý do với `.pip`: chữ nằm trên mảng nhấn đặc, mà nhấn bản tối sáng hơn hẳn
+   nên trắng cố định chỉ còn 2,9:1 — chữ bôi đen là chỗ cuối cùng được phép mờ. */
+::selection { background: var(--accent); color: var(--pip-ink); }
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line); border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--faint); background-clip: content-box; }
+
+/* ── Bàn phím ─────────────────────────────────────────────────────────────────
+   MỘT vòng focus cho cả trang. Trước đây chỉ mốc chart có vòng focus, mà phần
+   còn lại của trang thì không tới được bằng Tab để mà cần tới nó: nav, thẻ dự án,
+   mọi nút chép — tất cả đều là `<span>`/`<div>` gắn onclick. Chúng đã thành
+   `<button>` thật, nên giờ cần một vòng nhìn thấy được.
+
+   `:focus-visible` nên chuột không bao giờ thấy vòng này; `:where()` cho độ ưu tiên 0
+   nên chỗ nào thật sự cần vòng khác vẫn đè lên được — hiện chỉ còn ô treemap. */
+:where(a, button, summary, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* Nút được dựng từ token của HUD, không phải từ mặc định của trình duyệt: nền,
+   viền, font, canh chữ đều phải trả về "như cái span nó vừa thay thế", nếu không
+   mỗi chỗ đổi sang <button> lại mọc ra một hộp xám bo góc của hệ điều hành. */
+button { font: inherit; color: inherit; background: none; border: none; margin: 0; }
+
+/* Nhãn chỉ dành cho trình đọc màn hình. Không dùng `display:none` — thứ bị ẩn kiểu
+   đó cũng biến mất khỏi cây trợ năng, tức là biến mất khỏi đúng người cần nó. */
+.vh {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+
+/* Bỏ qua nav. Nằm ngoài màn cho tới khi Tab chạm vào nó. */
+.skip {
+  position: fixed; top: 8px; left: 8px; z-index: 90;
+  translate: 0 -200%; transition: translate 0.15s;
+  padding: 8px 14px; border-radius: var(--r-sm);
+  background: var(--surface); border: 1px solid var(--accent-line);
+  color: var(--accent-ink); font: 500 13px var(--sans); text-decoration: none;
+  box-shadow: var(--shadow);
+}
+.skip:focus { translate: 0 0; }
+
+/* Chuyển động: tôn trọng cài đặt hệ thống. Chấm nhịp đập, ngăn kéo trượt, thẻ
+   nhấc lên khi rê chuột — với người bật "giảm chuyển động" thì đây là ba nguồn
+   khó chịu trên một trang tự vẽ lại 30 giây một lần. Giữ nguyên MÀU và VỊ TRÍ
+   cuối, chỉ bỏ đoạn đường đi tới đó. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .quest:hover { translate: none; }
+}
+
+/* ── Nguyên thuỷ ──────────────────────────────────────────────────────────── */
+
+/* Nhãn: sans thường, viết hoa đầu câu. Nhãn 9px MONO IN HOA GIÃN CHỮ là thứ làm cả
+   trang vừa khó đọc vừa ra chất HUD — bỏ hẳn, không có ngoại lệ (lỗi cũ số 2). */
+.ulabel { font: 500 12px/1.4 var(--sans); letter-spacing: 0; text-transform: none; color: var(--text-3); }
+/* Tên nguồn trong nhãn khối hạn mức — xem `srcLabel` ở views/shared.js. Đậm VÀ đậm màu:
+   riêng chữ đậm trên nền `--text-3` vẫn còn nhạt hơn cả nhãn thường ở khối bên cạnh. */
+.ulabel .src { font-weight: 700; color: var(--text); }
+/* Dấu hiệu hình học đứng trước nhãn (◎ = tiêu điểm). Mono + hơi to hơn chữ nhãn để
+   đọc ra là "mốc" chứ không phải một ký tự lạc trong câu; màu ăn theo nhãn nên vẫn
+   nằm trong đúng một màu nhấn. */
+.ul-ic { font-family: var(--mono); font-size: 13px; line-height: 1; }
+
+/* Panel: nền + viền 1px + bo góc. Trước đây là clip-path vát góc tám cạnh dựng bằng
+   hai lớp lồng nhau — nhiều mực, không mang dữ liệu, và chính là "chất HUD" mà lỗi
+   cũ số 1 nói tới. Giữ nguyên cấu trúc `.hudp > .in` để markup không phải đổi. */
+.hudp { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-sm); }
+.hudp > .in { height: 100%; border-radius: var(--r); }
+
+/* Thanh liền (độ tươi / tiến độ / độ gấp).
+   `display: block` là bắt buộc: `bar()` trả về một `<span>`, mà span inline thì
+   `height`/`overflow` không áp dụng — hộp ra 0×0, rãnh nền biến mất và chỉ còn
+   mỗi phần ruột trôi nổi. Nhìn thoáng vẫn ra "có cái thanh", nên lỗi này sống
+   rất dai: thiếu đúng cái nền để biết 40% là 40% của bao nhiêu. */
+.bar { display: block; width: 100%; position: relative; height: 6px; background: var(--surface-3); overflow: hidden; border-radius: 3px; }
+.bar > i { display: block; height: 100%; background: var(--b-c, var(--ok)); border-radius: 3px; }
+.bar.slim { height: 4px; }
+.bar.tall { height: 8px; }
+
+.caret { color: var(--accent); font-family: var(--mono); font-weight: 600; }
+
+/* ── Khung ────────────────────────────────────────────────────────────────── */
+
+#app { display: grid; grid-template-columns: var(--rail-w) 1fr; height: 100vh; }
+
+.rail {
+  border-right: 1px solid var(--line-soft);
+  background: var(--surface);
+  display: flex; flex-direction: column; padding: 16px 12px 12px; gap: 2px; overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.brand { padding: 2px 8px 18px; display: flex; align-items: center; gap: 10px; }
+.brand-mark {
+  width: 32px; height: 34px; flex: none; display: grid; place-items: center;
+  border-radius: var(--r-sm); font: 800 15px var(--mono); color: var(--amber);
+  background: var(--accent-weak);
+  border: 1px solid var(--accent-line);
+}
+.brand-title { font: 600 15px/1.2 var(--sans); letter-spacing: -0.01em; }
+.brand-sub { font: 12px/1.4 var(--sans); color: var(--text-3); }
+
+/* Màn đang xem nhận biết bằng NỀN, không bằng vạch phát sáng bên trái. Bản cũ
+   dùng vạch amber + chữ đổi màu + icon đổi màu: ba tín hiệu cho đúng một chuyện,
+   và cái vạch là thứ "phát sáng" duy nhất còn sót của lỗi cũ số 1. */
+.nav-item {
+  display: flex; align-items: center; gap: 9px; padding: 8px 9px; width: 100%; text-align: left;
+  color: var(--dim); cursor: pointer; user-select: none;
+  border-radius: var(--r-sm); transition: background 0.12s, color 0.12s;
+}
+.nav-item:hover { background: var(--surface-2); color: var(--text); }
+.nav-item.active { background: var(--surface-3); color: var(--text); }
+.nav-item .ico { width: 16px; text-align: center; font-size: 12px; flex: none; color: var(--text-3); }
+.nav-item.active .ico { color: var(--accent); }
+.nav-item .label { flex: 1; font: 13px var(--sans); }
+.nav-item.active .label { font-weight: 650; }
+.nav-item .key { font: 10px var(--mono); color: var(--faint); }
+/* Số đếm thường là chữ xám; đỏ và vàng để dành cho việc thật sự cần làm — tô nền
+   đỏ cho cả số đếm bình thường thì màu hết nghĩa. Chữ TRÊN nền đặc phải đổi theo
+   nền (`--pip-ink`): trắng trên `--now` bản tối chỉ còn 2,6:1. */
+.nav-item .pip { font: 700 10.5px var(--mono); padding: 1px 7px; border-radius: 999px; background: var(--surface-3); color: var(--dim); }
+.nav-item .pip.hot { color: var(--pip-ink); background: var(--now); }
+.nav-item .pip.warn { color: var(--pip-ink); background: var(--warn); }
+
+.rail-foot { margin-top: auto; padding: 12px 9px 4px; font: 12px/1.95 var(--sans); color: var(--text-3); border-top: 1px solid var(--border); }
+.rail-foot kbd { color: var(--dim); border: 1px solid var(--border-strong); border-radius: 4px; padding: 0 5px; }
+.help-open { display: block; width: 100%; padding: 0; text-align: left; cursor: pointer; }
+.help-open:hover, .help-open:hover kbd { color: var(--amber); border-color: var(--accent-line); }
+
+/* ── Thanh trên ───────────────────────────────────────────────────────────── */
+
+.main { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.topbar { display: flex; align-items: center; gap: 14px; padding: 13px 22px; border-bottom: 1px solid var(--line-soft); background: var(--surface); }
+.view-title { font: 700 15px/1.2 var(--sans); letter-spacing: -0.01em; }
+.view-sub { font: 12px/1.5 var(--sans); color: var(--text-3); margin-top: 3px; }
+
+.search { margin-left: auto; position: relative; width: 240px; }
+.search input {
+  width: 100%; padding: 7px 11px 7px 28px; border-radius: var(--r-sm);
+  background: var(--surface-2); border: 1px solid var(--line);
+  color: var(--text); font: 12.5px var(--mono); outline: none;
+}
+.search input:focus { border-color: var(--accent-line); background: var(--surface); }
+.search input::placeholder { color: var(--faint); }
+.search::before { content: "/"; position: absolute; left: 10px; top: 50%; translate: 0 -50%; color: var(--faint); font: 700 12px var(--mono); }
+
+.pulse {
+  display: flex; align-items: center; gap: 7px; flex: none;
+  font: 500 12px var(--sans); color: var(--text-2);
+  background: none; border: 1px solid var(--border); padding: 5px 10px; cursor: pointer;
+  border-radius: 999px; transition: background 0.12s, color 0.12s;
+}
+.pulse:hover { background: var(--surface-2); color: var(--text); }
+.pulse .dot { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--ok); }
+.pulse.beat .dot { animation: beat 0.9s ease-out; }
+.pulse.off .dot { background: var(--bad); }
+.pulse.scanning .dot { background: var(--accent); animation: beat 0.7s ease-out infinite; }
+
+/* Nút lật nền. Cùng khuôn với `.pulse` để hai nút cạnh nhau không thành hai kiểu
+   nút khác nhau — chỉ thay chấm trạng thái bằng ký hiệu ◐. */
+.tgl .ti { font: 13px var(--mono); line-height: 1; color: var(--accent); }
+@keyframes beat { 0% { transform: scale(2); opacity: 0.3; } 100% { transform: scale(1); opacity: 1; } }
+
+/* Mất kết nối: dữ liệu cũ trông y hệt dữ liệu mới, nên phải nói thẳng ra. */
+.offline {
+  display: flex; align-items: center; gap: 10px; padding: 8px 22px;
+  background: color-mix(in srgb, var(--bad) 12%, var(--panel));
+  border-bottom: 1px solid color-mix(in srgb, var(--bad) 40%, transparent);
+  font: 12.5px var(--sans); color: var(--text);
+}
+.offline[hidden] { display: none; }
+.offline .ic { color: var(--bad); }
+.offline b { font: 700 12.5px var(--mono); }
+.offline .btn { margin-left: auto; }
+
+.scroll { flex: 1; overflow-y: auto; padding: 16px 22px 64px; scroll-behavior: auto; }
+
+/* ── Khối tóm tắt — HAI câu, mỗi câu một nút ──────────────────────────────
+   Đây là khối duy nhất được to trên màn Dự án (lỗi cũ số 3: hai khối cùng to
+   thì mắt không biết nhìn đâu). Nó nói hai câu và đưa luôn nút để làm điều vừa
+   nói — cả trang đọc trong 30 giây, riêng khối này đọc trong 3 giây.
+
+   `chốt d-game` đã gỡ phần nhân vật hoá: gương mặt ◈, vòng thở, con trỏ nháy và
+   vệt quét khi đổi câu. Chúng làm khối "có người ở trong" nhưng không thêm một
+   thông tin nào, và chính là mảng-màu-phát-sáng của lỗi cũ số 1. Chức năng giữ
+   nguyên: câu ngắn + lý do + nút chép. Màu chỉ còn nằm ở một dải bên trái.
+
+   Dải màu ấy giờ nằm ở TỪNG Ô, không ở cả khối. Hai ô báo hai loại việc và giọng
+   của chúng độc lập nhau — một dải chung thì hoặc phải chọn giọng của một ô rồi
+   gán nhầm cho ô kia, hoặc phải trộn hai giọng thành một màu không nói gì cả. */
+
+.butler { margin-bottom: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow); }
+.butler[hidden] { display: none; }
+.butler .in {
+  display: flex; gap: 16px; align-items: flex-start;
+  padding: 20px 24px 21px; position: relative; border-radius: var(--r);
+}
+.butler-body { flex: 1; min-width: 0; }
+.butler-h { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.butler-h .rule { flex: 1; height: 1px; background: var(--border); }
+.butler-h .clock { font: 12px var(--mono); color: var(--text-3); font-variant-numeric: tabular-nums; }
+
+/* Câu chính: cỡ chữ lớn nhất trang, và là thứ duy nhất được to. Sans chứ không mono
+   — đây là lời nói, không phải dữ liệu. `max-width` giữ độ dài dòng trong khoảng đọc
+   thoải mái (~60 ký tự); để chạy hết bề ngang thì câu quan trọng nhất trang lại là câu
+   khó lần dòng nhất. */
+/* Hai ô, xếp dọc. Ô hai nhỏ hơn một bậc chứ không bằng vai: cả hai đều luôn có mặt,
+   nên nếu chúng cùng cỡ thì lỗi cũ số 3 quay lại ngay bên trong chính khối này. Nhỏ
+   hơn một bậc là đủ để có thứ tự đọc mà vẫn không đọc thành chú thích. */
+.butler-slots { display: grid; gap: 14px; }
+.bslot { --voice: var(--accent); padding-left: 14px; border-left: 3px solid var(--voice); }
+/* Ô MỘT phải thắng bằng KHỐI, không bằng cỡ chữ.
+   Hai ô cùng là chữ trên nền trắng thì ô cao hơn đọc ra thành ô quan trọng hơn — mà ô
+   hạn mức lúc nào cũng cao gấp đôi: nó có dòng lý do ba câu cộng mấy câu Cursor/AG. Đua
+   cỡ chữ không gỡ được chuyện đó, chỉ làm cả hai cùng to. Cắt chữ của ô hai cũng không:
+   mấy câu nguồn ngoài kia mỗi tuần mới nói một lần, cắt đi là mất hẳn.
+   Nên ô một được một tấm nền riêng — nó thôi là một đoạn văn và thành một cái thẻ, tức
+   là thắng ở một chiều mà ô hai không tham gia. Nền lấy từ chính `--voice` nên nó đổi
+   màu theo mức gấp, và vẫn chỉ là trang trí: mọi khác biệt có thật đều đã có chữ chở. */
+.bslot:first-child {
+  padding: 15px 18px 16px;
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: color-mix(in srgb, var(--voice) 7%, transparent);
+}
+.bslot.alert, .bslot.crit { --voice: var(--crit); }
+.bslot.warn { --voice: var(--warn); }
+.bslot.ok { --voice: var(--ok); }
+.bslot.cheer { --voice: var(--cheer); }
+.bslot.mute { --voice: var(--border-strong); }
+/* Nhãn loại việc. Nó là thứ duy nhất phân biệt hai ô khi cả hai đang cùng giọng —
+   không có nó thì hai câu đọc thành một danh sách hai gạch đầu dòng cùng loại. */
+.bslot-k { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font: 500 11.5px var(--sans); color: var(--text-3); }
+/* Nút lật việc — cạnh nhãn loại việc, KHÔNG ở thanh tiêu đề chung. Chúng chỉ lật ô này;
+   đứng trên thanh chung thì trông như lật cả khối, mà ô hạn mức thì không lật đi đâu.
+   Nhỏ và nhạt: chúng là cách đi lại trong ô, không phải việc cần làm. */
+.bnav { display: inline-flex; align-items: center; gap: 2px; }
+.bnav button {
+  cursor: pointer; width: 18px; height: 18px; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); border-radius: 5px; background: none;
+  font: 13px var(--sans); color: var(--text-3);
+  transition: color 0.12s, border-color 0.12s;
+}
+.bnav button:hover { color: var(--accent-ink); border-color: var(--accent-line); }
+.bnav button:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 1px; }
+.bpos { font: 500 10.5px var(--mono); color: var(--faint); min-width: 22px; text-align: center; }
+/* Vạch chạy — dấu hiệu duy nhất báo trước chữ sắp tự đổi. Đứng CẠNH nút lật, cùng hàng
+   với "2/3", vì nó nói về đúng cái chỗ-đang-đứng ấy. Thời lượng do JS gắn inline
+   (`SPIN_MS`) chứ không viết ở đây: hai chỗ cùng giữ một con số 5 giây thì sửa một chỗ
+   là vạch và đồng hồ nói lệch nhau ngay, mà lệch kiểu đó không test nào bắt được.
+   Màu `--faint` chứ không phải màu giọng của ô: nó đo thời gian, không đo mức gấp. */
+.bspin {
+  width: 22px; height: 2px; margin-left: 4px; border-radius: 1px;
+  background: var(--line); overflow: hidden;
+}
+.bspin::after {
+  content: ""; display: block; height: 100%; width: 100%; background: var(--faint);
+  transform-origin: left center; animation: bspin linear both; animation-duration: inherit;
+}
+@keyframes bspin { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+/* Rê chuột vào là dừng, và vạch phải BIẾN MẤT chứ không đứng im: một vạch đứng im vẫn
+   trông như đang đo, chỉ là đo chậm. Bỏ chuột ra thì `mount()` dựng lại thẻ này nên
+   animation tự chạy lại từ 0, khớp với đồng hồ vừa được đặt lại. */
+#butler.paused .bspin { visibility: hidden; }
+@media (prefers-reduced-motion: reduce) { .bspin { display: none; } }
+.butler-say { margin: 0; max-width: 60ch; font: 650 23px/1.35 var(--sans); letter-spacing: -0.019em; color: var(--text); text-wrap: balance; }
+/* Ô hai lùi một bậc ở CẢ hai dòng chữ, không riêng dòng đầu. Trước đây chỉ dòng đầu nhỏ
+   đi, nên phần thân của nó vẫn cùng cỡ với phần thân ô một và khối chữ dài hơn ấy giành
+   lại đúng cái ưu thế mà dòng đầu vừa nhường. */
+.bslot + .bslot .butler-say { font-size: 17px; font-weight: 600; }
+.bslot + .bslot .butler-why { font-size: 13px; }
+.butler-why { margin: 9px 0 0; max-width: 68ch; font: 14px/1.6 var(--sans); color: var(--text-2); }
+/* Cảnh báo Cursor + Antigravity — câu chữ dưới câu chính, chỉ hiện khi có chuyện.
+   Chấm màu đầu câu mang giọng (warn/crit) thay cho cái thanh đã bỏ; số chi tiết nằm
+   trong tooltip của chính câu (data-tip), nên câu được phép ngắn. */
+.butler-tools { margin: 10px 0 0; display: grid; gap: 4px; }
+.butler-tools[hidden] { display: none; }
+.btool { margin: 0; max-width: 68ch; font: 12.5px/1.5 var(--sans); color: var(--text-3); outline: none; border-radius: 5px; }
+.btool::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin: 0 7px 1px 0; background: var(--warn); }
+.btool.crit::before { background: var(--crit); }
+.btool.cheer::before { background: var(--cheer); }
+
+/* Hàng nút RỖNG vẫn là một phần tử lưới, nên nó phải tự xẹp: ô nào không có nút nào
+   (hạn mức đang đúng nhịp) mà vẫn chừa 12px thì hai ô cách nhau hai khoảng khác nhau. */
+.butler-act { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 13px; }
+.butler-act:empty { display: none; }
+/* MỘT hành động chính của trang được MỘT khối màu đặc — đây là ngoại lệ có chủ đích
+   với "không mảng màu phát sáng": câu quản gia vừa nói cần một nút không thể nhầm là
+   thứ để đọc lướt. Mọi nút chép khác trong app vẫn giữ kiểu viền mờ, nên khối đặc này
+   một mình trên trang, đúng như câu nó phục vụ. */
+.butler-act .go {
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  padding: 8px 15px; border-radius: var(--r-sm);
+  background: var(--accent); border: 1px solid var(--accent);
+  font: 600 13px var(--mono); color: var(--pip-ink); box-shadow: var(--shadow-sm);
+  transition: background 0.12s, border-color 0.12s;
+}
+.butler-act .go:hover { background: var(--accent-ink); border-color: var(--accent-ink); }
+.butler-act .go::after { content: "⧉"; opacity: 0.7; }
+.butler-act .go.copied { border-color: var(--ok); color: var(--ok); background: var(--ok-weak); box-shadow: none; }
+.butler-act .go.copied::after { content: "✓"; opacity: 1; }
+.butler-act .go.copyfail { background: var(--surface); border-color: var(--crit); color: var(--crit); box-shadow: none; }
+.butler-act .go.copyfail::after { content: "✕ chép tay nhé"; opacity: 1; font-size: 11px; }
+.butler-act .hint { font: 12.5px var(--sans); color: var(--text-3); }
+.butler-act .jump {
+  margin-left: auto; cursor: pointer; font: 12.5px var(--sans); color: var(--text-2);
+  border-bottom: 1px solid var(--border-strong);
+}
+.butler-act .jump:hover { color: var(--accent-ink); border-color: var(--accent-line); }
+
+/* ── Hạn mức trong khối quản gia ────────────────────────────────────────────
+   Cột hẹp bên phải câu chính. Nó KHÔNG được to hơn câu — hạn mức là thứ để liếc,
+   còn việc đáng làm mới là thứ để đọc — nên chữ ở đây nhỏ hơn một bậc và không có
+   mảng màu nào ngoài chính thanh đo.
+
+   Thanh có HAI phần và hai phần đó phải phân biệt được ngay: phần đặc là đã tiêu
+   thật, phần gạch chéo là dự báo. Vẽ dự báo cùng kiểu với dữ liệu thật là nói dối
+   bằng hình — nên nó mờ đi, có vân, và chỉ đổi sang màu cảnh báo khi nhịp này thật
+   sự chạm trần trước lúc reset. */
+
+.butler-quota {
+  flex: 0 1 214px; min-width: 190px; align-self: stretch;
+  display: grid; gap: 12px; align-content: start;
+  padding-left: 17px; border-left: 1px solid var(--line-soft);
+}
+.butler-quota[hidden] { display: none; }
+.qs-h { font: 500 11.5px var(--sans); color: var(--text-3); }
+.qs-row { display: grid; gap: 5px; outline: none; border-radius: 5px; }
+.qs-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.qs-k { font: 11px var(--mono); color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qs-v { font: 700 12.5px var(--mono); font-variant-numeric: tabular-nums; }
+/* Mốc reset — mono và nhạt, KHÔNG mang tone: nó đo thời gian còn lại, không đo bỏ phí.
+   Cùng cỡ với `.q-reset` của thẻ Claude để hai chỗ đọc ra cùng một loại số. */
+.qs-when { font: 10.5px var(--mono); color: var(--faint); }
+.qs-when:empty { display: none; }
+.qs-f { font: 11px/1.4 var(--sans); color: var(--text-3); text-wrap: pretty; }
+.qs-f.warn { color: var(--warn); }
+.qs-f.crit { color: var(--crit); }
+.qs-f.cheer { color: var(--cheer); }
+
+/* `--tk` (bề dày rãnh) và `--pad` (chỗ chừa dưới rãnh) là hai số duy nhất phân biệt ba
+   biến thể của thanh, nên mọi thứ đo theo chúng — vạch mốc đều khỏi phải có ba trị
+   `bottom` viết tay, thứ chắc chắn lệch nhau ngay lần chỉnh bề dày đầu tiên. */
+.qbar { --tk: 7px; --pad: 6px; position: relative; display: block; padding-bottom: var(--pad); }
+.qbar.tall { --tk: 20px; }
+.qbar.lab { --pad: 15px; }
+.qb-track { position: relative; display: block; height: var(--tk); border-radius: calc(var(--tk) / 2); background: var(--surface-3); overflow: hidden; }
+/* Đuôi thanh KHÔNG để trống. Rãnh trống đọc thành "chỗ còn dư" — đúng nghĩa ngược với
+   thứ nó đang chỉ, vì hạn mức không cộng dồn nên chỗ ấy là phần đã trả tiền và sắp mất.
+   Tô nhạt bằng chính sắc cảnh báo: đủ để thấy nó là một mảng có nghĩa, không đủ để tranh
+   chỗ với mảng đặc.
+
+   Sắc ấy nằm ở NỀN RÃNH chứ không ở một mảng riêng bắt đầu tại mốc dự phóng, vì mảng
+   riêng thì lại cần một cạnh thẳng để khớp với đầu bo tròn của lớp dự phóng — đúng cái
+   mối nối xấu vừa bỏ đi. Nền rãnh thì không có cạnh nào: mọi lớp trên chỉ việc đè lên nó. */
+.qbar.wasting .qb-track { background: color-mix(in srgb, var(--warn) 15%, var(--surface-3)); }
+/* Ba lớp chồng, lớp nào cũng từ 0 và cũng bo tròn — xem chú thích `quotaBar` trong
+   `lib/quota.js`.
+
+   Vân 45° chứ không phải màu nhạt: màu nhạt của cùng một sắc đọc ra thành "ít hơn", còn
+   vân đọc ra thành "khác loại" — mà đây đúng là khác loại, chưa xảy ra. Độ mờ phải nằm
+   trong MÀU VÂN, không ở `opacity` của cả phần tử: `opacity` sẽ kéo theo cả lớp nền đặc
+   bên dưới nó.
+
+   Lớp vân phải có nền ĐẶC màu rãnh: không có nó thì sắc "bỏ phí" của nền rãnh lọt qua
+   khe vân, và phần dự phóng đọc thành phần sắp mất — đúng nghĩa ngược. */
+.qb-pred {
+  position: absolute; top: 0; bottom: 0; left: 0; border-radius: inherit;
+  background-color: var(--surface-3);
+  background-image: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--c) 50%, transparent) 0 2px, transparent 2px 5px);
+}
+/* Không còn bản vân ĐỎ cho ca chạm trần. Nó tồn tại hồi "cạn sớm" là kết cục xấu; giờ
+   chạm trần là đích, nên một mảng đỏ nằm trong một cái thanh màu đỏ tía là hai mảng của
+   cùng một cửa sổ nói hai chuyện ngược nhau. Việc "bao giờ đụng tường" đã có nhãn chữ
+   nằm ngay trong chính mảng ấy. */
+.qb-fill { position: absolute; top: 0; bottom: 0; left: 0; background: var(--c); border-radius: inherit; }
+/* Hai mảng này TRONG SUỐT — chúng chỉ còn là khung chở nhãn, giữ đúng hình học của mảng
+   mình nói về để chữ nằm giữa mảng. Phần tô đã dời xuống ba lớp chồng ở trên.
+
+   Số nằm trong đúng mảng nó nói về — mắt khỏi phải đi đi về về giữa chú giải và hình.
+   Mảng ĐẶC không có nhãn: trị của nó đã là con số to nhất thẻ, ngay phía trên.
+
+   Mảng vừa chỗ hay không là chuyện của PIXEL, không phải của phần trăm — cùng "20% bề
+   rộng" ra 40px ở thẻ hẹp và 90px ở màn rộng. Nên hai mảng này tự làm container và tự
+   quyết, thay vì một ngưỡng phần trăm đoán mò viết trong JS. */
+.qb-ghost, .qb-waste { position: absolute; top: 0; bottom: 0; container-type: inline-size; }
+.qb-ghost > b, .qb-waste > b {
+  position: absolute; inset: 0; display: grid; place-content: center;
+  font: 700 10px var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
+}
+.qb-waste > b { color: var(--text-2); }
+/* Nép sang bên để vạch mốc đều khỏi xẻ đôi chữ — bên nào là do `dodge()` trong
+   `lib/quota.js` chọn, nó biết vạch đang đứng đâu trong mảng. */
+.qb-waste > b.l { place-content: center start; padding-left: 6px; }
+.qb-waste > b.r { place-content: center end; padding-right: 6px; }
+/* Đuôi thanh: bản đủ chữ ("bỏ phí 49%") khi có chỗ, bản trơ số khi hẹp, không gì khi
+   hẹp nữa. Hai bản là hai chuỗi rời chứ không phải một chuỗi bị cắt — trật tự từ của
+   hai thứ tiếng ngược nhau ("bỏ phí 49%" / "49% wasted"). */
+.qb-waste em { font-style: normal; }
+.qb-waste > b > em { display: none; }
+@container (min-width: 72px) {
+  .qb-waste > b > em { display: inline; }
+  .qb-waste > b > span { display: none; }
+}
+@container (max-width: 27px) {
+  .qb-waste > b { display: none; }
+}
+@container (max-width: 33px) {
+  .qb-ghost > b { display: none; }
+}
+/* Nhãn "cạn sau 4 ngày" là một câu, không phải bốn ký tự như "→46%" — nên nó cần một
+   ngưỡng rộng hơn hẳn. Dưới ngưỡng thì bỏ hẳn chứ không cắt chữ: mốc cạn vẫn còn nguyên
+   ở tooltip, còn nửa câu nằm trong một mảng chật thì không ai đọc được. */
+@container (max-width: 104px) {
+  .qb-ghost.hits > b { display: none; }
+}
+/* Nhãn dự phóng nằm trên VÂN, nên nó phải có đế. Đo ra thì cùng một dòng chữ đạt 6,2:1
+   ở chỗ rơi vào khe vân nhưng chỉ còn 2,3:1 ở chỗ rơi trúng sọc — tức là chữ tự nhấp
+   nháy giữa đọc được và không, theo từng nét. Đế màu nền rãnh (không phải nền thẻ: nó
+   nằm TRONG rãnh) kéo cả dòng về đúng một mức. */
+.qb-ghost > b {
+  inset: auto; top: 50%; left: 50%; translate: -50% -50%;
+  padding: 0 4px; border-radius: 3px; white-space: nowrap;
+  background: var(--surface-3); color: var(--text-2);
+}
+.qb-ghost > b.l { left: 2px; translate: 0 -50%; }
+.qb-ghost > b.r { left: auto; right: 2px; translate: 0 -50%; }
+/* Vạch tiến độ — chỗ mảng đặc PHẢI với tới nếu muốn tiêu hết trước reset.
+   Trước đây nó là một mũi nhọn 7px nấp dưới thanh, và ở dạng đó không ai đọc ra nó là
+   gì: một glyph nhỏ không dính vào thứ nó đang nói thì chỉ là một vệt lạ. Giờ nó cắt
+   suốt chiều cao thanh và thò ra hai đầu, nên quan hệ "đã tới vạch chưa" thấy được
+   ngay — và mọi chỗ vẽ thanh đều kèm một câu gọi tên nó (`paceGapText` trong
+   `lib/quota.js`), để cái vạch này không bao giờ phải tự giải thích một mình. */
+.qb-pace {
+  position: absolute; top: -4px; height: calc(var(--tk) + 8px); width: 2px; translate: -1px 0;
+  background: var(--text-2);
+  /* Đầu bo tròn: một thanh 2px cắt vuông đọc ra như một mẩu thanh khác bị kẹt vào, còn
+     hai đầu tròn thì đọc ra là một cái ghim đặt LÊN TRÊN — đúng vai của nó, một mốc tham
+     chiếu chứ không phải một phần dữ liệu. */
+  border-radius: 999px;
+  /* Vỏ bọc, không phải trang trí: đo ra thì vạch mực trên nền mảng đặc chỉ còn 1,0:1 —
+     tức là biến mất hẳn đúng vào lúc cần nhất, lúc đã tiêu vượt qua vạch.
+
+     Màu vỏ là `--panel` (nền thẻ), không phải màu nền rãnh: rãnh giờ đổi màu theo tình
+     huống (`.wasting` tô sắc cảnh báo), nên một cái vỏ ăn theo nền rãnh sẽ khi thì tàng
+     hình khi thì lộ. `--panel` cho ghim một cái khe trắng ĐỀU ở mọi nền — cùng thủ pháp
+     với vạch ngăn của quạt tròn, nên hai chỗ đọc ra cùng một thứ tiếng. */
+  box-shadow: 0 0 0 1.5px var(--panel);
+}
+/* Chú thích của vạch trung bình, neo đúng vào chân vạch. Sát mép thì nép vào thay vì
+   canh giữa — canh giữa ở 4% hay 96% là chữ thò hẳn ra ngoài thẻ. */
+.qb-mark {
+  position: absolute; bottom: -1px; translate: -50% 0; white-space: nowrap;
+  font: 10px var(--mono); color: var(--text-3); font-variant-numeric: tabular-nums;
+}
+.qb-mark.l { translate: -7px 0; }
+.qb-mark.r { translate: calc(-100% + 7px) 0; }
+
+/* Khung hẹp: cột tụt xuống dưới câu, và vì lúc đó nó chạy hết bề ngang nên các khung
+   xếp cạnh nhau thay vì chồng lên nhau. */
+@media (max-width: 900px) {
+  .butler .in { flex-wrap: wrap; }
+  .butler-quota {
+    flex: 1 1 100%; padding: 15px 0 0; border-left: 0; border-top: 1px solid var(--line-soft);
+    grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 12px 20px;
+  }
+  .qs-h { grid-column: 1 / -1; }
+}
+
+/* ── Dải người chơi (mỏng — quản gia mới là khối chính) ───────────────────── */
+
+.strip {
+  display: flex; align-items: stretch; flex-wrap: wrap;
+  padding: 8px 6px; margin-bottom: 16px;
+  border: 1px solid var(--line-soft); background: var(--panel); border-radius: var(--r-sm);
+  box-shadow: var(--shadow-sm);
+}
+/* Nhịp làm việc dạng "chỉ số sống": số mono tabular đọc như một đồng hồ đo, nhãn sans
+   nhẹ đứng sau, ngăn nhau bằng nét tóc DỌC chứ không phải dấu chấm giữa — dấu chấm là
+   một ký tự phải đọc, nét tóc thì chỉ là ranh giới. Dải này cố ý mỏng: khối quản gia
+   mới là thứ được to trên màn này. */
+.sst {
+  display: inline-flex; align-items: baseline; gap: 7px; white-space: nowrap;
+  padding: 3px 18px; font: 12.5px var(--sans); color: var(--text-2);
+  border-left: 1px solid var(--border);
+}
+.sst:first-child { border-left: none; }
+.sst b { font: 800 14.5px/1 var(--mono); color: var(--text); font-variant-numeric: tabular-nums; }
+.sst[data-view] { cursor: pointer; }
+.sst[data-view]:hover { color: var(--text); }
+.sst[data-view]:hover b { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1.5px; }
+.sst.flame b { color: var(--amber); }
+.sst.hot { color: var(--now); }
+.sst.hot b { color: var(--now); }
+
+/* Ô chỉ số dùng ở đầu các màn Phiên / Đã xong / Sức khoẻ.
+
+   Lề dưới nằm Ở ĐÂY chứ không để từng chỗ gọi tự đặt bằng `style=`. Bốn chỗ gọi đều đặt
+   (14–18px) và chỗ thứ năm — khối số tab Antigravity — quên, nên dòng độ tươi ngay dưới
+   nó (`.data-at`, lề trên âm 6px) chui lên nằm đè vào đáy thẻ. Một mặc định ở đây là chỗ
+   duy nhất chặn được cả họ lỗi ấy; chỗ nào cần khác vẫn ghi đè được bằng inline. */
+.player-stats { display: flex; gap: 9px; flex-wrap: wrap; margin-bottom: 16px; }
+.pstat {
+  min-width: 88px; padding: 8px 12px 9px; border-radius: var(--r-sm);
+  background: var(--panel); border: 1px solid var(--line-soft);
+  box-shadow: var(--shadow-sm);
+}
+.pstat .k, .pstat .ulabel { display: block; margin-bottom: 5px; }
+.pstat .v { font: 800 19px/1 var(--mono); }
+.pstat .v small { font: 400 11px var(--mono); color: var(--faint); }
+.pstat.flame { border-color: color-mix(in srgb, var(--amber) 40%, transparent); }
+.pstat.flame .v { color: var(--amber); }
+.pstat.live .v { color: var(--ok); }
+.pstat.danger { border-color: color-mix(in srgb, var(--now) 45%, transparent); }
+.pstat.danger .v { color: var(--now); }
+
+/* ── Thẻ dự án ────────────────────────────────────────────────────────────── */
+
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(392px, 1fr)); align-items: start; }
+
+/* `--pl-f`/`--pl-b` (ruột/viền của panel vát góc cũ) đã bị gỡ cùng clip-path, nên
+   ba dòng dưới đây từng chỉ gán biến không ai đọc: thẻ hover không đổi viền, thẻ
+   đang chặn không đỏ lên. Viết thẳng vào `border-color`/`background` để nó thật sự
+   vẽ ra. Nền đỏ nhạt lấy qua color-mix từ `--now` nên tự đúng ở cả hai nền. */
+.quest { cursor: pointer; transition: translate 0.15s, box-shadow 0.15s, border-color 0.15s; }
+.quest:hover { translate: 0 -2px; border-color: var(--border-strong); box-shadow: var(--shadow); }
+.quest.locked { border-color: color-mix(in srgb, var(--now) 42%, var(--border)); }
+.quest .in { display: flex; flex-direction: column; }
+.quest.locked .in { background: linear-gradient(180deg, color-mix(in srgb, var(--now) 8%, transparent), transparent 150px); }
+
+.q-head { display: flex; align-items: center; gap: 11px; padding: 12px 14px 9px; }
+.q-name { font: 600 15px var(--sans); letter-spacing: -0.011em; min-width: 0; margin: 0; }
+/* Tên thẻ là DANH TÍNH, không tô theo trạng thái. "Đang chặn" đã được nói bằng viền
+   thẻ đỏ đậm hơn, dải đỏ mờ trên đỉnh, và dòng "● Đang chặn" ngay dưới tên — tô đỏ
+   cả tên nữa là tín hiệu THỨ TƯ cho cùng một chuyện (đúng cái "nhiều tín hiệu cho một
+   chuyện" mà bản này vốn tránh), và khi nhiều thẻ cùng chặn thì cả lưới đỏ rực quá tay. */
+.q-sub { font: 12px var(--sans); color: var(--text-3); margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+
+/* Độ tươi nằm gọn trong header: nhãn "ĐỘ TƯƠI BOARD" + số + thanh chiếm hai dòng
+   riêng trên MỌI thẻ, kể cả thẻ 100% — hai dòng nói "không có gì phải lo". Số và
+   thanh là đủ; chữ đầy đủ ở tooltip. */
+.q-head .q-hp { flex: none; width: 74px; text-align: right; }
+.q-head .q-hp .v { display: block; font: 700 12px var(--mono); color: var(--hp); margin-bottom: 4px; }
+.q-head .q-hp .v small { font: 400 9px var(--mono); color: var(--faint); }
+
+.q-hp-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 5px; }
+.q-hp-top .l { font: 500 12px var(--sans); color: var(--text-3); }
+.q-hp-top .v { font: 700 11px var(--mono); color: var(--hp); }
+
+.q-debuff { display: flex; flex-wrap: wrap; gap: 5px; padding: 0 14px 11px; }
+.deb {
+  font: 10.5px var(--mono); padding: 2px 7px; border-radius: var(--r-sm);
+  background: var(--panel-2); border: 1px solid var(--line-soft); color: var(--dim);
+}
+.deb.bad { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 34%, transparent); }
+.deb.crit { color: var(--now); border-color: color-mix(in srgb, var(--now) 40%, transparent); }
+
+.q-body { padding: 11px 14px 12px; border-top: 1px solid var(--line-soft); flex: 1; }
+.q-body .ulabel { display: flex; align-items: center; gap: 7px; color: var(--amber); margin-bottom: 7px; }
+.q-body .ulabel .tag { font: 11.5px var(--sans); color: var(--text-3); border: 1px solid var(--border); border-radius: 3px; padding: 0 5px; }
+.focus-title { font: 600 14.5px/1.42 var(--sans); letter-spacing: -0.008em; margin-bottom: 10px; }
+
+.next {
+  display: flex; gap: 8px; align-items: flex-start;
+  border-left: 2px solid var(--accent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent 72%);
+  padding: 9px 11px; font: 12.5px/1.5 var(--sans); color: var(--text-2);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+.next.blocked { border-left-color: var(--now); background: linear-gradient(90deg, color-mix(in srgb, var(--now) 9%, transparent), transparent 72%); }
+.next.blocked .caret { color: var(--now); }
+.empty-focus { color: var(--faint); font-size: 12.5px; font-style: italic; }
+
+.q-foot { display: flex; align-items: center; gap: 9px; padding: 9px 14px 11px; border-top: 1px solid var(--line-soft); }
+.badges { display: flex; gap: 5px; flex-wrap: wrap; }
+.badge {
+  display: inline-flex; align-items: center; gap: 4px; font: 11px var(--mono); color: var(--dim);
+  border: 1px solid var(--line-soft); background: var(--panel-2); padding: 2px 7px; border-radius: var(--r-sm);
+}
+.badge b { font-weight: 800; }
+.badge.hot { color: var(--now); border-color: color-mix(in srgb, var(--now) 42%, transparent); background: color-mix(in srgb, var(--now) 10%, transparent); }
+.badge.nudge { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 36%, transparent); }
+
+.party { margin-left: auto; display: flex; align-items: center; gap: 6px; font: 10.5px var(--mono); color: var(--faint); white-space: nowrap; flex: none; }
+.party .slots { display: flex; gap: 2px; }
+.party i { width: 4px; height: 11px; background: var(--surface-3); }
+.party i.awake { background: var(--ok); }
+
+/* Hành động nhanh — hiện khi rê chuột vào thẻ.
+   Việc làm nhiều nhất ở màn này là "chép câu để nói lại với Claude"; trước đây
+   nó nằm sâu trong ngăn kéo. Luôn hiện thì mỗi thẻ mọc thêm một hàng nút và cả
+   lưới thành bảng điều khiển — nên chỉ hiện đúng lúc con trỏ đã chọn một thẻ. */
+.q-act {
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  padding: 0 14px; max-height: 0; opacity: 0; overflow: hidden;
+  transition: max-height 0.16s ease, opacity 0.16s ease, padding 0.16s ease;
+}
+.quest:hover .q-act, .quest:focus-within .q-act { max-height: 60px; opacity: 1; padding: 0 14px 12px; }
+.qa {
+  cursor: pointer; font: 11px var(--mono); padding: 4px 9px; border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--amber) 13%, transparent);
+  border: 1px solid var(--accent-line); color: var(--amber);
+  white-space: nowrap; transition: background 0.12s;
+}
+.qa:hover { background: color-mix(in srgb, var(--amber) 26%, transparent); }
+.qa.ghost { background: var(--panel-2); border-color: var(--line-soft); color: var(--dim); }
+.qa.ghost:hover { background: var(--panel-3); color: var(--text); }
+.qa.more { margin-left: auto; border-color: transparent; background: none; }
+.qa.copied { border-color: var(--ok); color: var(--ok); background: color-mix(in srgb, var(--ok) 16%, transparent); }
+.qa.copyfail { border-color: var(--bad); color: var(--bad); }
+.qa.copyfail::after { content: " ✕ chép tay nhé"; }
+/* Bàn phím: thẻ vẫn phải tới được mà không cần rê chuột. */
+@media (hover: none) { .q-act { max-height: 60px; opacity: 1; padding: 0 14px 12px; } }
+
+/* ── Phiên ────────────────────────────────────────────────────────────────── */
+
+/* ── Bề mặt làm việc ─────────────────────────────────────────────────────────
+   Claude Desktop, Cursor, Antigravity, Terminal — bốn nơi công việc thật sự diễn ra,
+   và cho tới bản này sở chỉ huy chỉ thấy được một. Dải nằm ĐẦU màn Phiên vì nó trả lời
+   câu hỏi bao trùm ("đang trông coi những gì") trước khi xuống từng dự án.
+
+   Chấm sáng = app đang chạy. Chấm là dấu hiệu PHỤ: chữ bên dưới luôn nói ra trạng thái
+   bằng từ ("không chạy", "đang mở, chưa có gì chạy"), nên không có màu vẫn đọc được. */
+/* Chip bề mặt trên thẻ dự án. Cùng khuôn `.deb` với cờ repo — cùng một loại thông tin
+   (trạng thái NGOÀI board), nên không đáng có kiểu riêng. Chỉ khác ở màu chữ nhấn, để
+   phân biệt "máy móc của repo" với "người đang mở nó ở đâu". */
+/* Chip này chỉ có ký hiệu, nên hai chỉnh sửa so với chip chữ bên cạnh: giãn chữ, vì hai
+   glyph hình học dính nhau đọc thành một glyph lạ thứ ba; và to hơn một nấc, vì `◈ ◧ ⌘`
+   ở 10,5px mất hết chi tiết trong khi `Δ6` thì vẫn đọc được. `line-height` ghim lại để
+   cỡ chữ lớn hơn không đội chip cao hơn hàng. */
+.deb.surf-chip {
+  color: var(--accent-ink); border-color: var(--accent-line);
+  font-size: 12px; line-height: 14px; letter-spacing: 0.14em; padding-right: 7px;
+}
+.badge.live { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+
+/* `align-items: start` — thẻ cao theo nội dung của nó. Kéo bằng nhau thì thẻ nào ít
+   chữ nhất (Claude Desktop, không có danh sách thư mục) ôm một khoảng trống bằng đúng
+   phần dư của thẻ nhiều chữ nhất, và khoảng trống đó không nói lên điều gì. */
+.surf { display: grid; gap: 9px; grid-template-columns: repeat(auto-fit, minmax(214px, 1fr)); align-items: start; margin-bottom: 18px; }
+.surf-i {
+  display: flex; gap: 11px; align-items: flex-start; min-width: 0;
+  padding: 10px 12px 11px; border: 1px solid var(--line-soft); border-radius: var(--r-sm);
+  background: var(--panel); box-shadow: var(--shadow-sm);
+}
+.surf-i.off { opacity: 0.62; }
+.surf-ic {
+  flex: none; width: 26px; height: 26px; display: grid; place-items: center;
+  font: 13px var(--mono); border-radius: 7px;
+  border: 1px solid var(--line); color: var(--dim); background: var(--panel-2);
+}
+.surf-i.on .surf-ic { color: var(--accent); border-color: var(--accent-line); background: var(--accent-weak); }
+.surf-b { min-width: 0; flex: 1; }
+.surf-n { display: flex; align-items: center; gap: 7px; font: 600 12.5px var(--sans); }
+.surf-n .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border-strong); flex: none; }
+.surf-i.on .surf-n .dot { background: var(--ok); }
+.surf-m { font: 11px/1.5 var(--sans); color: var(--faint); margin-top: 2px; }
+.surf-m b { font: 700 11px var(--mono); color: var(--text-2); }
+.surf-f { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.surf-f .deb { cursor: pointer; }
+.surf-f .deb:hover { border-color: var(--accent-line); color: var(--accent-ink); }
+
+.sess-group { margin-bottom: 18px; }
+.sess-group-h { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; padding-bottom: 6px; border-bottom: 1px solid var(--line-soft); }
+.sess-group-h .n { font: 700 13.5px var(--mono); letter-spacing: -0.01em; }
+.sess-group-h .c { margin-left: auto; font: 12px var(--sans); color: var(--text-3); }
+
+.unit {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) 176px auto;
+  gap: 12px; align-items: center; padding: 8px 11px;
+  border-left: 2px solid var(--border); transition: background 0.12s, border-color 0.12s;
+}
+.unit:hover { background: var(--panel); }
+.unit.awake { border-left-color: var(--ok); }
+.unit-av {
+  width: 28px; height: 30px; border-radius: var(--r-sm); display: grid; place-items: center;
+  background: var(--panel-2); border: 1px solid var(--line-soft);
+  font: 700 13px var(--mono); color: var(--faint);
+}
+.unit.awake .unit-av { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.unit .u-title { font: 550 13px/1.4 var(--sans); }
+.unit.sleeping .u-title { color: var(--dim); }
+.unit .u-meta { font: 10.5px var(--mono); color: var(--faint); margin-top: 2px; display: flex; gap: 9px; flex-wrap: wrap; }
+/* Bó cột tiến độ lại: để `fr` tự giãn thì "5/5 việc" và "100%" bị đẩy ra hai
+   đầu màn hình, mắt phải chạy ngang mới ghép được hai mẩu của cùng một ý. */
+/* Cột tiến độ rộng cố định: để `fr` co giãn thì hàng có todo và hàng không có
+   todo lệch nhau, cột phải nhảy chỗ theo từng hàng và mắt mất mốc khi rà dọc. */
+.unit .u-cast { min-width: 0; width: 176px; }
+.unit.no-cast .u-cast { visibility: hidden; }
+.unit .u-cast .lbl { font: 10.5px var(--mono); color: var(--dim); margin-bottom: 4px; display: flex; justify-content: space-between; gap: 8px; }
+.unit .u-cast .doing { font: 11px/1.4 var(--sans); color: var(--faint); margin-top: 4px; }
+/* Hai nút xếp DỌC chứ không ngang: hàng phiên đã có 4 cột, nhét thêm một nút vào
+   cột phải làm cột này rộng gấp đôi và bóp mất cột tiến độ. Xếp dọc thì bề ngang
+   cột không đổi, và hàng nào thiếu nút archive cũng không lệch cột. */
+.unit .u-right {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+  font: 10.5px var(--mono); color: var(--faint); white-space: nowrap;
+}
+.u-state { font-weight: 700; letter-spacing: 0.04em; }
+/* Tên bề mặt trong dòng meta. `vague` = sổ app chủ chưa biết phiên này chạy ở đâu
+   (phiên tắt trước khi dashboard kịp nhìn thấy) — gạch chân chấm để nó không đọc thành
+   một câu trả lời chắc chắn. */
+.u-surface { color: var(--dim); }
+.u-surface.vague { text-decoration: underline dotted; text-underline-offset: 2px; opacity: 0.8; }
+/* Hội thoại Antigravity dùng CHUNG mọi màu với phiên Claude, và đó là chủ ý.
+   Xanh ở đây có đúng một nghĩa trong cả app: "đang chạy". Tô hội thoại bằng màu khác
+   thì hoặc phải mượn `--soon` (vốn nghĩa là cảnh báo, đọc ra thành "có vấn đề"), hoặc
+   phải đẻ thêm một màu nữa chỉ để nói một chuyện mà ký hiệu ▲ và chữ "Antigravity" ở
+   dòng meta đã nói rồi. Khác loại thì khác HÌNH, không khác màu. */
+
+.unit.awake .u-state { color: var(--ok); }
+
+details.more > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  font: 10.5px var(--mono); letter-spacing: 0.08em; color: var(--faint); padding: 7px 11px; width: fit-content;
+}
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary::before { content: "▸ "; }
+details.more[open] > summary::before { content: "▾ "; }
+details.more > summary:hover { color: var(--dim); }
+
+/* ── Bảng ─────────────────────────────────────────────────────────────────── */
+
+.sec { margin-bottom: 20px; }
+.sec-h { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.sec-h .ulabel { white-space: nowrap; color: var(--sh, var(--faint)); }
+.sec-h::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, color-mix(in srgb, var(--sh, var(--line-soft)) 45%, transparent), var(--line-soft) 120px); }
+.sec:has(> .tbl) { overflow-x: auto; }
+
+/* Nút phong cách chart. `order: 1` đẩy nó ra sau `::after` — không có nó thì nút dính
+   ngay cạnh nhãn khối và đọc thành một phần của tiêu đề, chứ không phải một cái điều
+   khiển. Đứng ở cuối vạch kẻ thì nó ở đúng vai: dụng cụ của khối bên dưới. */
+.skin-sw { order: 1; display: inline-flex; gap: 4px; flex: none; }
+.skin-b {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--surface); color: var(--dim);
+  font: 11px var(--mono); line-height: 1.5; cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+.skin-b:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); color: var(--text-2); }
+.skin-b .si { font-size: 12px; line-height: 1; color: var(--accent); }
+.skin-b.re { padding: 3px 8px; font-size: 12.5px; }
+
+/* Nút báo cáo. Cùng `order: 1` với nút phong cách để cũng nằm SAU vạch kẻ `::after` —
+   không có nó thì nút bị đẩy về sát nhãn khối và đọc thành một phần của tiêu đề. */
+.sec-h > .skin-b.rp { order: 1; flex: none; }
+.skin-b.copied { border-color: color-mix(in srgb, var(--ok) 55%, transparent); color: var(--ok); }
+.skin-b.copied .si { color: var(--ok); }
+.skin-b.copied::after { content: " ✓"; }
+/* Dấu ✕ chứ không phải một câu như mấy nút chép khác: câu ấy phải viết cứng bằng một
+   ngôn ngữ trong CSS, mà nút này có cả bản tiếng Anh. Lý do hỏng nằm ở `title`. */
+.skin-b.copyfail { border-color: color-mix(in srgb, var(--bad) 55%, transparent); color: var(--bad); }
+.skin-b.copyfail .si { color: var(--bad); }
+.skin-b.copyfail::after { content: " ✕"; }
+
+/* Độ gấp — cột duy nhất phân biệt được các hàng trong cùng một khối độ nóng. */
+.urg { display: flex; align-items: center; gap: 7px; }
+.urg b { font: 800 13px var(--mono); flex: none; }
+.urg b small { font: 400 9px var(--mono); color: var(--faint); }
+.urg .bar { flex: 1; min-width: 24px; }
+.blocks-focus { font: 10px var(--mono); color: var(--now); margin-top: 5px; }
+
+.tbl {
+  width: 100%; min-width: 640px; border-collapse: collapse; font-size: 13px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow-sm);
+}
+.tbl th { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; font: 500 12px var(--sans); color: var(--text-3); }
+.tbl td { padding: 12px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: top; line-height: 1.55; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tbody tr:hover { background: var(--surface-2); }
+
+.heat { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font: 700 10.5px var(--mono); letter-spacing: 0.08em; }
+.heat.now { color: var(--now); }
+.heat.soon { color: var(--soon); }
+.heat.later { color: var(--later); }
+
+.chip {
+  display: inline-flex; align-items: center; font: 10.5px var(--mono); padding: 1px 7px; border-radius: var(--r-sm);
+  /* Hue băm ra từ tên repo nên không có hex nào để khai trong tokens.json — chỉ có
+     độ sáng là thứ phải lật theo nền. Để chết ở 72% (hợp nền tối) thì trên nền sáng
+     chip rơi xuống 2,5:1, tức đúng cột nhận diện dự án lại là chỗ khó đọc nhất bảng. */
+  background: hsl(var(--h) 50% 50% / 0.14); color: hsl(var(--h) 55% var(--chip-l));
+  border: 1px solid hsl(var(--h) 50% 50% / 0.28); white-space: nowrap;
+}
+
+code, .code { font: 11px var(--mono); background: var(--panel-2); border: 1px solid var(--line-soft); padding: 1.5px 6px; color: var(--dim); }
+/* `.copy` là <button> chứ không phải <code>: nó CHÉP một câu khi bấm, và một thứ
+   bấm được thì phải Tab tới được, phải bấm được bằng Enter, và phải tự giới thiệu
+   là nút với trình đọc màn hình. Giữ y nguyên dáng chữ mono trong khung mờ. */
+.copy { cursor: pointer; position: relative; white-space: nowrap; transition: color 0.12s, border-color 0.12s; display: inline-block; vertical-align: baseline; text-align: left; }
+.copy::after { content: " ⧉"; opacity: 0.4; }
+.copy:hover { color: var(--amber); border-color: var(--accent-line); }
+.copy.copied { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+.copy.copied::after { content: " ✓"; opacity: 1; }
+/* Clipboard bị chặn (cửa sổ chưa focus) — phải báo, đừng im lặng. */
+.copy.copyfail { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, transparent); }
+.copy.copyfail::after { content: " chép tay nhé"; opacity: 1; font-size: 10px; }
+
+.btn { background: var(--panel-2); border: 1px solid var(--line); color: var(--dim); padding: 5px 10px; font: 11px var(--mono); cursor: pointer; white-space: nowrap; border-radius: var(--r-sm); }
+.btn:hover { background: var(--panel-3); color: var(--text); }
+
+/* ── Việc đã xong ─────────────────────────────────────────────────────────── */
+
+.day { display: grid; grid-template-columns: 118px 1fr; gap: 16px; }
+.day-h { text-align: right; padding-top: 8px; }
+.day-h .d { font: 700 12.5px var(--mono); }
+.day-h .s { font: 10px var(--mono); color: var(--faint); letter-spacing: 0.06em; }
+.day-h .xp { font: 700 11px var(--mono); color: var(--amber); margin-top: 3px; }
+.day-items { border-left: 1px solid var(--line-soft); padding: 0 0 16px 17px; position: relative; }
+.day-items::before { content: ""; position: absolute; left: -3.5px; top: 12px; width: 6px; height: 6px; background: var(--amber); }
+.done-item { display: flex; align-items: baseline; gap: 9px; padding: 6px 0; font: 13px/1.5 var(--sans); }
+.done-item .t { flex: 1; min-width: 0; }
+.done-item .r { font: 10px var(--mono); color: var(--faint); }
+.done-item .xp { font: 700 10px var(--mono); color: var(--ok); flex: none; }
+
+/* ── Bảo trì ──────────────────────────────────────────────────────────────── */
+
+.hitem { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid var(--line-soft); background: var(--panel); margin-bottom: 8px; border-radius: var(--r-sm); box-shadow: var(--shadow-sm); }
+.hitem .ic { font-size: 14px; flex: none; line-height: 1.4; }
+.hitem .b { flex: 1; min-width: 0; }
+.hitem .t { font: 700 12.5px var(--mono); margin-bottom: 3px; }
+.hitem .d { font: 12.5px/1.55 var(--sans); color: var(--dim); }
+.hitem .a { flex: none; }
+
+/* Repo chưa có board: cùng một câu lặp lại N lần thì không phải N thông tin.
+   Một khối chip — liếc thấy có bao nhiêu, bấm là có lệnh mở Claude ở đó. */
+.orphans { display: flex; flex-wrap: wrap; gap: 6px; }
+.orphan {
+  display: inline-flex; align-items: baseline; gap: 7px; cursor: pointer;
+  padding: 4px 9px; border-radius: var(--r-sm);
+  background: var(--panel); border: 1px solid var(--line-soft);
+  font: 11.5px var(--mono); color: var(--dim); transition: color 0.12s, border-color 0.12s;
+}
+.orphan b { font-weight: 700; color: var(--text); }
+.orphan .a { font-size: 10px; color: var(--faint); }
+.orphan:hover { border-color: var(--accent-line); color: var(--amber); }
+.orphan::after { content: "⧉"; opacity: 0.4; font-size: 10px; }
+.orphan.copied { border-color: color-mix(in srgb, var(--ok) 45%, transparent); color: var(--ok); }
+.orphan.copied::after { content: "✓"; opacity: 1; }
+
+/* Bản xem-trước của prompt tích hợp NOW (màn Sức khoẻ). `pre-wrap` chứ không cuộn
+   ngang: prompt là VĂN để đọc trước khi dán, một dòng dài trốn sau thanh cuộn thì
+   người dùng dán đi một đoạn mình chưa từng thấy. */
+.prompt-pre {
+  white-space: pre-wrap; overflow-wrap: break-word; max-width: 760px;
+  margin: 8px 0 0; padding: 12px 14px;
+  font: 11px/1.7 var(--mono); color: var(--dim);
+  background: var(--panel-2); border: 1px solid var(--line-soft); border-radius: var(--r-sm);
+}
+.orphan.copyfail { border-color: var(--bad); color: var(--bad); }
+.orphan.copyfail::after { content: "✕ chép tay nhé"; opacity: 1; font-size: 10px; }
+
+/* ── Ngăn kéo ─────────────────────────────────────────────────────────────── */
+
+.scrim { position: fixed; inset: 0; background: var(--scrim); opacity: 0; pointer-events: none; transition: opacity 0.18s; z-index: 40; }
+.scrim.open { opacity: 1; pointer-events: auto; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(650px, 94vw);
+  background: var(--surface); border-left: 1px solid var(--line); z-index: 50;
+  translate: 100% 0; transition: translate 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+  display: flex; flex-direction: column; box-shadow: var(--shadow-drawer);
+}
+.drawer.open { translate: 0 0; }
+.drawer-head { padding: 14px 20px; border-bottom: 1px solid var(--line-soft); display: flex; align-items: center; gap: 12px; background: var(--panel); }
+.drawer-head h2 { margin: 0; font: 700 15px var(--mono); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drawer-body { flex: 1; overflow-y: auto; padding: 17px 20px 64px; }
+.x { margin-left: auto; background: none; border: 1px solid var(--line); color: var(--dim); width: 26px; height: 26px; cursor: pointer; font: 13px var(--mono); border-radius: var(--r-sm); flex: none; }
+.x:hover { background: var(--panel-2); color: var(--text); }
+
+/* Lật dự án ngay trong ngăn kéo — điểm qua năm board một lượt mà không phải
+   đóng, tìm lại thẻ, mở tiếp. */
+.drawer-nav { display: flex; align-items: center; gap: 6px; flex: none; }
+.drawer-nav[hidden] { display: none; }
+.drawer-head .x { margin-left: 0; }
+.drawer-nav .pos { font: 10.5px var(--mono); color: var(--faint); min-width: 30px; text-align: center; }
+
+/* NOW.md đọc tại chỗ — bản đầy đủ của board, không phải mở editor mới xem được. */
+.md { margin-top: 12px; border-top: 1px solid var(--line-soft); padding-top: 12px; }
+.md h1, .md h2, .md h3, .md h4 { margin: 16px 0 6px; font-family: var(--mono); letter-spacing: -0.01em; }
+.md h1 { font-size: 15px; color: var(--amber); }
+.md h2 { font-size: 13.5px; color: var(--text); }
+.md h3, .md h4 { font-size: 13.5px; color: var(--text-2); font-weight: 600; }
+.md h1:first-child, .md h2:first-child { margin-top: 0; }
+.md p { margin: 0 0 7px; font: 13px/1.6 var(--sans); }
+.md li { margin: 0 0 4px 16px; font: 13px/1.6 var(--sans); list-style: "▸ "; }
+.md li::marker { color: var(--faint); }
+.md hr { border: none; border-top: 1px solid var(--line-soft); margin: 14px 0; }
+.md b { color: var(--text); font-weight: 700; }
+.md i { color: var(--faint); font-style: normal; font-size: 11.5px; font-family: var(--mono); }
+.md blockquote {
+  margin: 0 0 8px; padding: 6px 11px; font: 12.5px/1.6 var(--sans); color: var(--dim);
+  border-left: 2px solid var(--accent-line); background: var(--accent-weak);
+}
+.md-err { font: 12.5px var(--sans); color: var(--bad); margin-top: 10px; }
+
+/* ── Chart ────────────────────────────────────────────────────────────────────
+   Dựng bằng HTML/CSS thuần: `height`/`width` phần trăm CHÍNH LÀ giá trị, nên chữ
+   giữ nguyên cỡ thật khi khung co giãn (SVG thì chữ và nét méo theo) và token màu
+   của HUD dùng lại được nguyên vẹn.
+
+   Quy cách nét, cố định ở mọi chart: cột/thanh dày tối đa 24px (không bao giờ lấp
+   kín ô — phần thừa của ô là khoảng thở), bo 4px ở ĐẦU DỮ LIỆU và vuông ở chân,
+   lưới là nét tóc 1px liền và lùi hẳn về sau. Hai mảnh chạm nhau thì tách bằng
+   KHE nền 2px chứ không viền — viền là thêm mực không mang dữ liệu. */
+
+/* Mọi mốc chart và mọi thẻ hạn mức đều nhận vòng focus CHUNG ở đầu file — không có
+   quy tắc riêng nào ở đây, và đó là chủ ý: Tab đi xuyên qua cột, thanh, chấm, hàng chú
+   giải và thẻ hạn mức theo đúng một cách, nên dấu hiệu phải là một. Bản cũ đè lên bằng
+   `outline: 1px solid var(--line)`, chỉ hơn nền 1,2 lần — tức là phần `tabindex` làm rất
+   kỹ ở đây coi như không có, vì người dùng bàn phím không nhìn ra mình đang đứng ở đâu.
+
+   Ngoại lệ duy nhất: ô treemap. Vòng phải nằm BÊN TRONG (các ô sát nhau, vòng ngoài đè
+   lên ô bên cạnh) và phải là mực-trên-nền-nhấn, vì nền của nó chính là màu nhấn. */
+.tm-c:focus-visible { outline: 2px solid var(--pip-ink); outline-offset: -3px; }
+
+.ch-grid2 { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); align-items: start; }
+.ch { border: 1px solid var(--line-soft); background: var(--panel); border-radius: var(--r); padding: 14px 16px 14px; min-width: 0; box-shadow: var(--shadow-sm); }
+.ch.wide { grid-column: 1 / -1; }
+.ch-h { margin-bottom: 13px; }
+.ch-t { font: 700 12.5px var(--mono); letter-spacing: -0.01em; }
+.ch-s { font: 11px/1.5 var(--sans); color: var(--faint); margin-top: 3px; }
+
+/* Rãnh trục Y là `max-content`, KHÔNG viết cứng: 22px cũ vừa với "15" nhưng "$1,500"
+   đo ra 34px — mọi chart tiền đều tràn nhãn sang phần đệm thẻ. Nhãn thì absolute nên
+   không tự chống được cột; `.ch-ys` (nhãn dài nhất, vô hình, cao 0) làm việc đó. */
+.ch-plot { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 9px; padding-bottom: 19px; }
+/* Nhãn trục mang những giá trị KHÔNG được ghi thẳng lên cột, nên nó là chữ phải
+   đọc được — dùng `--dim` chứ không `--faint` (2.8:1, dưới ngưỡng chữ nhỏ).
+   10.5px chứ không phải 9.5px: "chữ nhỏ" là lỗi cũ số 2 của cả HUD, và trục là chữ
+   phải đọc chứ không phải trang trí. */
+.ch-y { position: relative; height: var(--h); min-width: 22px; }
+.ch-y span { position: absolute; right: 0; bottom: var(--p); translate: 0 50%; font: 10.5px var(--mono); color: var(--dim); font-variant-numeric: tabular-nums; }
+/* Cột chống của rãnh trục Y — xem `ySizer` trong `lib/chart.js`. Cao 0 nên không chiếm
+   chỗ dọc; font phải Y HỆT `.ch-y span`, lệch một cỡ chữ là rãnh đo sai. */
+.ch-ys { visibility: hidden; display: block; height: 0; overflow: hidden; font: 10.5px var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ch-area { position: relative; height: var(--h); }
+.ch-gl { position: absolute; left: 0; right: 0; bottom: var(--p); height: 1px; background: var(--line); }
+/* Mốc tham chiếu — nét ĐỨT để không lẫn vào lưới. Vẽ bằng gradient chứ không `border`:
+   `border-top: dashed` trên một hộp 1px cho ra nét mảnh hơn và nhịp đứt do trình duyệt
+   tự quyết, nên hai trình duyệt ra hai cái vạch khác nhau. */
+.ch-ref {
+  position: absolute; left: 0; right: 0; bottom: var(--p); height: 0;
+  border-top: 1px dashed color-mix(in srgb, var(--text-2) 55%, transparent);
+}
+.ch-ref > b {
+  position: absolute; right: 0; bottom: 2px;
+  padding: 0 4px; border-radius: 3px; background: var(--panel);
+  font: 10px var(--mono); color: var(--text-3); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.ch-cols { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 2px; }
+/* Cả ô cột là vùng bấm/hover, không phải riêng phần đã tô: cột giá trị 0 vẫn
+   phải chạm tới được, và mốc nhỏ xíu thì không ai trỏ trúng. */
+.ch-col { position: relative; flex: 1; min-width: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; outline: none; }
+.ch-col > i { width: min(24px, 100%); background: var(--c); border-radius: 4px 4px 0 0; }
+/* Hover trộn về `--text` chứ không `brightness()`: brightness sáng lên ở CẢ hai nền,
+   mà trên nền sáng "nổi bật" nghĩa là SẪM đi — cột indigo bị rọi 1.3 lần chỉ nhạt ra
+   như bị chọn nhầm. Trộn về màu chữ thì tự đúng chiều ở từng nền: chữ tối trên nền
+   sáng kéo cột sẫm xuống, chữ sáng trên nền tối kéo cột sáng lên. */
+.ch-col:hover > i { background: color-mix(in oklab, var(--c) 74%, var(--text)); }
+/* Ngày bị trần lưu của board cắt mất — mờ đi để không đọc nhầm là "hôm đó làm ít". */
+.ch-col.partial > i { opacity: 0.42; }
+/* Chế độ DÀY (≥40 mốc — xem `DENSE_AT` trong `lib/chart.js`): khe 1px và bo 2px. Khe
+   2px giữa 100 cột ăn mất nửa bề ngang mực, còn bo 4px trên thân ~3px thành giọt tròn. */
+.ch-cols.dense { gap: 1px; }
+.ch-cols.dense .ch-col > i { border-radius: 2px 2px 0 0; }
+.ch-peak { position: absolute; left: 50%; bottom: var(--p); translate: -50% 0; margin-bottom: 5px; font: 700 10.5px var(--mono); color: var(--text); white-space: nowrap; }
+.ch-x { position: absolute; top: 100%; left: 50%; translate: -50% 0; margin-top: 6px; font: 10.5px var(--mono); color: var(--dim); white-space: nowrap; }
+
+/* ── Cột hai trục — xem `dualColumns` trong `lib/chart.js` ──────────────────────
+   Trục phải là cột `max-content` thứ ba, nhãn nép về mép TRÁI của rãnh (đối xứng với
+   trục trái). Nhãn mỗi trục nhuộm màu series của nó — cây cầu duy nhất nối "cột này
+   đọc bên nào"; trộn 60% về `--dim` để con số vẫn là chữ đọc được, không phải mực màu. */
+.ch-plot.dual { grid-template-columns: max-content minmax(0, 1fr) max-content; }
+.ch-plot.dual .ch-y span { color: color-mix(in oklab, var(--c) 60%, var(--dim)); }
+.ch-plot.dual .ch-y.r span { right: auto; left: 0; color: color-mix(in oklab, var(--c2) 60%, var(--dim)); }
+/* Cặp cột trong một ngày: khe 1px, mỗi cột hẹp lại còn một nửa ô. Cột 0 lượt vẫn giữ
+   chỗ (width không đổi) để cặp không xô lệch giữa ngày có lỗi và ngày sạch. */
+.ch-cols.duo .ch-col { gap: 1px; }
+.ch-cols.duo .ch-col > i { width: min(11px, 46%); }
+.ch-cols.duo .ch-col > i.b2 { background: var(--c2); }
+.ch-cols.duo .ch-col:hover > i.b2 { background: color-mix(in oklab, var(--c2) 74%, var(--text)); }
+.ch-peak.p2 { color: var(--c2); }
+
+.ch-rows { display: grid; }
+.ch-row { display: grid; grid-template-columns: minmax(0, 116px) minmax(0, 1fr) 30px; gap: 10px; align-items: center; padding: 6px 0; outline: none; }
+.ch-lbl { font: 11px var(--mono); color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Rãnh nền nhạt hơn hẳn thanh: rãnh đặc `--surface-3` làm thanh xếp hạng trông y hệt
+   thanh HẠN MỨC ngay phía trên cùng màn — mà hai thứ đó khác nghĩa (một cái là phần
+   của trần, một cái chỉ là chiều dài so sánh). Rãnh mờ đi thì thanh đo vẫn thẳng hàng
+   được với nhau, hàng $0 vẫn còn một vệt để tồn tại, nhưng không còn ai đọc nhầm nó
+   thành một cái đồng hồ đo độ đầy. */
+.ch-htrack { display: flex; height: 12px; background: color-mix(in srgb, var(--surface-3) 55%, transparent); border-radius: 2px; }
+.ch-htrack > i { height: 100%; flex: none; background: var(--c); border-radius: 0 4px 4px 0; min-width: 2px; }
+/* Cùng phép trộn với `.ch-col:hover` — xem chú thích ở đó. */
+.ch-htrack > i:hover, .ch-htrack > i:focus-visible { background: color-mix(in oklab, var(--c) 74%, var(--text)); outline: none; }
+/* Giá trị ghi Ở ĐẦU thanh, không phải trong lòng: thanh ngắn thì chữ trong lòng
+   bị cắt mất đầu đuôi — mà chữ bị xén còn tệ hơn không có chữ. */
+.ch-val { font: 700 11.5px var(--mono); color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Chỉ ĐẦU DỮ LIỆU được bo — tức mảnh cuối cùng. Bo cả mảnh giữa thì mỗi mảnh
+   trông như một thanh riêng và người đọc mất cảm giác chúng cộng lại thành một. */
+.ch-stack { gap: 2px; }
+.ch-stack > i { border-radius: 0; }
+.ch-stack > i:last-child { border-radius: 0 4px 4px 0; }
+
+/* ── Các dạng vẽ khác của cùng một dữ liệu ──────────────────────────────────
+   Nút phong cách (`skin.js`) đổi hình chứ không đổi số. Mỗi dạng dưới đây phải giữ
+   nguyên ba thứ của bản gốc: mọi mốc `tabindex` tới được, mọi mốc có `data-tip`, và
+   bảng số song sinh vẫn nằm dưới chart. Đẹp hơn mà mất một trong ba là lùi, không tiến.
+
+   Màu trung tính để trải thang một sắc. Là token chứ không phải hằng trong JS: thang
+   phải tự lật theo nền sáng/tối, mà JS thì không được biết màu. */
+:root { --chart-void: var(--surface-3); }
+
+/* Độ sáng + độ bão hoà của thang sắc quạt tròn (xem `dnColor` trong `chart.js`). Ghim
+   cứng ở đây, KHÔNG lấy từ màu gốc, vì đó chính là cơ chế: mọi mảnh cùng độ sáng thì
+   mọi mảnh cùng một mức tương phản với nền thẻ, và sắc được rảnh tay lo việc phân biệt.
+   Hai nền phải hai trị — nền trắng cần mảnh tối hơn, nền tối cần mảnh sáng hơn. */
+:root { --dn-l: 0.585; --dn-c: 0.155; }
+:root[data-theme="dark"], .theme-dark { --dn-l: 0.735; --dn-c: 0.135; }
+
+/* Kẹo mút — cùng dữ liệu với cột, nhưng mực ít hơn hẳn: giá trị nằm ở CHẤM, thân chỉ
+   còn là đường dóng xuống trục. Hợp khi có nhiều mốc và bản cột bắt đầu thành mảng đặc. */
+.ch-cols.lolli .ch-col > i {
+  position: relative; width: 2px; border-radius: 1px;
+  background: color-mix(in oklab, var(--c) 42%, transparent);
+}
+.ch-cols.lolli .ch-col > i::after {
+  content: ""; position: absolute; left: 50%; top: 0; translate: -50% -50%;
+  width: 8px; height: 8px; border-radius: 50%; background: var(--c);
+  transition: scale 0.12s;
+}
+.ch-cols.lolli .ch-col:hover > i::after { scale: 1.4; }
+.ch-cols.lolli .ch-col.partial > i::after { opacity: 0.42; }
+
+/* Vùng — xem `area()` trong `chart.js` để biết vì sao phải ba lớp mới ra một nét viền. */
+.ar-line, .ar-cut, .ar-fill { position: absolute; inset: 0; pointer-events: none; }
+.ar-line { background: var(--c); }
+.ar-cut { background: var(--panel); }
+.ar-fill {
+  background: linear-gradient(180deg, color-mix(in oklab, var(--c) 26%, transparent), color-mix(in oklab, var(--c) 3%, transparent));
+}
+/* Chấm to hơn hình của nó: vùng bấm/hover 13px cho một chấm 5px, để rê chuột dọc theo
+   đường không bị rơi ra ngoài giữa hai mốc. */
+.ar-dot { position: absolute; width: 13px; height: 13px; translate: -50% 50%; border-radius: 50%; outline: none; }
+.ar-dot::after {
+  content: ""; position: absolute; inset: 4px; border-radius: 50%;
+  background: var(--c); opacity: 0; transition: opacity 0.12s;
+}
+.ar-dot:hover::after, .ar-dot:focus-visible::after, .ar-dot.peak::after { opacity: 1; }
+.ar-dot.partial::after { opacity: 0.4; }
+.ar-peak { position: absolute; translate: -50% 0; margin-bottom: 12px; font: 700 10.5px var(--mono); color: var(--text); white-space: nowrap; pointer-events: none; }
+.ar-x { position: absolute; top: 100%; translate: -50% 0; margin-top: 6px; font: 10.5px var(--mono); color: var(--dim); white-space: nowrap; }
+.ar-x.first { translate: 0 0; }
+.ar-x.last { translate: -100% 0; }
+
+/* Quạt tròn — vành + cột chú giải mang luôn con số, nên không phải rê chuột mới đọc được. */
+.ch-dn { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+/* `overflow:hidden` để mấy hình quạt bắt chuột (bán kính 51%, cố ý thừa ra để phủ trọn
+   mép vành) bị cắt gọn lại đúng đường tròn — không thì góc vuông của chúng ăn cả ra
+   ngoài vành và rê vào chỗ trống cũng hiện tooltip. */
+.dn-ring { position: relative; flex: none; width: 128px; height: 128px; border-radius: 50%; overflow: hidden; }
+/* Vùng bắt chuột của từng mảnh: trong suốt, chỉ sáng lên khi được trỏ tới. Cùng `data-dn`
+   với dòng chú giải nên hai bên sáng cùng lúc (`hotDonut` trong `app.js`) — đó mới là
+   thứ trả lời được câu hỏi thật của một cái quạt tròn: cung này là ai. */
+.dn-w { position: absolute; inset: 0; transition: background-color 110ms linear; }
+/* Cách làm nổi một mảnh: LÀM MỜ những mảnh còn lại, không tô sáng mảnh đang trỏ. Trên một
+   vành tám sắc, "sáng hơn một chút" là thứ phải so mới thấy — mà so được thì đã không cần
+   làm nổi. Cả vành mờ trừ đúng một mảnh thì thấy ngay, không phải so.
+
+   Màn che là NỀN của chính hình quạt, không phải `backdrop-filter`. Bản trước lọc cái
+   gradient nằm dưới, và cách đó hỏng ngay ở chỗ tưởng là mạnh nhất của nó — "không cần
+   biết mảnh màu gì": Chromium tính vùng lọc theo HỘP BAO của `clip-path`, không theo
+   đúng đa giác, nên mỗi mảnh không được trỏ tới lại xám hoá cả một hình chữ nhật đè lên
+   những mảnh khác. Kết quả là cái vành bị cắt thành từng khối vuông chồng chéo, mảnh đang
+   trỏ cũng bị xén mất một phần. `background` thì luôn bị `clip-path` cắt đúng hình. */
+.ch-dn:has(.dn-w.hot) .dn-w:not(.hot) { background: color-mix(in srgb, var(--panel) 74%, transparent); }
+.dn-key.hot { background: var(--surface-2); }
+.dn-sep { position: absolute; left: 50%; bottom: 50%; width: 1.5px; height: 50%; background: var(--panel); transform-origin: 50% 100%; translate: -50% 0; }
+.dn-hole { position: absolute; inset: 22%; border-radius: 50%; background: var(--panel); display: grid; place-content: center; text-align: center; gap: 1px; }
+.dn-hole b { font: 700 13px var(--mono); color: var(--text); }
+.dn-hole span { font: 9.5px var(--sans); color: var(--faint); }
+.dn-keys { flex: 1 1 154px; min-width: 0; display: grid; }
+.dn-key { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto 36px; gap: 8px; align-items: center; padding: 3px 0; outline: none; border-radius: 4px; }
+.dn-key > i { width: 10px; height: 10px; border-radius: 2px; }
+.dn-l { font: 11px var(--mono); color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dn-v { font: 700 11px var(--mono); color: var(--text); font-variant-numeric: tabular-nums; }
+.dn-p { font: 10.5px var(--mono); color: var(--faint); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Treemap — diện tích LÀ giá trị, và đó là toàn bộ mã hoá: một màu duy nhất, các ô
+   tách nhau bằng khe 3px. Ô nhỏ bỏ chữ (class `bare`) chứ không thu nhỏ chữ — chữ 6px
+   là mực không đọc được, còn ô trống thì vẫn còn diện tích để nói. */
+.ch-tm { position: relative; width: 100%; aspect-ratio: 16 / 9; }
+.tm-c {
+  position: absolute; border-radius: 4px; padding: 6px 8px 7px; overflow: hidden; outline: none;
+  display: flex; flex-direction: column; justify-content: flex-end; gap: 1px;
+  background: var(--c); transition: background-color 0.12s;
+}
+/* Cùng phép trộn với `.ch-col:hover` — brightness nhạt đi trên nền sáng. Ô treemap
+   mang chữ `--pip-ink` nên chỉ trộn nhẹ (86%) để chữ không tụt tương phản. */
+.tm-c:hover { background: color-mix(in oklab, var(--c) 86%, var(--text)); }
+.tm-l { font: 10.5px var(--mono); color: var(--pip-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tm-v { font: 700 12.5px var(--mono); color: var(--pip-ink); font-variant-numeric: tabular-nums; }
+.tm-c.bare .tm-l, .tm-c.bare .tm-v { display: none; }
+
+/* ── Tab ──────────────────────────────────────────────────────────────────────
+   Xem `lib/tabs.js` cho lý do màn Token có tab. Ở đây chỉ còn ba quyết định về hình:
+
+   1. **Gạch chân, không phải viên thuốc.** Tab đang mở được đánh dấu bằng một vạch nhấn
+      dày 2px dưới chân chữ. Kiểu viên thuốc bo tròn có nền đặc thì nó trông y hệt `.skin-b`
+      đứng ngay cạnh nó trên cùng một hàng — mà hai thứ ấy làm hai việc khác hẳn nhau: một
+      cái CHỌN xem đang xem gì, một cái là dụng cụ. Cùng hình dạng thì phải bấm thử mới biết.
+   2. **Vạch kẻ chạy hết hàng**, đúng như `.sec-h::after`. Thanh tab thay chỗ tiêu đề mục
+      đầu tiên của màn, nên nó phải cắm vào cùng một đường chân trời — không thì khối chart
+      bên dưới trông như trôi tự do.
+   3. **Chữ của tab chưa mở vẫn phải ĐỌC ĐƯỢC.** Dùng `--text-3`, không phải `--faint`:
+      hai tab kia không phải chú thích mờ, chúng là hai phần ba nội dung của màn. */
+.tabs { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 14px; border-bottom: 1px solid var(--line-soft); }
+.tab-row { display: flex; gap: 2px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.tab-row::-webkit-scrollbar { display: none; }
+.tab {
+  flex: none; position: relative;
+  padding: 7px 12px 8px; border: 0; background: none; cursor: pointer;
+  font: 500 13px/1.4 var(--sans); color: var(--text-3); white-space: nowrap;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: color 0.12s, border-color 0.12s;
+}
+.tab:hover { color: var(--text-2); }
+.tab.on { color: var(--text); border-bottom-color: var(--accent); }
+.tab small { margin-left: 6px; font: 10.5px var(--mono); color: var(--faint); }
+/* Dụng cụ của tấm đang mở nép xuống sát đường kẻ để chúng đọc như một hàng với dãy tab,
+   không phải một hàng nút riêng lơ lửng bên trên. */
+.tab-tools { display: flex; align-items: center; gap: 6px; flex: none; padding-bottom: 6px; }
+/* Tấm nội dung Tab tới được (`tabindex="0"`) nên nó cũng nhận viền focus. Không bỏ viền
+   đi: với bàn phím thì đây là chỗ duy nhất báo "con trỏ vừa rơi vào phần nội dung". */
+.tab-body { outline-offset: 4px; }
+
+/* Ba khối hạn mức đứng chung — Claude, Cursor, Antigravity. Chúng KHÔNG vào tab; xem
+   `quotaHead` trong `views/usage.js`. Khối cuối bỏ lề dưới vì thanh tab đã có lề trên. */
+.q-all { margin-bottom: 18px; }
+.q-all > .q-panel:last-child { margin-bottom: 0; }
+/* Hàng hai khối phụ — Cursor và Antigravity đứng cạnh nhau dưới khối Claude. Vì sao
+   chúng là phụ: xem `quotaHead` trong `views/usage.js`. Lề dưới của từng khối giao
+   cho `gap` của lưới, không thì hai khối cùng hàng lệch đáy nhau khi một bên có ghi chú. */
+.q-side { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); align-items: start; }
+.q-side > .q-panel { margin-bottom: 0; }
+
+/* Khối hạn mức 5 giờ / 7 ngày. Cột giá trị và cột reset cố định bề rộng để hai
+   hàng thẳng nhau — hai thanh lệch nhau vài pixel là mắt tự đi so sai chỗ. */
+.q-panel { border: 1px solid var(--line); border-radius: 12px; padding: 13px 15px 14px; margin-bottom: 16px; background: var(--surface); }
+.q-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 11px; }
+.q-age { font: 10.5px var(--mono); color: var(--faint); }
+.q-age.stale { color: var(--warn); }
+/* Bậc gói — MẪU SỐ của mọi phần trăm trong khối, nên nó nằm TRONG nhãn, ngay sau tên
+   nguồn và trước dấu `·`: "Claude Max 20x · hạn mức đã tiêu". Gói là gói của NGUỒN, nên
+   đứng sau đuôi nhãn thì nó bổ nghĩa nhầm cho cụm gần nhất ("hạn mức đã tiêu Max 20x"),
+   và ở khối hẹp còn bị đẩy xuống dòng, rời hẳn khỏi cái tên nó đang nói tới.
+
+   Vì thế nó là phần tử inline trong `.ulabel` chứ không còn là ô flex của `.q-head` —
+   `gap` không với tới nữa nên khoảng cách do `margin-left` giữ.
+
+   Viền chấm = dashboard SUY RA (Cursor), viền liền = nguồn tự khai (Claude, Antigravity).
+   Nét chứ không phải màu: theme daltonized ở máy này làm đỏ/lục hết phân biệt, nên màu
+   không bao giờ được là kênh duy nhất chở một sự khác biệt có thật. */
+.q-plan {
+  display: inline-block; vertical-align: baseline; white-space: nowrap;
+  margin-left: 6px; cursor: help; outline: none;
+  padding: 1px 7px; border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  font: 600 10.5px var(--mono); color: var(--text-2); letter-spacing: 0.01em;
+}
+.q-plan.derived { border-style: dotted; color: var(--text-3); }
+.q-plan:hover, .q-plan:focus-visible { border-color: var(--accent-line); color: var(--accent-ink); }
+/* Cột nhãn 74px vừa khít hồi chỉ có "Khung 5 giờ" và "Khung 7 ngày". Endpoint hạn
+   mức còn trả về khung tuần riêng theo model, nhãn thành "7 ngày · Fable" — tên model
+   dài bao nhiêu là chuyện của Anthropic, nên cột phải rộng hơn thay vì ngắt dòng làm
+   hàng cao gấp đôi. Cột reset cũng vậy: "reset sau 4 giờ" không được xuống dòng. */
+/* Mỗi cửa sổ một thẻ. Thẻ hẹp là cố ý: thanh đo chỉ đọc được khi mắt ôm trọn được
+   nó trong một cái liếc — kéo dài 800px thì 30% với 40% trông y hệt nhau. */
+.q-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(224px, 1fr)); }
+/* Hồ hạn mức của Antigravity. Hai hồ tiêu ĐỘC LẬP nên chúng phải là hai khối tách nhau,
+   không phải bốn thẻ trong một lưới — đo được lúc một hồ 64% còn hồ kia 0%, và xếp chung
+   một hàng thì bốn thẻ đọc thành bốn mặt của cùng một hạn mức. */
+.q-pool + .q-pool { margin-top: 12px; }
+.q-pool-h { font: 600 11.5px var(--sans); color: var(--text-2); margin-bottom: 7px; }
+.q-pool-h small { font-weight: 400; color: var(--faint); }
+.q-card {
+  display: grid; gap: 7px; align-content: start;
+  padding: 11px 13px 12px; outline: none;
+  border: 1px solid var(--line-soft); border-radius: var(--r-sm); background: var(--panel-2);
+}
+.q-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.q-lbl { font: 11.5px var(--mono); color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Số dẫn là ĐÃ TIÊU, và nó phải mang theo chữ "đã tiêu" ngay bên cạnh: "43%" đứng một
+   mình dưới nhãn "Khung 5 giờ" thì đọc được cả hai chiều, mà hai chiều đó ngược nhau. */
+.q-num { display: flex; align-items: baseline; gap: 6px; }
+/* Cùng cỡ với số của thẻ KPI (`.pstat .v`) — hai thứ này là cùng một loại: con số
+   dẫn của một ô nhỏ. Lệch nhau 2px thì không ai gọi tên được, chỉ thấy hơi lệch. */
+.q-val { font: 800 19px/1 var(--mono); font-variant-numeric: tabular-nums; }
+.q-unit { font: 10.5px var(--mono); color: var(--faint); }
+/* Tiền ước lượng của CỬA SỔ NÀY, đứng sau đuôi "đã tiêu" và đẩy sát mép phải: nó là cùng
+   một sự thật viết bằng đơn vị thứ hai, nên nó thuộc dòng số — nhưng là số phụ, nên nó
+   không được cao bằng và tuyệt đối không mang màu của thang bỏ phí (xem `quotaCard`). */
+.q-spent { margin-left: auto; font: 600 11.5px var(--mono); color: var(--dim); font-variant-numeric: tabular-nums; }
+.q-reset { font: 10.5px var(--mono); color: var(--faint); white-space: nowrap; flex: none; }
+.q-fc { display: grid; gap: 2px; font: 11px/1.45 var(--sans); color: var(--faint); text-wrap: pretty; }
+.q-fc.warn .q-say { color: var(--warn); }
+.q-fc.crit .q-say { color: var(--crit); }
+.q-fc.cheer .q-say { color: var(--cheer); }
+.q-note { margin: 9px 0 0; font: 11px/1.55 var(--sans); color: var(--faint); }
+/* Hướng dẫn đọc thanh — gập lại. Cùng dáng với bảng số song sinh (`.ch-tw`): hai thứ
+   cùng một vai, thứ mở ra khi cần chứ không nằm chắn đường mỗi lượt vào màn. */
+.q-help { margin-top: 9px; }
+.q-help > summary { list-style: none; cursor: pointer; user-select: none; width: fit-content; font: 11.5px var(--sans); color: var(--text-3); }
+.q-help > summary::-webkit-details-marker { display: none; }
+.q-help > summary::before { content: "▸ "; }
+.q-help[open] > summary::before { content: "▾ "; }
+.q-help[open] > summary { margin-bottom: 2px; }
+
+/* Dòng hạn mức rút gọn của hai khối phụ — xem `miniRow` trong `views/tools.js`.
+
+   Cột nhãn CỐ ĐỊNH bề rộng chứ không co theo chữ: mỗi dòng là một lưới riêng, để cột tự
+   co thì thanh của dòng này bắt đầu lệch dòng kia vài pixel — và hai thanh lệch nhau là
+   mắt tự đi so sai chỗ, đúng cái lỗi mà cột nhãn 74px của dải quản gia đã chặn từ đầu.
+   132px vừa nhãn dài nhất hiện có ("Model Cursor tự chọn"); dài hơn nữa thì cắt bằng
+   ellipsis, chuỗi đầy đủ nằm ở `title` và ở đầu tooltip. */
+.q-mini .q-head { margin-bottom: 9px; }
+.qm-rows { display: grid; gap: 8px; }
+.qm-row { display: grid; grid-template-columns: 132px 1fr 42px; align-items: center; gap: 9px; outline: none; border-radius: 5px; }
+.qm-lbl { font: 11px var(--mono); color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qm-val { font: 700 12.5px var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+/* Dòng phụ dưới thanh: mốc reset rồi tới câu dự báo, một khối chữ chảy liền. Thụt vào
+   thẳng cột thanh để nó đọc như chú thích của cái thanh ngay trên, không như một dòng hạn
+   mức mới. Mốc reset đi CHUNG dòng chứ không chiếm dòng riêng — khối Antigravity có bốn
+   dòng, thêm bốn dòng nữa là khối cao gấp rưỡi cho một thứ đọc một lần. */
+.qm-sub { grid-column: 2 / -1; font: 10.5px/1.45 var(--sans); color: var(--faint); text-wrap: pretty; }
+/* Mốc reset: mono và nhạt, KHÔNG mang tone — nó đo thời gian còn lại, không đo bỏ phí. */
+.qm-when, .qm-cycle { font-family: var(--mono); color: var(--faint); }
+.qm-cycle { font-size: 10.5px; margin-bottom: 8px; }
+.qm-say { text-wrap: pretty; }
+/* `ok` KHÔNG có sắc riêng, cố ý: nó là băng đông nhất ở một ngày bình thường, mà tô
+   xanh cả một cột câu thì màu mất nghĩa đúng ở chỗ nó cần nhất — hai băng còn lại. */
+.qm-say.warn { color: var(--warn); }
+.qm-say.crit { color: var(--crit); }
+.qm-say.cheer { color: var(--cheer); }
+/* Hai hồ Antigravity trong khối rút gọn — cùng vai với `.q-pool`, lề nhỏ hơn cho vừa cỡ. */
+.qm-pool + .qm-pool { margin-top: 10px; }
+.qm-pool .q-pool-h { margin-bottom: 6px; }
+
+/* Chú thích cách đọc thanh — xem `quotaLegend` trong `lib/quota.js`.
+
+   Không có một ô màu nào được vẽ tay ở đây: ô mẫu là `.qbar` thu nhỏ, dùng lại đúng
+   `.qb-fill`, `.qb-pred`, `.qbar.wasting` và `.qb-pace` bên trên. Vẽ tay thì mỗi lần
+   chỉnh vân hay đổi sắc lại để lại một bản chú thích mô tả một cái thanh không còn tồn
+   tại — mà chú thích sai còn tệ hơn không có chú thích. */
+/* KHÔNG `max-width` ở đây. Bản trước chặn cả khối ở 660px, và vì thẻ hạn mức ngay trên
+   chạy hết 777px thì cạnh phải có viền của hộp thanh mẫu dừng lệch vào 117px so với hàng
+   thẻ — đọc ra thành padding hỏng, không đọc ra thành "chừa lề cho dễ đọc". Giới hạn độ
+   dài dòng là việc của riêng hai đoạn văn xuôi, không phải của cái hộp có viền. */
+.q-lgd { display: grid; gap: 12px; margin-top: 7px; }
+.q-lgd > p { max-width: 76ch; }
+.q-lgd-goal { margin: 0; }
+/* Nền `--panel-2` giống hệt thẻ hạn mức, không phải một sắc riêng cho chú thích: vỏ bọc
+   của vạch mốc đều (`.qb-pace`) là `--panel`, nên chỉ trên đúng nền ấy cái ghim mới có
+   cùng cái khe trắng như lúc nó đứng trong thẻ thật. */
+.q-lgd-demo { padding: 12px 14px 5px; border: 1px solid var(--line-soft); border-radius: var(--r-sm); background: var(--panel-2); }
+.q-lgd-cap { display: block; margin-bottom: 10px; font: 9.5px var(--mono); letter-spacing: 0.07em; text-transform: uppercase; color: var(--faint); }
+/* Ô mẫu ở cột trái, lời giải thích ở cột phải — mắt đi thẳng từ hình sang chữ, không
+   phải đi tìm. Cột trái tự co theo tên dài nhất (`auto`) để hai cột không bao giờ so le. */
+.q-lgd-keys { display: grid; grid-template-columns: auto 1fr; gap: 8px 13px; margin: 0; }
+.q-lgd-keys dt { display: flex; align-items: center; gap: 9px; white-space: nowrap; }
+.q-lgd-keys dt > b { font: 600 11.5px var(--sans); color: var(--text-2); }
+.q-lgd-keys dd { margin: 0; align-self: center; max-width: 76ch; font: 11px/1.55 var(--sans); color: var(--faint); text-wrap: pretty; }
+.q-lgd-keys dd b { font-weight: 600; color: var(--text-2); }
+/* Một LÁT của cái thanh thật: cùng lớp, cùng bo tròn, chỉ mỏng và ngắn lại. `--pad: 0`
+   vì ô mẫu không chở nhãn nào dưới chân. */
+.qbar.ql-sw { --tk: 12px; --pad: 0; display: inline-block; width: 26px; flex: none; vertical-align: middle; }
+/* Ba màu, ba kết cục. Đứng riêng một dải chứ không lẫn vào danh sách ô mẫu ở trên: bốn
+   dòng kia nói về HÌNH DẠNG (mảng nào là mảng nào), dải này nói về MÀU — hai câu hỏi
+   khác nhau, và thanh mẫu chỉ trả lời được câu đầu vì nó chỉ có một kết cục. */
+.q-lgd-tones { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 14px; font: 11px var(--sans); color: var(--faint); }
+.q-lgd-tt { color: var(--text-2); }
+.q-lgd-tn { display: inline-flex; align-items: center; gap: 6px; }
+.q-lgd-tn > i { width: 9px; height: 9px; flex: none; border-radius: 999px; }
+.q-lgd-tn.ok > i { background: var(--ok); }
+.q-lgd-tn.warn > i { background: var(--warn); }
+.q-lgd-tn.crit > i { background: var(--crit); }
+.q-lgd-tn.cheer > i { background: var(--cheer); }
+/* Khung hẹp: ô mẫu và tên lên một dòng, lời giải thích xuống dòng dưới — hai cột trong
+   360px thì cột phải chỉ còn chỗ cho hai chữ mỗi dòng. */
+@media (max-width: 620px) {
+  .q-lgd-keys { grid-template-columns: 1fr; gap: 3px; }
+  .q-lgd-keys dd { margin: 0 0 7px 35px; }
+}
+
+/* Cách đọc khối hiệu quả — xem `effHelp` trong `views/usage.js`.
+
+   Dùng lại `.q-help` cho cái tay gập (cùng một loại vật: hướng dẫn học một lần rồi thôi),
+   nhưng KHÔNG dùng lại `.q-lgd-keys`: bảng kia có ô màu ở cột trái nên cột trái hẹp và
+   `nowrap`, còn ở đây cột trái là TÊN CHART — "Ngữ cảnh đọc, theo lượt trong phiên" mà
+   `nowrap` thì nó tự đẩy cột phải xuống còn ba mươi ký tự mỗi dòng. */
+.eff-help { margin-top: 4px; margin-bottom: 12px; }
+.eff-lgd { display: grid; gap: 11px; margin-top: 7px; }
+.eff-lgd > p { max-width: 88ch; margin: 0; }
+.eff-keys { display: grid; grid-template-columns: 15em 1fr; gap: 9px 16px; margin: 0; }
+/* Tên chart lặp lại NGUYÊN VĂN tiêu đề của chart nó nói tới, nên nó phải trông như một
+   cái nhãn để dò, không như một câu: mono + cùng sắc chữ với `.ch-t`. */
+.eff-keys dt { font: 600 11.5px var(--mono); color: var(--text-2); text-wrap: pretty; }
+.eff-keys dd { margin: 0; max-width: 88ch; font: 11px/1.6 var(--sans); color: var(--faint); text-wrap: pretty; }
+.eff-keys dd b { font-weight: 600; color: var(--text-2); }
+.eff-keys dd i { font-style: italic; color: var(--text-3); }
+/* "Hành động" là thứ duy nhất trong dòng dẫn tới một việc phải làm, nên nó là thứ duy
+   nhất được mang sắc accent — quét dọc cột phải là thấy ngay bốn chỗ đó. */
+.eff-keys dd em { font-style: normal; font-weight: 600; color: var(--accent); }
+@media (max-width: 720px) {
+  .eff-keys { grid-template-columns: 1fr; gap: 2px; }
+  .eff-keys dd { margin: 0 0 8px; }
+}
+
+/* Màn Token đo bằng token và đô, không phải bằng "số việc": ô giá trị 30px vừa
+   cho "12" nhưng xén mất "$1.799" và "1,4M". Nới đúng ở màn này, và nới luôn cột
+   nhãn — tên skill dạng `frontend-design:frontend-design` không có chỗ nào ngắn
+   lại được. */
+.usage .ch-row { grid-template-columns: minmax(0, 148px) minmax(0, 1fr) 58px; }
+
+.ch-lg { display: flex; flex-wrap: wrap; gap: 13px; margin-top: 11px; font: 10.5px var(--mono); color: var(--dim); }
+.ch-lgi { display: inline-flex; align-items: center; gap: 6px; }
+.ch-lgi > i { width: 10px; height: 10px; flex: none; background: var(--c); border-radius: 2px; }
+
+/* Bảng số song sinh — tooltip không bao giờ là lối duy nhất đọc được giá trị. */
+.ch-tw { margin-top: 11px; border-top: 1px solid var(--line-soft); padding-top: 8px; }
+.ch-tw > summary { list-style: none; cursor: pointer; user-select: none; width: fit-content; font: 12px var(--sans); color: var(--text-3); }
+.ch-tw > summary::-webkit-details-marker { display: none; }
+.ch-tw > summary::before { content: "▸ "; }
+.ch-tw[open] > summary::before { content: "▾ "; }
+.ch-tw > summary:hover { color: var(--dim); }
+/* Hộp cuộn của bảng số — xem `tableTwin` trong `lib/chart.js`.
+
+   Cuộn NGANG nằm ở đây, không ở `.ch-tw`: đặt `overflow-x` lên chính thẻ `<details>` thì
+   `overflow-y` cũng thành `auto` theo đúng spec, và lúc đó cái tam giác `▸` của summary
+   nằm trong vùng cuộn. Hộp riêng chỉ bọc đúng cái bảng.
+
+   `max-width: 100%` chứ không phải `width: 100%`: bảng hẹp hơn thẻ thì hộp co theo bảng,
+   không kéo một vệt viền rỗng ra hết bề ngang. */
+.ch-tws { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+.ch-tbl { min-width: 0; margin-top: 8px; font-size: 11.5px; }
+.ch-tbl th, .ch-tbl td { padding: 5px 8px; }
+.ch-tbl .num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* Ghi chú dưới chart là CHÚ THÍCH, không phải cảnh báo: nền trung tính, không phải
+   sắc nhấn. Sắc nhấn của HUD dành cho thứ bấm được (luật số 1 ở đầu file) — mà màn
+   Token có tới sáu ghi chú, sáu cái hộp tím đứng cạnh nhau thì chart mới là thứ bị
+   chìm. Vạch trái + nền lệch một nấc là đủ để tách nó khỏi thân chart. */
+.ch-note { font: 12px/1.7 var(--sans); color: var(--faint); margin: 12px 0 0; padding: 10px 14px; border-left: 2px solid var(--border-strong); background: var(--surface-2); border-radius: 0 var(--r-sm) var(--r-sm) 0; }
+.ch-note b { color: var(--dim); }
+
+/* Dòng độ tươi dữ liệu dưới khối số của mỗi tab (xem `dataAt` ở views/shared.js).
+   KHÔNG dùng khung `.ch-note`: đây là một mốc thời gian, không phải bài chú thích —
+   đóng hộp nó thì ba tab mở đầu bằng ba cái hộp chỉ để nói "vừa xong". */
+.data-at { margin: -6px 0 16px; font: 11px var(--mono); color: var(--faint); }
+
+/* Tooltip là BẢNG SỐ THU NHỎ, không phải một câu.
+   Bản trước đổ cả nội dung vào `textContent` thành một dòng văn xuôi — đọc được, nhưng
+   đọc tuần tự: muốn một con số thì phải quét cả dòng, và hai tooltip cạnh nhau không so
+   được vì mỗi con số rơi vào một chỗ khác nhau. Giờ nhãn xếp cột trái, trị xếp cột phải
+   bằng mono canh số — cùng một vị trí ở mọi tooltip, nên liếc là thấy. */
+.tip {
+  position: fixed; z-index: 70; pointer-events: none;
+  min-width: 168px; max-width: 290px;
+  border-radius: var(--r-sm); overflow: hidden;
+  /* Thân nền `--panel` chứ không phải `--panel-3`: sắc cảnh báo trên nền xám nhạt chỉ
+     còn 4,2:1 — dưới ngưỡng chữ đọc được — mà con số "bỏ phí" thì bắt buộc phải là màu
+     cảnh báo. Nền trắng kéo nó lên 5,3:1 mà không phải đổi bảng màu. */
+  background: var(--panel); border: 1px solid var(--line);
+  font: 11.5px/1.5 var(--sans); color: var(--text);
+  box-shadow: var(--shadow);
+}
+.tip[hidden] { display: none; }
+/* Tiêu đề trên nền riêng: nó là DANH TÍNH của thứ đang rê (tên dự án, ngày, cửa sổ),
+   khác loại với các hàng số bên dưới. Cùng một nền thì nó chỉ là hàng đầu tiên. */
+.tip-h {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px; background: var(--panel-2); border-bottom: 1px solid var(--line-soft);
+  font: 600 11.5px var(--sans); color: var(--text);
+}
+/* Vệt giọng ở mép trái — nhắc lại đúng màu của thanh vừa rê, để tooltip và thanh không
+   phải là hai vật thể rời nhau. Chỉ khối hạn mức đặt `data-tip-tone`. */
+.tip.crit .tip-h { box-shadow: inset 2px 0 0 var(--crit); }
+.tip.warn .tip-h { box-shadow: inset 2px 0 0 var(--warn); }
+.tip.ok .tip-h { box-shadow: inset 2px 0 0 var(--ok); }
+/* Ô màu: chỉ có ở quạt tròn, chỗ duy nhất màu là danh tính chứ không phải trang trí. */
+.tip-sw { flex: none; width: 9px; height: 9px; border-radius: 2px; }
+.tip-g {
+  display: grid; grid-template-columns: max-content max-content;
+  justify-content: space-between; gap: 3px 16px;
+  margin: 0; padding: 7px 10px 8px;
+}
+.tip-g dt { font: 11px var(--sans); color: var(--text-3); }
+.tip-g dd { margin: 0; text-align: right; font: 600 11px var(--mono); font-variant-numeric: tabular-nums; color: var(--text); }
+.tip-g dd.warn { color: var(--warn); }
+.tip-g dd.crit { color: var(--crit); }
+/* Dòng chạy hết bề ngang — dành cho câu không có trị đi kèm (lý do không đoán được,
+   cảnh báo dữ liệu thiếu), và cho mọi tooltip chưa chuyển sang dạng nhãn ↔ trị. */
+.tip-n { margin: 0; padding: 7px 10px 8px; font: 11px/1.45 var(--sans); color: var(--text-2); }
+.tip-n + .tip-n, .tip-g + .tip-n { padding-top: 0; }
+
+/* ── Bảng phím tắt ────────────────────────────────────────────────────────── */
+
+.help { position: fixed; inset: 0; z-index: 60; background: var(--overlay); display: grid; place-items: center; padding: 20px; }
+.help[hidden] { display: none; }
+.help-card { width: min(420px, 100%); box-shadow: var(--shadow); }
+.help-card .in { padding: 16px 18px 18px; }
+.help-h { display: flex; align-items: center; margin-bottom: 12px; }
+.help-list { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; margin: 0; align-items: baseline; }
+.help-list dt { text-align: right; white-space: nowrap; }
+.help-list dd { margin: 0; font: 12.5px var(--sans); color: var(--dim); }
+.help-list kbd { font: 11px var(--mono); color: var(--accent-ink); border: 1px solid var(--accent-line); background: var(--accent-weak); padding: 1px 6px; border-radius: 4px; }
+
+.field { margin-bottom: 10px; }
+.field-k { margin-bottom: 3px; }
+.field-v { font: 13px/1.6 var(--sans); }
+.field-v.mono { font: 11.5px/1.6 var(--mono); color: var(--dim); word-break: break-all; }
+/* Câu lệnh "làm tiếp với Claude" thường dài — cho nó xuống dòng thành một khối code
+   thay vì để `white-space: nowrap` của `.copy` đẩy nó tràn ngang và kéo cả ngăn kéo
+   trượt theo. Vẫn là nút chép nguyên câu, chỉ khác là dàn thành khối đọc được. */
+.field-v.cmd .copy { display: block; white-space: pre-wrap; word-break: break-word; line-height: 1.6; padding: 7px 10px; }
+ul.steps { margin: 0; padding-left: 16px; font: 13px/1.65 var(--sans); }
+ul.steps li { margin-bottom: 3px; }
+ul.steps li::marker { color: var(--faint); }
+ul.steps .blocked { color: var(--now); font-size: 12.5px; }
+
+.empty { padding: 56px 20px; text-align: center; color: var(--faint); }
+.empty .big { font-size: 26px; margin-bottom: 12px; opacity: 0.5; }
+.empty .msg { font: 700 13.5px var(--mono); letter-spacing: 0.08em; color: var(--dim); }
+.empty .hint { font: 12px/1.6 var(--sans); margin-top: 8px; max-width: 460px; margin-inline: auto; }
+
+@media (max-width: 1180px) {
+  .grid { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+}
+@media (max-width: 940px) {
+  #app { grid-template-columns: 56px 1fr; }
+  .rail { padding: 14px 7px; }
+  .nav-item .label, .nav-item .key, .brand-title, .brand-sub, .rail-foot { display: none; }
+  .nav-item { justify-content: center; }
+  .search { width: 140px; }
+  /* Ba nút lật (nền · ngôn ngữ · phong cách) rút về ký hiệu, đúng như thanh điều hướng
+     bên trái đã làm ở cùng mốc này. Ẩn bằng clip chứ không `display:none`: chữ biến mất
+     khỏi màn hình nhưng vẫn còn trong cây trợ năng, nên nút không thành ba ký tự vô danh
+     với trình đọc màn hình. */
+  .tgl { position: relative; padding: 5px 9px; }
+  .tgl > span:not(.ti) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .scroll, .topbar, .offline { padding-inline: 13px; }
+  .butler .in { padding: 16px 16px 17px; gap: 13px; }
+  .butler-say { font-size: 18px; }
+  .butler-face { width: 38px; height: 38px; }
+  /* Phiên: cột tiến độ xuống hàng riêng, đừng bóp tên phiên còn hai chữ. */
+  .unit { grid-template-columns: 30px minmax(0, 1fr) auto; }
+  .unit .u-cast { grid-column: 2 / -1; width: auto; }
+  .unit.no-cast .u-cast { display: none; }
+}
+
+/* Màn hẹp: thanh trên KHÔNG chen title + ô tìm + hai nút vào một hàng — ép thế thì
+   dòng phụ "cập nhật … · quét …" bị bóp còn năm dòng. Cho title chiếm trọn hàng đầu,
+   ô tìm và hai nút rơi xuống hàng hai. */
+@media (max-width: 620px) {
+  .topbar { flex-wrap: wrap; row-gap: 10px; column-gap: 10px; }
+  .topbar > div:first-child { flex: 1 1 100%; }
+  .search { margin-left: 0; flex: 1 1 auto; width: auto; min-width: 120px; }
+
+  /* Dải chỉ số xếp dọc, bỏ nét tóc dọc (nó chỉ có nghĩa khi các mục nằm cùng hàng);
+     khi rớt dòng nó biến thành những vạch lẻ bên trái, ồn hơn là có ích. */
+  .strip { flex-direction: column; align-items: flex-start; padding: 10px 14px; }
+  .sst { border-left: none; padding: 4px 0; }
+}
+
+/* Trạng thái = chấm + CHỮ. Không bao giờ chỉ có màu, và không bao giờ là hạng chữ cái
+   (lỗi cũ số 4). Chấm chỉ để liếc nhanh; nghĩa nằm ở chữ ngay bên cạnh. */
+.st { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); }
+.st::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--text-3)); flex: none; }

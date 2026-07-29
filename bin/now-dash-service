@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Điểm vào cho launchd — KHÔNG phải để gõ tay (cái đó là `bin/now-dash`).
+#
+# Vì sao có file này thay vì để plist gọi thẳng node: launchd không nạp `.zshrc`, nên
+# `node` của nvm không có trong PATH và đường dẫn tuyệt đối tới nó thì mang số phiên bản
+# — `nvm install` một bản mới là plist trỏ vào thư mục đã biến mất, dashboard im lặng
+# không lên nữa. Việc dò node để ở đây, trong repo, sửa được mà không phải nạp lại plist.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# nvm ĐỨNG TRƯỚC PATH, không phải ngược lại.
+#
+# Đây là chỗ đã suýt lọt: PATH của launchd có /usr/local/bin, mà ở đó là node v18.10.0
+# đời cũ — trong khi terminal của người dùng chạy v24.14.1 của nvm. Để PATH thắng thì
+# service âm thầm chạy một interpreter KHÁC hẳn cái mình vẫn thử tay, và cái khác ấy
+# chỉ lộ ra vào ngày một API mới nào đó ném ở nền còn ở terminal thì chạy ngon.
+find_node() {
+  local nvm_dir="${NVM_DIR:-$HOME/.nvm}"
+  # 1. Bản nvm đang là `default`. File này cũng có thể chứa alias ("node", "lts/*") chứ
+  #    không phải số phiên bản — lúc đó đường dẫn không tồn tại và ta rơi xuống bước 2.
+  if [[ -r "$nvm_dir/alias/default" ]]; then
+    local want cand
+    want="$(cat "$nvm_dir/alias/default")"
+    cand="$nvm_dir/versions/node/${want}/bin/node"
+    [[ -x "$cand" ]] && { echo "$cand"; return; }
+  fi
+  # 2. Bản nvm mới nhất còn trên máy. `sort -V` để v9 không đứng trên v24.
+  local newest cand
+  newest="$(ls -1 "$nvm_dir/versions/node" 2>/dev/null | sort -V | tail -1)"
+  cand="$nvm_dir/versions/node/${newest}/bin/node"
+  [[ -n "$newest" && -x "$cand" ]] && { echo "$cand"; return; }
+  # 3. Không xài nvm: node nào trong PATH cũng được.
+  command -v node 2>/dev/null && return
+  return 1
+}
+
+if ! NODE="$(find_node)"; then
+  # In ra stderr để nó vào StandardErrorPath của plist — không có dòng này thì triệu
+  # chứng duy nhất là "dashboard không lên", và log rỗng.
+  echo "now-dash: không tìm thấy node (PATH, nvm default, nvm mới nhất đều trượt)" >&2
+  exit 78 # EX_CONFIG
+fi
+
+exec "$NODE" "$ROOT/server.js"

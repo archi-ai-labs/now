@@ -1,0 +1,144 @@
+<!-- @dsCard group="Nền tảng" name="Chữ" subtitle="Sans để đọc, mono chỉ cho mã" -->
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>Chữ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Font nạp bằng <link> ở <head> (index.html cho app, khối page() cho preview),
+   KHÔNG phải @import ở đây: @import bắt trình duyệt tải xong file CSS này rồi mới
+   bắt đầu tải font — hai vòng nối tiếp trước khi trang vẽ được — và khi máy không
+   có mạng thì nó treo cả trang cho tới lúc DNS bỏ cuộc, dù dữ liệu đều ở localhost. */
+
+:root {
+  --bg: #eef1f6;
+  --surface: #ffffff;
+  --surface-2: #f3f5f9;
+  --surface-3: #e8ecf3;
+  --border: #e3e7ef;
+  --border-strong: #ccd2df;
+  --text: #171a21;
+  --text-2: #545b6b;
+  --text-3: #636a77;
+  --accent: #4f46e5;
+  --accent-ink: #4338ca;
+  --ok: #15803d;
+  --warn: #b45309;
+  --crit: #dc2626;
+  --now: #dc2626;
+  --soon: #b45309;
+  --later: #6b7280;
+  --accent-weak: rgb(79 70 229 / 0.08);
+  --accent-line: rgb(79 70 229 / 0.28);
+  --accent-hover: rgb(79 70 229 / 0.14);
+  --ok-weak: rgb(21 128 61 / 0.10);
+  --pip-ink: #ffffff;
+  --chip-l: 30%;
+  --scrim: rgb(23 26 33 / 0.34);
+  --overlay: rgb(23 26 33 / 0.40);
+  --shadow-sm: 0 1px 2px rgb(23 26 33 / 0.05), 0 1px 3px rgb(23 26 33 / 0.06);
+  --shadow: 0 2px 4px rgb(23 26 33 / 0.04), 0 8px 24px rgb(23 26 33 / 0.07);
+  --shadow-drawer: -26px 0 60px -30px rgb(23 26 33 / 0.30);
+  --sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  --r: 12px;
+  --r-sm: 8px;
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --rail-w: 220px;
+  color-scheme: light;
+}
+
+/* Nền tối. Cùng bộ tên biến — component đọc token nên tự lật theo, không một dòng
+   CSS component nào biết mình đang ở nền nào. Lớp .theme-dark để preview lật được
+   từng khối mà không phải đụng vào thẻ html. */
+:root[data-theme="dark"], .theme-dark {
+  --bg: #0e1016;
+  --surface: #171a21;
+  --surface-2: #1e222c;
+  --surface-3: #272c38;
+  --border: #262b37;
+  --border-strong: #39414f;
+  --text: #eceef4;
+  --text-2: #a6adbb;
+  --text-3: #8f96a4;
+  --accent: #8b83f7;
+  --accent-ink: #b4aefb;
+  --ok: #46c47c;
+  --warn: #e0a24a;
+  --crit: #f26b64;
+  --now: #f26b64;
+  --soon: #e0a24a;
+  --later: #7c8393;
+  --accent-weak: rgb(139 131 247 / 0.16);
+  --accent-line: rgb(139 131 247 / 0.34);
+  --accent-hover: rgb(139 131 247 / 0.26);
+  --ok-weak: rgb(70 196 124 / 0.14);
+  --pip-ink: #14161c;
+  --chip-l: 72%;
+  --scrim: rgb(0 0 0 / 0.58);
+  --overlay: rgb(0 0 0 / 0.62);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.5);
+  --shadow: 0 2px 6px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.55);
+  --shadow-drawer: -26px 0 60px -28px rgb(0 0 0 / 0.7);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: var(--s5);
+  background: var(--bg); color: var(--text);
+  font: 14px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.011em; }
+code, .mono { font-family: var(--mono); font-size: 0.92em; }
+
+/* Nhãn: sans thường, viết hoa đầu câu. Nhãn 9px MONO IN HOA GIÃN CHỮ là thứ
+   làm cả trang vừa khó đọc vừa ra chất HUD — bỏ hẳn, không có ngoại lệ. */
+.label { font-size: 12px; color: var(--text-3); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-sm); }
+.spec { margin-top: var(--s4); padding-top: var(--s3); border-top: 1px solid var(--border);
+        font-size: 12.5px; line-height: 1.65; color: var(--text-3); }
+.spec b { color: var(--text-2); font-weight: 600; }
+.row { display: flex; gap: var(--s3); flex-wrap: wrap; align-items: center; }
+.stack { display: grid; gap: var(--s4); }
+
+/* Trạng thái = chấm + chữ. Chưa bao giờ là mảng màu, và không bao giờ chỉ màu. */
+.st { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-2); }
+.st::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--text-3)); flex: none; }
+.st.ok { --c: var(--ok); } .st.warn { --c: var(--warn); } .st.crit { --c: var(--crit); }
+
+.btn { font: 500 13px var(--sans); padding: 7px 13px; border-radius: var(--r-sm); cursor: pointer;
+       border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); }
+.btn:hover { background: var(--surface-3); }
+.btn.primary { background: var(--accent-weak); border-color: var(--accent-line); color: var(--accent-ink); }
+.btn.primary:hover { background: var(--accent-hover); }
+.btn.quiet { background: none; border-color: transparent; color: var(--text-2); }
+.btn.quiet:hover { background: var(--surface-2); color: var(--text); }
+</style></head>
+<body>
+<h2>Chữ</h2>
+<p class="spec" style="margin-top:var(--s2);border:0;padding:0">
+  Bản cũ đặt nền 13.5px và rải nhãn <b>9–10px mono IN HOA giãn 0.15em</b> khắp nơi.
+  Cỡ đó đọc lâu là mỏi, và chính kiểu nhãn đó tạo ra chất HUD. Ở đây nền lên 14px,
+  nhãn là <b>sans 12px viết thường</b>, mono chỉ còn cho thứ thực sự là mã.
+</p>
+<div class="stack" style="margin-top:var(--s5)">
+  <div><div class="label">Tiêu đề màn · 18px/600</div><div style="font-size:18px;font-weight:600">Dự án</div></div>
+  <div><div class="label">Câu dẫn · 19px/1.5/500 — khối chính, cỡ lớn nhất trang</div>
+       <div style="font-size:19px;line-height:1.5;font-weight:500;max-width:60ch">Có 1 quyết định đang chặn tronsave/services — treo 7 ngày.</div></div>
+  <div><div class="label">Tiêu đề thẻ · 15px/600</div><div style="font-size:15px;font-weight:600">tronsave/services</div></div>
+  <div><div class="label">Chữ đọc · 14px/1.6</div>
+       <div style="max-width:62ch">Vận hành ADR 021 buy-dual-resource trên dev, sau đó tắt DRY_RUN cron-refund.</div></div>
+  <div><div class="label">Chữ phụ · 12.5px</div><div style="font-size:12.5px;color:var(--text-2)">Cập nhật 4 giờ trước · 16 commit sau mốc</div></div>
+  <div><div class="label">Nhãn · 12px, viết hoa đầu câu, KHÔNG in hoa toàn bộ</div><div class="label">Việc kế tiếp</div></div>
+  <div><div class="label">Mono — chỉ cho đường dẫn, lệnh, nhánh, uuid, số trong bảng</div>
+       <div class="mono" style="color:var(--text-2)">~/Projects/archimonde92/services · dev-ready · claude --resume dd5bb1f2</div></div>
+</div>
+<p class="spec"><b>Luật một dòng:</b> mono là để nói "cái này bạn sẽ gõ lại".
+Dùng nó cho tiêu đề và nhãn thì mất luôn tín hiệu đó, và cả trang khó đọc thêm.</p>
+</body></html>

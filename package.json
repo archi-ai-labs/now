@@ -1,0 +1,15 @@
+{
+  "name": "now-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Sở chỉ huy cho các NOW board và phiên Claude đang chạy song song",
+  "bin": { "now-dash": "./server.js" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test \"test/*.test.js\"",
+    "state": "node -e \"import('./src/state.js').then(m=>m.buildState()).then(s=>console.log(JSON.stringify(s,null,2)))\""
+  },
+  "engines": { "node": ">=18.10" }
+}

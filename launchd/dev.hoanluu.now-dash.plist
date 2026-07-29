@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Bản gốc của LaunchAgent. Chép sang ~/Library/LaunchAgents/ rồi `launchctl bootstrap`
+  — xem README.md. Sửa ở đây trước, rồi mới chép, để bản trong repo luôn là bản thật.
+
+  Đường dẫn phải TUYỆT ĐỐI: launchd không có shell, không giãn `~`, không có $HOME
+  trong ProgramArguments. Repo nằm chỗ khác thì sửa cả bốn đường dẫn dưới đây.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.hoanluu.now-dash</string>
+
+  <!-- Gọi qua bin/now-dash-service chứ không gọi thẳng node: đường dẫn node của nvm mang
+       số phiên bản, nâng node một lần là plist trỏ vào thư mục đã biến mất. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/hoanluu/Projects/local/now_dashboard/bin/now-dash-service</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/hoanluu/Projects/local/now_dashboard</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <!-- Lên lại sau mọi lần thoát, kể cả thoát sạch: đây là dashboard mở suốt ngày, không
+       có kiểu "thoát 0 nghĩa là xong việc". ThrottleInterval chặn vòng lặp tái sinh khi
+       server chết ngay lúc khởi động (cổng bận, node hỏng) — 10 giây một nhịp, và lý do
+       nằm trong service.err.log. -->
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- Ghim cổng ngay trong định nghĩa service. App trên Dock trỏ cứng 4400; để nó cho
+         mặc định trong config quyết định thì hai chỗ có thể trôi khỏi nhau. -->
+    <key>NOW_PORT</key>
+    <string>4400</string>
+    <!-- launchd KHÔNG nạp shell profile, nên PATH mặc định chỉ có bốn thư mục hệ thống.
+         Server gọi git, ps, sqlite3, security — thiếu PATH là chúng lặng lẽ trả rỗng và
+         mọi repo trên trang thành "chưa phải repo git". Homebrew đứng trước để dùng đúng
+         bản git mà người dùng vẫn gõ ở terminal. -->
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <!-- Log để trong thư mục dữ liệu của chính dashboard — chỗ DUY NHẤT nó được phép ghi. -->
+  <key>StandardOutPath</key>
+  <string>/Users/hoanluu/.now-dashboard/service.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/hoanluu/.now-dashboard/service.err.log</string>
+</dict>
+</plist>

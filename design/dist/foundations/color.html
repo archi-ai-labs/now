@@ -1,0 +1,295 @@
+<!-- @dsCard group="Nền tảng" name="Màu" subtitle="Nền sáng, chữ ba bậc, một màu nhấn, ba màu trạng thái" -->
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>Màu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Font nạp bằng <link> ở <head> (index.html cho app, khối page() cho preview),
+   KHÔNG phải @import ở đây: @import bắt trình duyệt tải xong file CSS này rồi mới
+   bắt đầu tải font — hai vòng nối tiếp trước khi trang vẽ được — và khi máy không
+   có mạng thì nó treo cả trang cho tới lúc DNS bỏ cuộc, dù dữ liệu đều ở localhost. */
+
+:root {
+  --bg: #eef1f6;
+  --surface: #ffffff;
+  --surface-2: #f3f5f9;
+  --surface-3: #e8ecf3;
+  --border: #e3e7ef;
+  --border-strong: #ccd2df;
+  --text: #171a21;
+  --text-2: #545b6b;
+  --text-3: #636a77;
+  --accent: #4f46e5;
+  --accent-ink: #4338ca;
+  --ok: #15803d;
+  --warn: #b45309;
+  --crit: #dc2626;
+  --now: #dc2626;
+  --soon: #b45309;
+  --later: #6b7280;
+  --accent-weak: rgb(79 70 229 / 0.08);
+  --accent-line: rgb(79 70 229 / 0.28);
+  --accent-hover: rgb(79 70 229 / 0.14);
+  --ok-weak: rgb(21 128 61 / 0.10);
+  --pip-ink: #ffffff;
+  --chip-l: 30%;
+  --scrim: rgb(23 26 33 / 0.34);
+  --overlay: rgb(23 26 33 / 0.40);
+  --shadow-sm: 0 1px 2px rgb(23 26 33 / 0.05), 0 1px 3px rgb(23 26 33 / 0.06);
+  --shadow: 0 2px 4px rgb(23 26 33 / 0.04), 0 8px 24px rgb(23 26 33 / 0.07);
+  --shadow-drawer: -26px 0 60px -30px rgb(23 26 33 / 0.30);
+  --sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  --r: 12px;
+  --r-sm: 8px;
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --rail-w: 220px;
+  color-scheme: light;
+}
+
+/* Nền tối. Cùng bộ tên biến — component đọc token nên tự lật theo, không một dòng
+   CSS component nào biết mình đang ở nền nào. Lớp .theme-dark để preview lật được
+   từng khối mà không phải đụng vào thẻ html. */
+:root[data-theme="dark"], .theme-dark {
+  --bg: #0e1016;
+  --surface: #171a21;
+  --surface-2: #1e222c;
+  --surface-3: #272c38;
+  --border: #262b37;
+  --border-strong: #39414f;
+  --text: #eceef4;
+  --text-2: #a6adbb;
+  --text-3: #8f96a4;
+  --accent: #8b83f7;
+  --accent-ink: #b4aefb;
+  --ok: #46c47c;
+  --warn: #e0a24a;
+  --crit: #f26b64;
+  --now: #f26b64;
+  --soon: #e0a24a;
+  --later: #7c8393;
+  --accent-weak: rgb(139 131 247 / 0.16);
+  --accent-line: rgb(139 131 247 / 0.34);
+  --accent-hover: rgb(139 131 247 / 0.26);
+  --ok-weak: rgb(70 196 124 / 0.14);
+  --pip-ink: #14161c;
+  --chip-l: 72%;
+  --scrim: rgb(0 0 0 / 0.58);
+  --overlay: rgb(0 0 0 / 0.62);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.5);
+  --shadow: 0 2px 6px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.55);
+  --shadow-drawer: -26px 0 60px -28px rgb(0 0 0 / 0.7);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: var(--s5);
+  background: var(--bg); color: var(--text);
+  font: 14px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.011em; }
+code, .mono { font-family: var(--mono); font-size: 0.92em; }
+
+/* Nhãn: sans thường, viết hoa đầu câu. Nhãn 9px MONO IN HOA GIÃN CHỮ là thứ
+   làm cả trang vừa khó đọc vừa ra chất HUD — bỏ hẳn, không có ngoại lệ. */
+.label { font-size: 12px; color: var(--text-3); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-sm); }
+.spec { margin-top: var(--s4); padding-top: var(--s3); border-top: 1px solid var(--border);
+        font-size: 12.5px; line-height: 1.65; color: var(--text-3); }
+.spec b { color: var(--text-2); font-weight: 600; }
+.row { display: flex; gap: var(--s3); flex-wrap: wrap; align-items: center; }
+.stack { display: grid; gap: var(--s4); }
+
+/* Trạng thái = chấm + chữ. Chưa bao giờ là mảng màu, và không bao giờ chỉ màu. */
+.st { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-2); }
+.st::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--text-3)); flex: none; }
+.st.ok { --c: var(--ok); } .st.warn { --c: var(--warn); } .st.crit { --c: var(--crit); }
+
+.btn { font: 500 13px var(--sans); padding: 7px 13px; border-radius: var(--r-sm); cursor: pointer;
+       border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); }
+.btn:hover { background: var(--surface-3); }
+.btn.primary { background: var(--accent-weak); border-color: var(--accent-line); color: var(--accent-ink); }
+.btn.primary:hover { background: var(--accent-hover); }
+.btn.quiet { background: none; border-color: transparent; color: var(--text-2); }
+.btn.quiet:hover { background: var(--surface-2); color: var(--text); }
+.sws { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+   .sw { display: flex; gap: var(--s3); align-items: center; }
+   .chip { width: 40px; height: 40px; border-radius: var(--r-sm); border: 1px solid var(--border); flex: none; }
+   .sw .n { font-size: 13px; font-weight: 500; }
+   .sw .v { font-size: 11.5px; color: var(--text-3); }
+   .sw .note { font-size: 11.5px; color: var(--text-3); }</style></head>
+<body>
+<h2>Màu</h2>
+<p class="spec" style="margin-top:var(--s2);border:0;padding:0">
+  <b>Một màu nhấn duy nhất.</b> Bản cũ dùng amber + cyan + violet + đỏ + xanh lá cùng lúc,
+  mỗi cái đều phát sáng — nên không cái nào còn nghĩa là "chú ý vào đây". Ở đây chàm là
+  <b>thứ bấm được</b>, và chỉ thế. Ba màu trạng thái để dành riêng, luôn đi kèm chữ.
+</p>
+<p class="spec" style="border:0;padding:0;margin-top:var(--s2)">
+  Tỉ lệ tương phản đo trên nền thẻ <code>#ffffff</code> và <b>tính lúc dựng</b> —
+  đổi màu trong <code>design/tokens.json</code> là con số tự cập nhật.
+</p>
+<h3 style="margin:var(--s5) 0 var(--s3);font-size:13px;color:var(--text-2)">Nền — phân tầng bằng nền, không bằng viền</h3>
+<div class="sws">
+  <div class="sw">
+    <div class="chip" style="background:#eef1f6"></div>
+    <div>
+      <div class="n">bg</div>
+      <div class="v mono">#eef1f6 · 1.1:1</div>
+      <div class="note">nền trang</div>
+    </div>
+  </div>
+  <div class="sw">
+    <div class="chip" style="background:#ffffff"></div>
+    <div>
+      <div class="n">surface</div>
+      <div class="v mono">#ffffff · 1.0:1</div>
+      <div class="note">thẻ, panel</div>
+    </div>
+  </div>
+  <div class="sw">
+    <div class="chip" style="background:#f3f5f9"></div>
+    <div>
+      <div class="n">surface-2</div>
+      <div class="v mono">#f3f5f9 · 1.1:1</div>
+      <div class="note">nổi lên / hover</div>
+    </div>
+  </div>
+  <div class="sw">
+    <div class="chip" style="background:#e8ecf3"></div>
+    <div>
+      <div class="n">surface-3</div>
+      <div class="v mono">#e8ecf3 · 1.2:1</div>
+      <div class="note">nổi cao nhất</div>
+    </div>
+  </div>
+  <div class="sw">
+    <div class="chip" style="background:#e3e7ef"></div>
+    <div>
+      <div class="n">border</div>
+      <div class="v mono">#e3e7ef · 1.2:1</div>
+      <div class="note">viền mặc định</div>
+    </div>
+  </div>
+  <div class="sw">
+    <div class="chip" style="background:#ccd2df"></div>
+    <div>
+      <div class="n">border-strong</div>
+      <div class="v mono">#ccd2df · 1.5:1</div>
+      <div class="note">viền nút</div>
+    </div>
+  </div></div>
+<h3 style="margin:var(--s5) 0 var(--s3);font-size:13px;color:var(--text-2)">Chữ — ba bậc</h3>
+<div class="sws">
+  <div class="sw">
+    <div class="chip" style="background:#171a21"></div>
+    <div>
+      <div class="n">text</div>
+      <div class="v mono">#171a21 · 17.4:1</div>
+      <div class="note">chữ chính</div>
+    </div>
+  </div>
+  <div class="sw">
+    <div class="chip" style="background:#545b6b"></div>
+    <div>
+      <div class="n">text-2</div>
+      <div class="v mono">#545b6b · 6.8:1</div>
+      <div class="note">chữ phụ</div>
+    </div>
+  </div>
+  <div class="sw">
+    <div class="chip" style="background:#636a77"></div>
+    <div>
+      <div class="n">text-3</div>
+      <div class="v mono">#636a77 · 5.4:1</div>
+      <div class="note">mờ nhất — phải còn ≥ 4.5:1 trên MỌI nền</div>
+    </div>
+  </div></div>
+<h3 style="margin:var(--s5) 0 var(--s3);font-size:13px;color:var(--text-2)">Nhấn + trạng thái</h3>
+<div class="sws">
+  <div class="sw">
+    <div class="chip" style="background:#4f46e5"></div>
+    <div>
+      <div class="n">accent</div>
+      <div class="v mono">#4f46e5 · 6.3:1</div>
+      <div class="note">thứ bấm được</div>
+    </div>
+  </div>
+  <div class="sw">
+    <div class="chip" style="background:#4338ca"></div>
+    <div>
+      <div class="n">accent-ink</div>
+      <div class="v mono">#4338ca · 7.9:1</div>
+      <div class="note">chữ trên nền nhấn mờ</div>
+    </div>
+  </div>
+  <div class="sw">
+    <div class="chip" style="background:#15803d"></div>
+    <div>
+      <div class="n">ok</div>
+      <div class="v mono">#15803d · 5.0:1</div>
+      <div class="note">Ổn</div>
+    </div>
+  </div>
+  <div class="sw">
+    <div class="chip" style="background:#b45309"></div>
+    <div>
+      <div class="n">warn</div>
+      <div class="v mono">#b45309 · 5.0:1</div>
+      <div class="note">Cần cập nhật</div>
+    </div>
+  </div>
+  <div class="sw">
+    <div class="chip" style="background:#dc2626"></div>
+    <div>
+      <div class="n">crit</div>
+      <div class="v mono">#dc2626 · 4.8:1</div>
+      <div class="note">Đang chặn</div>
+    </div>
+  </div></div>
+<h3 style="margin:var(--s5) 0 var(--s3);font-size:13px;color:var(--text-2)">Độ nóng quyết định — luôn đi kèm ký hiệu + chữ</h3>
+<div class="sws">
+  <div class="sw">
+    <div class="chip" style="background:#dc2626"></div>
+    <div>
+      <div class="n">now</div>
+      <div class="v mono">#dc2626 · 4.8:1</div>
+      <div class="note">đang chặn việc chính</div>
+    </div>
+  </div>
+  <div class="sw">
+    <div class="chip" style="background:#b45309"></div>
+    <div>
+      <div class="n">soon</div>
+      <div class="v mono">#b45309 · 5.0:1</div>
+      <div class="note">sắp chặn</div>
+    </div>
+  </div>
+  <div class="sw">
+    <div class="chip" style="background:#6b7280"></div>
+    <div>
+      <div class="n">later</div>
+      <div class="v mono">#6b7280 · 4.8:1</div>
+      <div class="note">chưa chặn</div>
+    </div>
+  </div></div>
+<div class="row" style="margin-top:var(--s5)">
+  <span class="st ok">Ổn</span><span class="st warn">Cần cập nhật</span><span class="st crit">Đang chặn</span>
+</div>
+<p class="spec">
+  <b>Bậc chữ mờ nhất vẫn đọc được.</b> Bản cũ dùng <code>--faint #4e5c6e</code> ở mức
+  <b>6.8:1</b> cho hàng loạt nhãn 9–10px — dưới xa ngưỡng AA 4.5:1, và đó là
+  một nửa lý do "chữ nhỏ khó đọc". Bậc mờ nhất ở đây là
+  <b>5.4:1</b>.<br>
+  <b>Không glow.</b> Mọi <code>text-shadow</code> và <code>box-shadow</code> MÀU đã bỏ. Bóng còn
+  lại là bóng xám trung tính để tách tầng — ánh sáng quanh chữ làm nét chữ nhoè và là thứ
+  khiến bản cũ trông như giao diện game.
+</p>
+</body></html>

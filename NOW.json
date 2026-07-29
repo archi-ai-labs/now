@@ -1,0 +1,106 @@
+{
+  "$comment": "Vẫn chưa git init — updatedAtCommit giữ sentinel 0000000, đo drift theo commit vô nghĩa cho tới khi chốt d-git. Bản này dựng từ mtime + transcript 8 phiên ngày 27/7 + đo sống 14:38–14:42 (ps/lsof server, curl /api/state cold+warm, npm test, sổ ~/.now-dashboard). Hai quyết định d-cursor và d-contrast chốt trong ngày nên rời bảng — outcome nằm ở recentlyDone. Mục 'sáu repo còn hoạt động chưa có board' rớt khỏi upNext vì trần 5 mục — xem lại bằng /now all. Hạn mức sống lúc cập nhật: Claude 5h đã tiêu 27%, 7d 59% (reset 31/7 00:59 giờ VN); Antigravity Gemini weekly còn 57%.",
+  "schemaVersion": 1,
+  "project": "now_dashboard",
+  "branch": "(chưa init git)",
+  "updatedAt": "2026-07-27",
+  "updatedAtCommit": "0000000",
+  "updatedBy": "claude /now update",
+  "focus": {
+    "title": "Chốt hạng màn Token — tên gói thật của ba công cụ + quản gia thành slide, khép nợ nghiệm thu EN × hai nền",
+    "context": "Hôm qua dựng máy, hôm nay (27/7) là vòng NGƯỜI ĐỌC THẬT: bạn đọc màn Token và sửa lưng qua 4 phiên liên tiếp — gộp màn Công cụ vào Token + chia tab hạn mức, gọn mục Claude, quản gia 2 ô + tích hợp Cursor/AG, fix UI + cảnh báo token — tức nghiệm thu bản VI đã diễn ra bằng hành động thay vì một buổi đọc. Hai quyết định treo từ 23–26/7 chốt xong trong ngày: d-cursor (nhận cả Cursor lẫn Antigravity — 4 collector + 3 sổ mới đang ghi thật) và d-contrast (dời màu #dc2626→#d31f1f và accent tối, tokens + styles đã dựng lại 13:22). Mạch cuối đang chạy dở trong phiên 'Kiểm tra gói subscription…': (1) tên gói thật — Keychain của Claude khai max_5x trong khi gói thật là Max 20x nên trường đó bị loại, phải lấy nguồn khác; Antigravity CÓ tên gói qua một RPC khác nên khỏi neo hằng số, kèm rule bạn đã cho (thấp hơn Pro → Plus, cao hơn → Ultra); Cursor đúng sẵn; (2) ô 'việc đáng làm' của quản gia nâng thành 3 slide xoay vòng bấm next như trang tin. Phiên dừng lúc 14:38 ở câu 'Bắt đầu từ phần backend'. Xong khi: màn Token hiện đúng tên gói ba công cụ, quản gia xoay được 3 việc, và bạn đọc hiểu cả EN × hai nền không phải hỏi lại.",
+    "refs": [
+      { "label": "quản gia 2 ô — nơi slide sẽ vào", "ref": "public/lib/butler.js" },
+      { "label": "màn Token (phím 6) + tabs hạn mức", "ref": "public/views/usage.js" },
+      { "label": "nguồn tên gói AG qua RPC + sổ ag-quota", "ref": "src/collect/agquota.js" }
+    ],
+    "nextAction": "Mở lại phiên 'Kiểm tra gói subscription của Claude, Cursor và Antigravity' xem backend tên-gói + slide quản gia chạy tới đâu (dòng cuối 14:38: 'Bắt đầu từ phần backend'); phiên báo xong thì mở http://127.0.0.1:3000 — vẫn KHÔNG phải 4400 — bấm 6, kiểm ba tên gói (Claude phải ra Max 20x, không phải max_5x của Keychain) và bấm next xoay đủ 3 slide quản gia",
+    "laterSteps": [
+      "Trả nốt nợ nghiệm thu EN × hai nền (nợ từ hai board trước): bấm l sang tiếng Anh, t đổi nền, đọc lại thẻ hiệu suất + thẻ hạn mức trên dữ liệu thật — phần VI coi như đã nghiệm thu bằng cả ngày hôm nay bạn đọc thật và sửa lưng",
+      "Kiểm điều phiên kia hứa ghi lại có nằm trong docs thật không: quyết định neo gói AG (Pro; thấp hơn→Plus, cao hơn→Ultra) + tradeoff bỏ trường Keychain max_5x — bạn dặn 'lưu lại quyết định và tradeoff', không được chỉ nằm trong transcript"
+    ],
+    "resume": {
+      "workingState": "Không phải git repo (chưa init, không worktree) — khối chưa-version đã 15.955 dòng (5.151 src + 10.804 public), phình 50% chỉ trong hôm nay, xem d-git · server ĐÃ THAY THẾ HỆ: pid cũ 22352 chết, pid mới 30572 chạy từ ~10:26 — vẫn là con của helper Claude.app, tức dashboard vẫn ký sinh một phiên Claude; nghe 127.0.0.1:3000, cổng 4400 vẫn chết nên app trên Dock vẫn hỏng · /api/state 200: cold 4,5s (lượt đầu chạy collector mạng Cursor/AG), warm 0,58s rồi 0,012s cache, payload 318KB — tăng tiếp từ 279KB, xem B14 · npm test 288/288 xanh (229 → 288 trong ngày); test/i18n.test.js đã gác parity + trùng khoá thay cho chạy tay · hook PostToolUse node --check đã cài (.claude/settings.json) và chứng minh chặn thật ca backtick-trong-comment-HTML · ~/.now-dashboard thêm 3 sổ mới cursor-usage, cursor-events, ag-quota — ghi lần cuối 14:37–14:40, dòng dữ liệu Cursor/AG đang sống · hạn mức sống 14:41: Claude 5h đã tiêu 27%, 7 ngày 59% (reset 31/7 00:59 giờ VN), AG Gemini weekly còn 57%",
+      "howToContinue": "mở lại phiên \"Kiểm tra gói subscription của Claude, Cursor và Antigravity\" — trong panel: search vài từ của tên đó; trong terminal: claude --resume 6939a9b6-d1c7-49cf-8bc6-aeeab8165fb9 — rồi nói: làm tiếp đi"
+    },
+    "confidence": "inferred"
+  },
+  "sideTracks": [],
+  "decisionsNeeded": [
+    {
+      "id": "d-git",
+      "title": "now_dashboard có vào git không",
+      "heat": "soon",
+      "blocks": "chưa chặn tay bạn, nhưng khối không-có-đường-lùi phình 10.620 → 15.955 dòng trong MỘT ngày; hook node --check mới cài chỉ đỡ lỗi cú pháp, không đỡ được ca sửa-sai-muốn-lùi-bản",
+      "question": "git init (kèm .gitignore cho NOW.json/NOW.md), hay để local không version? Treo từ 23/7, đã một lần nâng nhiệt; nếu vẫn hoãn thì ít nhất chốt một cách sao lưu khác.",
+      "since": "2026-07-23"
+    },
+    {
+      "id": "d-push",
+      "title": "Đẩy dist/ lên project mà không mất thẻ prototype",
+      "heat": "soon",
+      "blocks": "project trên claude.ai giờ cũ hơn repo thêm một bậc: thiếu luôn bộ màu mới sau d-contrast (tokens dựng lại 13:22 hôm nay) — vòng design sau sẽ gấp ngược từ bản sai màu",
+      "question": "dist/screens/overview.html là mock tĩnh 9,5KB, thẻ cùng tên trên project là prototype tương tác 56KB. Đẩy dist/ nhưng bỏ qua đúng file đó, hay đẩy cả và chấp nhận thẻ prototype bị thay bằng mock?",
+      "ref": "design/README.md",
+      "since": "2026-07-23"
+    },
+    {
+      "id": "d-b6",
+      "title": "B6 dựng lại theo từng dự án — hoãn vô thời hạn?",
+      "heat": "later",
+      "blocks": "chưa chặn gì, nhưng nằm trong hàng đợi thì lần nào đọc cũng phải cân lại",
+      "question": "Số đo vừa ĐỔI CHIỀU so với lúc đặt câu hỏi: quét ấm vẫn nhanh (cache 0,012s) nhưng quét nguội nay 4,5s vì collector mạng Cursor/AG — quay đúng vùng '4–7 giây' từng là lý do sinh ra B6. Gật hoãn, giữ nguyên, hay thu hẹp B6 thành 'chỉ làm mới nguồn chậm theo dự án'?",
+      "ref": "BACKLOG.md",
+      "since": "2026-07-23"
+    }
+  ],
+  "upNext": [
+    {
+      "title": "Nhặt task đã spawn task_33a66d84 (từ /reflect): nâng modules.test.js gọi thật hàm render từng view — bịt đúng lỗ '288 test xanh mà #view rỗng' đã thành luật CLAUDE.md mục 4 nhưng chưa có test nào bắt",
+      "ref": "test/modules.test.js"
+    },
+    {
+      "title": "Vòng 3 backlog còn hai mục, kiểm lại 27/7 vẫn chưa làm: B15 — nạp lần đầu vẫn là trang trống 'đang nối…', không skeleton; B13 — run() trong src/lib/sh.js vẫn nuốt lý do lỗi (file không đổi từ 23/7), 'không phải repo' vẫn trông y hệt 'git timeout'",
+      "ref": "BACKLOG.md"
+    },
+    {
+      "title": "B14 xét lại ưu tiên: payload /api/state nay 318KB — mốc lúc quyết định hạ ưu tiên là 119,5KB, đã gấp 2,7 lần — vẫn mỗi 30 giây mỗi tab",
+      "ref": "BACKLOG.md"
+    },
+    {
+      "title": "Gợi ý TẮT phiên đã xong ở màn Phiên — views/sessions.js không đổi, vẫn chỉ gợi ý claude --resume, chưa có đường dọn phiên hoàn thành",
+      "ref": "public/views/sessions.js"
+    },
+    {
+      "title": "Cho now-dash tự lên khi đăng nhập (launchd) + ghim cổng — ca 'ký sinh phiên Claude' đã ứng nghiệm NGAY HÔM NAY: pid 22352 chết kéo dashboard chết theo, pid 30572 lên thay nhưng vẫn là con helper Claude.app; autoPort vẫn cấp 3000 ≠ 4400 nên app trên Dock vẫn hỏng",
+      "ref": "bin/now-dash"
+    }
+  ],
+  "recentlyDone": [
+    {
+      "date": "2026-07-27",
+      "title": "Chốt d-cursor 'nhận cả hai': Cursor + Antigravity thành nguồn dữ liệu thật — 4 collector mới (cursor GetCurrentPeriodUsage với Bearer từ state.vscdb, cursorevents, agquota, agturns) + 3 sổ mới trong ~/.now-dashboard đang ghi; phiên thăm dò 'Giải thích đơn giản khái niệm chi phí token' hoàn thành vai trò, rời board",
+      "ref": "src/collect/cursor.js"
+    },
+    {
+      "date": "2026-07-27",
+      "title": "Đại tu màn Token theo phản hồi đọc thật: gộp màn Công cụ vào Token, hạn mức chia tab (lib/tabs.js), quản gia 2 ô cố định (lib/butler.js), chart cột 2 trục (lib/chart.js), gọn mục Claude, cảnh báo token viết lại — bốn phiên sửa lưng liên tiếp trong một ngày",
+      "ref": "public/views/usage.js"
+    },
+    {
+      "date": "2026-07-27",
+      "title": "Chốt d-contrast bằng dời màu: #dc2626 → #d31f1f (+ dịch accent nền tối) đạt ≥4,5:1 tuyệt đối cả hai ca lệch, rebuild tokens 13:22 + styles.css; test 229 → 288 xanh, test/i18n.test.js gác parity + trùng khoá (trả nợ laterStep từ board trước)",
+      "ref": "design/tokens.json"
+    },
+    {
+      "date": "2026-07-27",
+      "title": "/reflect ra hàng rào: CLAUDE.md 4 bất biến (thang bỏ phí, luật chữ, bẫy backtick, 'npm test xanh ≠ trang chạy') + hook PostToolUse node --check chặn thật ca backtick + 4 memory mới; README hết ba câu nói sai (Bảy màn, hai nền, phím 7)",
+      "ref": "CLAUDE.md"
+    },
+    {
+      "date": "2026-07-26",
+      "title": "Màn Token dựng xong phần máy: views/usage.js 1.028 dòng + bảy collector server (quota API platform.claude.com, usage giá theo model, quotalog đỉnh MAX, efficiency, hosts, editors, procs, antigravity/pb.js), server.js tách src/, i18n 325 → 557 khoá mỗi bên",
+      "ref": "src/state.js"
+    }
+  ]
+}
