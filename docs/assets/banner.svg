@@ -1,7 +1,5 @@
-<!-- README banner. Mark ◈ và màu chàm giống hệt design/icon.svg + design/tokens.json —
-     không bịa bảng màu riêng cho ảnh quảng bá. Nền tối cố định (không lật theo theme
-     người xem) vì ảnh tĩnh không đọc được prefers-color-scheme khi GitHub nhúng qua
-     <img>; nền #0e1016 đọc tốt trên cả nền trang sáng lẫn tối của GitHub. -->
+<!-- English tagline variant of banner.svg. Same mark, same colors — see banner.svg for
+     the design notes; keep both in sync if the tagline or motif changes. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 260" width="1200" height="260" role="img" aria-label="NOW dashboard">
   <defs>
     <linearGradient id="mark" x1="0" y1="0" x2="0" y2="1">
@@ -12,7 +10,6 @@
 
   <rect width="1200" height="260" rx="20" fill="#0e1016"/>
 
-  <!-- ◈ = viên kim cương rỗng bọc viên kim cương đặc, giống hệt design/icon.svg -->
   <polygon points="136,56 210,130 136,204 62,130"
            fill="none" stroke="url(#mark)" stroke-width="12" stroke-linejoin="round"/>
   <polygon points="136,108 158,130 136,152 114,130" fill="url(#mark)"/>
@@ -20,10 +17,8 @@
   <text x="262" y="120" font-family="ui-sans-serif, -apple-system, Segoe UI, sans-serif"
         font-size="52" font-weight="700" fill="#eceef4">NOW dashboard</text>
   <text x="264" y="152" font-family="ui-sans-serif, -apple-system, Segoe UI, sans-serif"
-        font-size="19" fill="#a6adbb">mọi dự án, mọi phiên Claude, một trang — sống, tự cập nhật</text>
+        font-size="19" fill="#a6adbb">every project, every Claude session, one page — live, self-updating</text>
 
-  <!-- Mô-típ thanh hạn mức: đặc = đã tiêu, nhạt = phần còn lại — nhắc lại đúng quy ước
-       vẽ ở docs/QUOTA.md, không phải trang trí ngẫu nhiên. -->
   <g transform="translate(264,182)">
     <rect x="0" y="0" width="640" height="12" rx="3" fill="#262b37"/>
     <rect x="0" y="0" width="300" height="12" rx="3" fill="#8b83f7"/>

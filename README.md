@@ -1,392 +1,411 @@
-# NOW dashboard — sở chỉ huy
+# NOW dashboard — command center
 
-*🇻🇳 Tiếng Việt · 🇬🇧 [English](README.en.md)*
+*🇬🇧 English · 🇻🇳 [Tiếng Việt](README.md)*
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-4f46e5)](LICENSE)
 [![Node](https://img.shields.io/badge/node-18.10%2B-4f46e5)](package.json)
 [![Dependencies](https://img.shields.io/badge/dependencies-zero-4f46e5)](package.json)
-[![Docs](https://img.shields.io/badge/docs-VI%20%7C%20EN-4f46e5)](docs/README.md)
+[![Docs](https://img.shields.io/badge/docs-VI%20%7C%20EN-4f46e5)](docs/README.en.md)
 
-![NOW dashboard](docs/assets/banner.svg)
+![NOW dashboard](docs/assets/banner.en.svg)
 
-Một trang duy nhất trả lời: **mọi dự án của tôi đang ở đâu, và trong hai chục phiên Claude
-đang mở, phiên nào đang cầm việc gì.**
+One page that answers: **where every one of my projects stands, and out of two dozen open
+Claude sessions, which one is holding which piece of work.**
 
-`/now` cho bạn một dự án. `/now all` cho bạn một bảng tĩnh. Cái này cho bạn toàn cảnh
-**sống**, tự cập nhật khi board hoặc phiên thay đổi.
+`/now` gives you one project. `/now all` gives you a static table. This gives you the
+**live** big picture, updating itself as boards or sessions change.
 
-## Bắt đầu
+## Getting started
 
-Cài một lần, để nó tự lên cùng máy:
+Install once, and it comes up with the machine:
 
 ```bash
 ./bin/install-app
 ```
 
-Dựng luôn app trên thanh menu (xem [§Trên thanh menu](#trên-thanh-menu)) **và** đặt
-LaunchAgent vào `~/Library/LaunchAgents/`, đường dẫn đã tự khớp với chỗ bạn `git clone`
-về — không cần sửa tay. Chạy lại bao nhiêu lần cũng được, kể cả sau khi dời repo.
+Builds the menu-bar app (see [§On the menu bar](#on-the-menu-bar)) **and** drops a
+LaunchAgent into `~/Library/LaunchAgents/` with paths already matched to wherever you
+cloned the repo — no manual editing. Safe to rerun any number of times, including after
+moving the repo.
 
-Không muốn icon trên thanh menu, chỉ cần server nền (đòi hỏi ít hơn: không cần Xcode
-Command Line Tools), thì tự cài LaunchAgent bằng tay:
+Don't want the menu-bar icon and just need the background server (fewer requirements:
+no Xcode Command Line Tools needed), install the LaunchAgent by hand instead:
 
 ```bash
 sed -e "s|__ROOT__|$(pwd)|g" -e "s|__HOME__|$HOME|g" \
   launchd/dev.hoanluu.now-dash.plist > ~/Library/LaunchAgents/dev.hoanluu.now-dash.plist
 ```
 
-Từ đó trở đi chỉ cần:
+After that, all you need is:
 
 ```bash
 ./bin/now-dash
 ```
 
-→ http://localhost:4400 · mở tab, và dựng server qua launchd nếu nó chưa chạy.
+→ http://localhost:4400 · opens a tab, and asks launchd to start the server if it is down.
 
-| Việc | Lệnh |
+| Task | Command |
 |---|---|
-| Dừng | `launchctl bootout gui/$(id -u)/dev.hoanluu.now-dash` |
-| Chạy lại | `launchctl kickstart -k gui/$(id -u)/dev.hoanluu.now-dash` |
-| Xem log | `tail -f ~/.now-dashboard/service.err.log` |
+| Stop | `launchctl bootout gui/$(id -u)/dev.hoanluu.now-dash` |
+| Restart | `launchctl kickstart -k gui/$(id -u)/dev.hoanluu.now-dash` |
+| Read the log | `tail -f ~/.now-dashboard/service.err.log` |
 
-Server treo dưới **launchd**, không dưới terminal hay phiên Claude đã gọi nó — đóng cửa
-sổ nào cũng không giết nó, và đăng nhập lại là nó tự lên. (Bản trước `nohup` từ chính
-terminal gọi lệnh, nên nó chết theo phiên Claude đang chạy — hỏng thật ngày 27/7.)
+The server hangs off **launchd**, not off the terminal or the Claude session that started
+it — closing any window will not kill it, and logging back in brings it up. (The previous
+version `nohup`-ed it from the calling terminal, so it died with the Claude session that
+ran the command — which actually happened on 27 July.)
 
-Không cần `npm install`. Không phụ thuộc gói nào — chỉ Node ≥ 18.10 (mức đã chạy thật;
-trước đây `engines` ghi ≥ 20 mà chưa ai kiểm).
+No `npm install` needed. Zero dependencies — just Node ≥ 18.10 (the version actually
+tested; `engines` used to claim ≥ 20 and nobody had checked).
 
 ```bash
 npm test
 ```
 
-Bộ test chạy bằng `node:test` có sẵn, không kéo thêm gói nào — xem [test/](test/).
+Runs on the built-in `node:test`, no extra packages pulled in — see [test/](test/).
 
-### Chạy như app riêng trên Dock
+### Running as its own Dock app
 
-Mở `http://localhost:4400` bằng **Safari** → menu **File → Add to Dock…** → **Add**.
+Open `http://localhost:4400` in **Safari** → menu **File → Add to Dock…** → **Add**.
 
-Được một app riêng chạy trên WebKit: icon riêng trên Dock, ⌘Tab được, không thanh địa
-chỉ, không tab, và **không cần mở Safari**. Cố tình là Safari chứ không phải "Install as
-app" của Chrome — cùng một trang mà Chrome kéo theo browser process + GPU process, đắt
-hơn hẳn cho một thứ định để mở suốt ngày.
+You get a dedicated WebKit app: its own Dock icon, ⌘Tab-able, no address bar, no tabs,
+and **no need to open Safari**. Safari is chosen on purpose over Chrome's "Install as
+app" — the same page in Chrome drags along a browser process plus a GPU process, far
+pricier for something meant to stay open all day.
 
-Ba thứ khiến nó trông ra app thay vì trông ra một trang web bị đóng khung, đều nằm
-trong `<head>` của [`public/index.html`](public/index.html):
+Three things make it read as an app instead of a web page in a frame, all living in
+the `<head>` of [`public/index.html`](public/index.html):
 
 | | |
 |---|---|
-| [`public/manifest.webmanifest`](public/manifest.webmanifest) | `short_name` = nhãn dưới icon Dock. Thiếu thì macOS lấy `<title>` và nhãn thành "NOW — sở chỉ huy" |
-| `icon-1024.png` · `icon-180.png` | icon Dock. Nguồn là [`design/icon.svg`](design/icon.svg), dựng lại bằng `node design/icon.mjs` |
-| `<meta name="theme-color">` | màu thanh tiêu đề cửa sổ. `applyTheme()` sửa nó theo phím `t` — để cố định thì nửa số lần dùng có một dải sáng nằm trên HUD tối |
+| [`public/manifest.webmanifest`](public/manifest.webmanifest) | `short_name` = the label under the Dock icon. Missing it, macOS falls back to `<title>` and the label becomes "NOW — sở chỉ huy" |
+| `icon-1024.png` · `icon-180.png` | the Dock icon. Source is [`design/icon.svg`](design/icon.svg), rebuilt with `node design/icon.mjs` |
+| `<meta name="theme-color">` | the window title-bar color. `applyTheme()` updates it on the `t` key press — hard-coding it means half the time there's a bright strip sitting on top of the dark HUD |
 
-Server phải đang chạy, nếu không app mở ra chỉ thấy dòng "chưa nối được tới server" —
-LaunchAgent ở phần [Bắt đầu](#bắt-đầu) lo đúng việc đó, kể cả sau khi khởi động lại máy.
+The server has to actually be running, otherwise the app opens to a "cannot reach the
+server" screen — the LaunchAgent under [Getting started](#getting-started) handles exactly
+that, including after a reboot.
 
-### Trên thanh menu
+### In the menu bar
 
-Web app ở trên chỉ biết **mở** `localhost:4400`, nó không biết **dựng** server, và phải
-mở ra mới biết có gì. Cái dưới đây ở thanh menu suốt ngày, liếc là thấy.
+The web app above only knows how to **open** `localhost:4400` — it cannot **start** the
+server, and you have to open it to see anything. The one below sits in the menu bar all
+day; a glance is enough.
 
 ```bash
 ./bin/install-app
 ```
 
-→ `~/Applications/NOW Dashboard.app`. Chạy nó, được **một mục** trên thanh menu, xếp
-hai dòng trong 63pt bề ngang:
+→ `~/Applications/NOW Dashboard.app`. Run it and you get **one item** in the menu bar,
+stacked two lines inside 63pt of width:
 
 ```
 CLAUDE
 6%·37%
 ```
 
-| Kênh | Chở gì |
+| Channel | What it carries |
 |---|---|
-| dòng dưới | **đã tiêu** khung 5 giờ · khung 7 ngày (luật 1 — số dẫn không bao giờ là phần còn lại). Cửa sổ nào đã qua mốc reset thì chỗ của nó là `—`, không phải số cuối của chu kỳ cũ |
-| tooltip | cửa sổ nào đang ràng buộc, bỏ phí dự phóng bao nhiêu |
-| popover | hai việc đáng làm (có tên việc, bấm được), ba cửa sổ hạn mức có thang màu, và câu của Cursor/Antigravity khi chúng có chuyện |
+| bottom line | **spent** in the 5-hour · 7-day window (rule 1 — the lead number is never what's left). A window past its reset mark reads `—`, not the closed cycle's final tally |
+| tooltip | which window is binding, and how much projected waste |
+| popover | two things worth doing (named, clickable), three quota windows on the color scale, and a Cursor/Antigravity line whenever they have something to say |
 
-Popover xếp theo đúng hai ô của quản gia — việc đáng làm trước, hạn mức sau — vì hai
-loại đó không so được với nhau. Nó **không lặp lại thanh bằng chữ**: thanh đã có nhãn
-thì câu dưới nó chỉ được nói phần nhãn không vẽ nổi (`cardText`, không phải
-`forecastText` — luật nằm ngay trong `lib/quota.js`). Bản trước phạm đúng chỗ này và
-mất một phần tư chiều cao cho ba câu in lại số của chính cái thanh ngay trên chúng;
-cửa sổ vừa sang chu kỳ mới còn nói ba lần cùng một câu.
+The popover follows the butler's two fixed slots — work first, quota second — because
+those two do not compare. It does **not restate the bar in prose**: where the bar has
+labels, the sentence under it may only say what the labels cannot draw (`cardText`, not
+`forecastText` — the rule lives in `lib/quota.js`). The previous version broke exactly
+that and spent a quarter of its height on three sentences reprinting the numbers from
+the bar directly above them; a window that had just rolled over said the same sentence
+three times.
 
-Xếp dọc vì thanh menu tính tiền bằng **chiều ngang**; hai dòng dùng lại khoảng cao vốn
-đã bỏ ra. Phiên đang thức và quyết định nóng nằm trong popover, không lên thanh — bản
-trước có mục thứ hai cho chúng, nhưng hai mục cùng mở một popover thì chỉ là hai cái
-nút giống hệt nhau chiếm hai chỗ.
+Stacked because the menu bar charges by **width**; two lines reuse height that was
+already spent. Sessions awake and hot decisions live in the popover, not on the bar — an
+earlier version gave them a second item, but two items opening the same popover are just
+two identical buttons taking two slots.
 
-Bậc bỏ phí **không lên thanh**: ký hiệu bốn bậc rồi màu nhãn đều đã thử và đều bỏ —
-một nhãn tô màu giữa một hàng nhãn xám đọc thành lỗi giao diện chứ không thành cảnh
-báo. Nó ở lại tooltip và popover.
+The waste band **stays off the bar**: four-band marks and then a tinted label were both
+tried and both dropped — one colored label in a row of gray ones reads as a rendering
+bug, not as a warning. It lives in the tooltip and the popover.
 
-Chữ trên thanh là **ảnh vẽ tay**, không phải `attributedTitle`. Với `attributedTitle`
-thì NSStatusBarButton dồn khối chữ lên sát mép trên — đo trên ảnh chụp chính cái nút:
-trống 1px ở trên, 6px ở dưới. Cả `baselineOffset` lẫn `paragraphSpacingBefore` đều
-không dịch được nó (dòng bị `min/maxLineHeight` ghim, còn spacing thì AppKit bỏ qua ở
-đoạn đầu). Vẽ ảnh thì toạ độ là của mình: hiện tại 3px trên, 3px dưới.
+The bar text is a **hand-drawn image**, not an `attributedTitle`. With `attributedTitle`
+NSStatusBarButton shoves the block against the top edge — measured on a snapshot of the
+button itself: 1px of space above, 6px below. Neither `baselineOffset` nor
+`paragraphSpacingBefore` moves it (lines are pinned by `min/maxLineHeight`, and AppKit
+ignores the spacing on the first paragraph). Drawing the image puts the coordinates back
+in our hands: currently 3px above, 3px below.
 
-Canh lại bằng mắt mà không phải dựng lại app — app tự chụp nút của nó ra PNG:
+To re-tune by eye without rebuilding, the app snapshots its own button to PNG:
 
 ```bash
 NOW_LABEL_Y=13 NOW_SNAP=/tmp/btn.png "$HOME/Applications/NOW Dashboard.app/Contents/MacOS/now-dash-menu"
 ```
 
 `NOW_LABEL_SIZE` · `NOW_VALUE_SIZE` · `NOW_LABEL_Y` · `NOW_VALUE_Y` · `NOW_BTN_H` —
-mặc định nằm ở đầu [`app/NowMenuBar.swift`](app/NowMenuBar.swift). Có chế độ này vì
-thanh menu **không chụp được từ terminal** (thiếu quyền Screen Recording), nên canh chữ
-ở đây là canh mù.
+defaults at the top of [`app/NowMenuBar.swift`](app/NowMenuBar.swift). This mode exists
+because the menu bar **cannot be captured from a terminal** (no Screen Recording
+permission), which makes tuning here blind work.
 
-Popover cũng vậy — `NOW_PROBE=1` mở nó ra, đo, in cỡ thật rồi thoát:
+Same for the popover — `NOW_PROBE=1` opens it, measures it, prints the real size, quits:
 
 ```bash
 NOW_PROBE=1 "$HOME/Applications/NOW Dashboard.app/Contents/MacOS/now-dash-menu"
 ```
 
-→ `popover: 360×477pt · trang: 477pt · vừa khít`. Hai số lệch nhau nghĩa là bị cắt.
-Chế độ này ra đời sau một lỗi sống suốt từ ngày đầu: app hỏi chiều cao trong
-`didFinish`, mà lúc ấy `menubar.js` còn đang `await fetch` nên `.mb-wrap` chưa tồn tại
-— câu truy vấn rơi vào nhánh mặc định `?? 320` và popover **cao đúng 320pt bất kể
-trong nó có gì**. Mọi thứ dưới mốc đó bị cắt cụt, kể cả hàng nút ở đáy — nên câu hỏi
-"không có nút bấm nhảy ra app được à" là đúng: hàng nút ấy chưa bao giờ hiện ra. Giờ
-trang tự đẩy số sang app qua `webkit.messageHandlers.size`, và đẩy lại qua
-`ResizeObserver` mỗi khi nội dung đổi.
+→ `popover: 360×477pt · trang: 477pt · vừa khít`. Two different numbers mean it is being
+clipped. This mode came out of a bug that had been live since day one: the app asked for
+the height in `didFinish`, but at that point `menubar.js` is still `await`-ing its fetch,
+so `.mb-wrap` does not exist yet — the query fell through to the `?? 320` default and the
+popover was **exactly 320pt tall no matter what was inside it**. Everything below that
+mark was cut off, including the button row at the bottom — so "is there no button to jump
+to the app?" was a fair question: that row had never once appeared. The page now pushes
+the number to the app over `webkit.messageHandlers.size`, and pushes again through a
+`ResizeObserver` whenever the content changes.
 
-Bấm → popover, hai tab: **Việc** (việc đáng làm + hạn mức Claude) và **Token** (cả ba
-công cụ, mỗi cái một khối). Tab đang mở được nhớ lại — kho riêng của WKWebView ở đây là
-thứ có lợi. Chuột phải → mở dashboard, dựng lại server, bật mở-lúc-đăng-nhập. Bấm icon
-trong Spotlight/Finder lúc app đã chạy → mở thẳng dashboard đầy đủ.
+Click → a popover with two tabs: **Work** (things worth doing + Claude's quota) and
+**Tokens** (all three tools, one block each). The open tab is remembered — WKWebView's
+separate store works in our favour here. Right-click → open the dashboard, restart the
+server, toggle open-at-login. Clicking the icon in Spotlight/Finder while it runs opens
+the full dashboard.
 
-Cửa ra dashboard là cái nút **`◈ NOW`** ở góc trái, không phải một hàng nút ở đáy: hàng
-nút cũ tốn 48px để nói một việc mà cái tên đã nói được. Nó mang nền và viền sẵn, không
-đợi rê chuột mới hiện — popover mở rồi đóng trong vài giây, một cái nút chỉ lộ diện lúc
-rê là một cái nút không tồn tại. Cặp mark-và-tên lấy nguyên của `.brand-mark` ở thanh
-rail dashboard: hai chỗ này là cùng một cửa nên mang cùng một mặt. Đích đi theo tab đang
-mở — đang xem Token thì nó mở thẳng màn Token, và tooltip gọi tên đích vì nhãn "NOW"
-không tự nói mình đi đâu.
+The way out to the dashboard is the **`◈ NOW`** button in the top-left corner, not a
+button row at the bottom: the old row spent 48px saying something the name already says.
+It carries its fill and border up front rather than waiting for a hover — this window
+opens and closes in seconds, and a button that only appears on hover is a button that
+does not exist. The mark-and-name pair is lifted straight from `.brand-mark` in the
+dashboard's rail: same door, same face. Its target follows the open tab — on the Tokens
+tab it opens the Tokens screen directly, and the tooltip names the destination because
+the "NOW" label does not announce where it goes.
 
-Cursor và Antigravity vẫn để lại **câu văn xuôi** ở tab Việc khi chúng có chuyện: một
-cảnh báo chỉ đọc được sau khi đổi tab là một cảnh báo không có trên trang.
+Cursor and Antigravity still leave a **prose line** on the Work tab when they have
+something to say: a warning you can only read after switching tabs is a warning that is
+not on the page.
 
-### Quản gia pixel
+### The pixel butler
 
-Đầu nhân vật ở đầu popover **chính là cái mark `◈`** — một viên kim cương, và chỗ icon
-app đặt một viên nhỏ bên trong thì ở đây là hai con mắt. Nó không phải linh vật dán thêm
-cho vui. Viên **đặc** chứ không phải viền rỗng: ở 64px thì lòng viên rỗng chỉ còn 4–6 ô,
-không đủ chỗ cho hai con mắt ra hồn, mà nền trời lọt qua thì cái đầu tan vào khung.
+The character's head at the top of the popover **is the `◈` mark** — a diamond, and where
+the app icon puts a smaller diamond inside it, this one has two eyes. It is not a mascot
+bolted on for fun. **Solid**, not a hollow outline: at 64px the hollow leaves only 4–6
+cells of interior, not enough for eyes worth having, and the sky showing through dissolves
+the head into the frame.
 
-Điều kiện để nó được chiếm ~93px của một cửa sổ đang bị ép cho gọn: **nó chở tin**. Băng
-bỏ phí lớn (`crit`, `warn`) → mắt nhắm, có chữ "z" bay lên. Nhịp đã bám đích trở lên
-(`ok`, `cheer`, `over`) → mắt mở, có đốm nắng trong mắt. Tiền nằm không thì quản gia ngủ
-gật — đúng nghĩa đen của mục 1. Mắt mở cao HAI ô, mắt nhắm là gạch cao MỘT ô: hình dáng
-là kênh thứ hai bên cạnh sắc, vì theme daltonized không được dựa vào mỗi khác biệt màu.
+The condition for letting it take ~93px of a window we have been squeezing: **it carries
+information**. High waste bands (`crit`, `warn`) → eyes shut, a floating "z". Pace on
+target or better (`ok`, `cheer`, `over`) → eyes open, with a catchlight. When the money
+sits idle, the butler dozes — rule 1, taken literally. Open eyes are two cells tall, shut
+eyes a one-cell dash: shape is the second channel next to hue, because a daltonized theme
+must never rely on colour alone.
 
-Không thích thì tắt: `hero: false` trong `DEFAULTS`, popover tụt từ 598 xuống 505pt.
+Not to your taste? `hero: false` in `DEFAULTS` drops the popover from 598 to 505pt.
 
-#### Một nguồn sáng cho cả popover
+#### One light source for the whole popover
 
-Mặt trời nằm **trên-trái** trong khung, và mọi thứ còn lại quay về đúng phía ấy: vệt nắng
-hắt vào nền popover, cạnh sáng của quản gia, gờ sáng trên mỗi cái thanh hạn mức, bóng đổ
-cứng lệch xuống dưới-phải. Hai nguồn sáng thì mỗi component tự bịa một hướng và cả trang
-trông như dán.
+The sun sits **upper-left** inside the frame, and everything else faces it: the warm wash
+on the popover background, the butler's lit edges, the highlight on every quota bar, the
+hard shadow offset down-right. Two light sources and each component invents its own
+direction — the page then looks assembled rather than designed.
 
-Hướng ấy **không đổi qua bốn buổi** — cho mặt trời chạy vòng cung thì phải xoay lại toàn
-bộ phép chấm sắc độ trong `shadeOf`, và một nhân vật đổi hướng đổ bóng bốn lần một ngày
-là bốn lần người xem phải nhận lại cái hình.
+That direction **does not change across the four times of day** — arcing the sun would
+mean redoing all of `shadeOf`, and a character whose shadow flips direction four times a
+day is a character the viewer has to re-recognise four times a day.
 
-#### Bốn buổi, lấy theo giờ máy
+#### Four times of day, from the machine clock
 
-`phaseOf(hour)` trong `lib/menubar-view.js`: `dawn` 5–9h · `day` 9–16h · `dusk` 16–19h ·
-`night` 19–5h. Đêm thì mặt trời đổi thành **trăng khuyết** (khuyết chứ không phải đĩa
-tròn: ở 28px một cái đĩa trông y hệt mặt trời, mà đúng cái phải nhận ra ngay là "giờ đang
-là đêm"). Sao mờ dần theo buổi thay vì bật/tắt — một bầu sao biến mất đột ngột lúc 9h đọc
-thành trang bị hỏng.
+`phaseOf(hour)` in `lib/menubar-view.js`: `dawn` 5–9 · `day` 9–16 · `dusk` 16–19 · `night`
+19–5. At night the sun becomes a **crescent moon** (crescent, not a disc: at 28px a disc
+looks exactly like the sun, and the one thing that must register instantly is "it's
+night"). Stars fade by phase rather than switching off — a starfield vanishing at 9am
+reads as a broken page.
 
-Popover mở rồi đóng trong vài giây nên không có hẹn giờ vẽ lại: mỗi lần mở là một lần đọc
-đồng hồ. Bàn chỉnh có công tắc ép buổi để xem cả bốn mà không phải đợi.
+The popover opens and closes in seconds, so there is no repaint timer: each open is one
+clock read. The tuning bench has a phase override so you can see all four without waiting.
 
-Ranh giới quan trọng: buổi chỉ đổi `--lux` / `--lux-hi` / `--sky-*` / `--halo` — token của
-riêng khung trời và vệt nắng nền. **`--sun-hi` (ánh sáng của mấy cái thanh) đứng yên cả
-bốn buổi**: khung trời là tranh nên đổi được, còn cái thanh là dữ liệu, mà một mảng đổi
-sắc theo giờ là một mảng người đọc phải hỏi "sáng nay nó có màu này không".
+The line that matters: a phase only changes `--lux` / `--lux-hi` / `--sky-*` / `--halo` —
+tokens belonging to the sky panel and the background wash. **`--sun-hi`, the light the
+quota bars use, is fixed across all four.** The sky is a picture and may change; a bar is
+data, and a segment that shifts hue by the hour is a segment the reader has to ask "was it
+that colour this morning?"
 
-Sắc độ thân nhân vật **suy ra từ chính hình** (`shadeOf` trong `lib/menubar-view.js`):
-khuyết ô chéo phía mặt trời → cạnh hứng nắng, khuyết ô chéo phía đối diện → cạnh khuất.
-Sửa một dòng trong sprite là bóng tự đi theo; bản đồ bóng chép tay thì lần sửa thứ hai đã
-lệch.
+Body shading is **derived from the sprite itself** (`shadeOf` in `lib/menubar-view.js`):
+no diagonal neighbour on the sun side → lit edge; none on the opposite side → shadow edge.
+Edit one line of the sprite and the shading follows; a hand-drawn shadow map is already
+wrong by the second edit.
 
-Ba con số cần nhớ khi đụng vào bảng màu:
+Three tokens to keep straight when touching the palette:
 
-| Token | Là gì | Ràng buộc |
+| Token | What it is | Constraint |
 |---|---|---|
-| `--skin` | tím thân quản gia | **cố định**, không đổi theo băng — nhân vật đổi màu áo theo số liệu thì mỗi lần mở popover lại là một con khác |
-| `--sun` | cam san hô | không được là hổ phách: hổ phách là `--warn`, mà nắng thì phủ khắp trang |
-| `--sun-hi` | đỉnh nắng | dùng cho gờ trên thanh hạn mức — pha với `--c`, **không** thay `--c` |
+| `--skin` | the butler's violet | **fixed**, never varies by band — a character that changes outfit with the data is a different character every time you open the popover |
+| `--sun` | coral orange | must not be amber: amber is `--warn`, and this light falls across the whole page |
+| `--sun-hi` | the brightest light | used for the highlight on quota bars — mixed *with* `--c`, never replacing it |
 
-#### Thanh hạn mức trong popover khác web ba chỗ
+#### The popover's quota bars differ from the web in three ways
 
-Cùng một `quotaBar`, khác ba tuỳ chọn — không có bản vẽ lại nào:
+Same `quotaBar`, three options — no second implementation:
 
-| | Web | Popover | Vì sao |
+| | Web | Popover | Why |
 |---|---|---|---|
-| vạch mốc đều | có | `pace: false` | vạch muốn có nghĩa thì phải kéo theo dòng "mốc đều 55%" ở dưới — 15px mỗi cửa sổ cho một mốc tham chiếu, trong khi thứ nó dùng để so đều đã có nhãn nằm trong thân thanh. Bỏ đi: popover 600 → 573pt |
-| vân mảng dự phóng | đứng yên | bò dần sang phải, 1,7s một bước vân | mảng này là thứ duy nhất trên thanh **chưa xảy ra**, mà mọi thứ khác trong popover thì đứng yên — chuyển động chính là kênh nói "đang chạy tới, chưa chốt". Tắt theo `prefers-reduced-motion` |
-| nhãn dự phóng | giữa mảng gạch | `est` — bốn chỗ đứng, đang bày ở bàn chỉnh | chỉ `mid`/`end` giữ được luật "số nằm trong đúng mảng nó nói về"; `below` tốn lại 15px, `tail` phải cướp chỗ của nhãn bỏ phí |
+| even-pace tick | yes | `pace: false` | for the tick to mean anything it has to drag the "even pace 55%" caption along — 15px per window for a reference mark, while the things it compares already carry labels inside the bar. Dropping it: popover 600 → 573pt |
+| projection hatching | static | marches right, one stripe period per 1.7s | this segment is the only thing on the bar that **hasn't happened yet**, and everything else in the popover is still — motion is the channel that says "in flight, not settled". Disabled under `prefers-reduced-motion` |
+| projection label | centred in the hatch | `est` — four placements, on the tuning bench | only `mid`/`end` keep the rule "the number sits in the segment it describes"; `below` costs the 15px back, `tail` has to take the waste label's space |
 
-Ba thứ **không** bê từ mấy app cùng loại:
+Three things deliberately **not** borrowed from similar apps:
 
-| Của họ | Ở đây | Vì sao |
+| Theirs | Here | Why |
 |---|---|---|
-| dải 30 ngày tô xanh–vàng–đỏ theo lượng token | **không có dải nào** | thử rồi bỏ 31/7: bản ở đây là 12 cửa sổ 5 giờ một sắc câm — màu đã có nghĩa cố định là **bỏ phí**, mà ngày tiêu mạnh là ngày *tốt*. Nhưng ngay cả bản đã sửa nghĩa ấy vẫn tính 34px lên **mọi** lần mở popover để trả lời một câu mỗi tuần mới hỏi một lần, mà màn **Nhìn lại** đã trả lời nó bằng cả một chart có trục và tooltip từng cửa sổ |
-| gradient chạy dọc chiều dài thanh | **có làm**, nhưng neo vào chính mảng đặc chứ không vào rãnh | lý do cấm cũ vẫn đúng — một dải màu chạy dọc chiều dài mời người đọc hiểu chiều ấy thành thang thứ hai. Neo vào mảng thì mảng 6% và mảng 94% đều chạy trọn nhạt→đậm trên bề dài của mình, nên ở mọi trị nó cho ra đúng một hình: không chở tin thì không cãi được với con số. Neo vào rãnh (`background-attachment`) thì ngược hẳn — **đừng đổi** |
-| mắt sáng phát quang | mắt **tối** trên mặt tím sáng, đốm nắng nhỏ ở góc trên-trái | hai ô sáng cách nhau hai ô thì quầng nối vào nhau, cả cái mặt đọc thành một tấm kính lặn |
+| a 30-day strip in green/yellow/red by token volume | **no strip at all** | built, then cut on 31 Jul: our version was 12 five-hour windows in one muted hue — colour already means **waste** here, and a heavy-spend day is a *good* day. But even with the meaning fixed, the strip billed 34px against **every** popover open to answer a question asked once a week — one the **Lookback** screen already answers with a real chart, axis and per-window tooltips included |
+| gradient running along the bar's length | **we do this**, but anchored to the solid fill, never to the track | the old objection still holds — a ramp along the length invites reading that axis as a second scale. Anchored to the fill, a 6% fill and a 94% fill both run the full pale→deep across their own width, so the ramp draws the same shape at every value: carrying no information, it cannot argue with the number. Anchored to the track (`background-attachment`) it does the opposite — **don't** |
+| glowing eyes | **dark** eyes on the bright violet face, with a small catchlight upper-left | two lit cells two cells apart bleed into each other and the whole face reads as a diving mask |
 
-Cả gradient lẫn vệt nắng đều khoanh trong `.mb-wrap`, nên 15 cái thanh ở màn Token trên
-web vẫn phẳng như cũ.
+The gradient is scoped to `.mb-wrap`, so the 15 bars on the web Token screen stay flat.
 
-### Bàn chỉnh popover
+### The popover tuning bench
 
-**Màn cuối trên thanh rail — phím `9`.** Cũng mở được thành trang lẻ, không có gì khác
-trong tầm mắt:
+**Last screen on the rail — key `9`.** Also opens standalone, with nothing else in sight:
 
 ```
 http://localhost:4400/menubar-demo.html
 ```
 
-Hai lối vào, **một ruột** ([`public/views/bench.js`](public/views/bench.js)) — không có
-bản thứ hai để lệch. Nó vào nav vì trước 3/8 nó chỉ có URL kia, và **không một đường nào
-trên dashboard trỏ tới**: một công cụ phải nhớ URL mới mở được thì lần sau cần đến sẽ tìm
-không ra.
+Two ways in, **one implementation** ([`public/views/bench.js`](public/views/bench.js)) — no
+second copy to drift. It moved into the nav because until 3 Aug it only had that URL and
+**nothing on the dashboard linked to it**: a tool you have to remember a URL to reach is a
+tool you won't find next time you need it.
 
-Popover bên trái do **chính `popoverView` mà app đang gọi** vẽ ra, không phải một bản dựng
-lại — cùng lý do với `NOW_SNAP`: một bản "gần giống" để ngắm là bản sẽ lệch khỏi bản chạy
-thật.
+The popover on the left is drawn by **the very `popoverView` the app calls**, not a rebuild
+of it — same reason as `NOW_SNAP`: an approximate copy built for looking at is a copy that
+will drift from the one that ships.
 
-Công tắc chia **hai loại, chốt vào hai file khác nhau** — trang in sẵn cả hai khối cần chép:
+The switches come in **two kinds that land in two different files** — the page prints both
+blocks ready to paste:
 
-| Loại | Công tắc | Chép vào |
+| Kind | Switches | Paste into |
 |---|---|---|
-| **Bố cục** | tab · độ dày thanh · nhãn gộp hàng · khung cảnh · nhãn dự phóng · bề rộng | `DEFAULTS` ở đầu [`public/lib/menubar-view.js`](public/lib/menubar-view.js) |
-| **Ánh sáng** | vệt nắng nền (kích thước, độ đậm) · loá dọc bề dày thanh (độ mạnh, mép cắt) | khối `.mb-wrap` trong [`public/styles.css`](public/styles.css) |
+| **Layout** | tab · bar thickness · label inline · scene · projection label · width | `DEFAULTS` at the top of [`public/lib/menubar-view.js`](public/lib/menubar-view.js) |
+| **Light** | background wash (size, strength) · bar gloss (strength, cut) | the `.mb-wrap` block in [`public/styles.css`](public/styles.css) |
 
-Loại thứ hai có vì ánh sáng là thứ chỉnh bằng **mắt**, không bằng lý lẽ: một vệt nắng đậm
-20% hay 30% thì không suy ra được, phải vặn thử rồi nhìn — mà trước đây mỗi lần vặn là
-một lần sửa `styles.css` rồi tải lại trang. Bàn chỉnh chèn một khối `<style>` nhắm thẳng
-`.mbd-stage .mb-wrap`, nên cái thấy và cái in ra không bao giờ lệch nhau — và nó sống sót
-qua lượt vẽ lại 30 giây một lần của dashboard, thứ mà `style.setProperty` sau khi vẽ thì
-không.
+The second kind exists because light is tuned by **eye**, not by argument: whether a wash
+sits at 20% or 30% cannot be reasoned out, only looked at — and until now every look cost
+an edit to `styles.css` and a reload. The bench emits a `<style>` block aimed straight at
+`.mbd-stage .mb-wrap`, so what you see and what it prints can never disagree — and it
+survives the dashboard's 30-second re-render, which anything written to the DOM *after* a
+render does not.
 
-Hai công tắc **buổi** và **nền sáng/tối** không thuộc loại nào: bản thật lấy buổi theo giờ
-máy và lấy nền theo appearance của macOS, không có công tắc nào cả; chúng chỉ là kính lúp
-của bàn chỉnh. Nền lật bằng `.theme-light` / `.theme-dark` đặt lên **khung xem**, không
-lên thẻ `html` — đổi nền để so bảng màu thì cái bảng công tắc đang đọc dở không có lý do
-gì phải nhảy theo.
+**Phase** and **light/dark** belong to neither kind: the real popover takes its phase from
+the machine clock and its background from the macOS appearance, with no switch at all;
+these two are the bench's magnifying glass, nothing more. The background flips via
+`.theme-light` / `.theme-dark` on the **stage**, not on the `html` element — flipping the
+background to compare a palette is no reason for the switch panel you're reading to jump.
 
-Dưới khung xem là dòng số đo, có cả trần chiều cao của màn hình này. Khung xem **ghim lại
-khi cuộn** — bảng công tắc dài hơn màn hình, mà cuộn tới cái cần vặn rồi mà thứ nó thay
-đổi đã trôi khỏi màn thì bàn chỉnh không chỉnh được gì. Núm nào có nhãn là một **mức**
-("rộng", "đậm", "1.4") thì xếp thành một hàng ngang thay vì mấy hàng dọc — mười một núm
-xếp dọc hết thì thứ đang vặn và thứ nó làm đổi không còn cùng nằm trong một màn hình.
+Below the stage is a measurement line, including this screen's height ceiling. The stage
+**sticks while you scroll** — the switch panel is taller than the screen, and scrolling
+down to the switch you want only to lose sight of what it changes makes the bench useless.
+Switches whose labels are **levels** ("wide", "strong", "1.4") lay out as one horizontal
+row rather than a stack — eleven stacked switches put the knob and the thing it changes on
+different screens.
 
-Chốt bố cục không phải dựng lại app, kể cả khi đổi bề rộng: trang khai cả rộng lẫn cao
-cho Swift.
+Settling the layout needs no app rebuild, not even for the width: the page declares both
+dimensions to Swift.
 
 | | |
 |---|---|
-| [`app/NowMenuBar.swift`](app/NowMenuBar.swift) | ~290 dòng, và **không biết luật hạn mức nào**: chữ lấy từ `/api/badge`, popover là trang web bên dưới |
-| [`public/menubar.html`](public/menubar.html) · [`menubar.js`](public/menubar.js) | ruột popover. Gọi thẳng `lib/quota.js` — cùng `quotaBar`, cùng câu chữ với màn Token, nên không thể nói khác dashboard |
-| `/api/badge` trong [`server.js`](server.js) | chốt chữ và bậc màu ở một chỗ. Server import `public/lib/quota.js` (module của trình duyệt) cố ý: thang bỏ phí chỉ được có một bản |
-| [`app/make-tones.py`](app/make-tones.py) | bóc năm mã màu thẳng từ `styles.css` lúc dựng, sinh `Tones.swift`. **Hiện không dùng** — chữ trên thanh vẽ dưới dạng ảnh `isTemplate` nên chỉ giữ được alpha, không giữ màu. Vẫn dựng cùng app để bật lại màu chỉ tốn một dòng |
-| [`bin/install-app`](bin/install-app) | sinh `Tones.swift`, biên dịch bằng `swiftc`, cắt `.icns` từ `public/icon-1024.png`. Chạy lại bao nhiêu lần cũng được; từ chối đè nếu chỗ đó đang là app khác |
+| [`app/NowMenuBar.swift`](app/NowMenuBar.swift) | ~290 lines, and it **knows no quota rule**: the text comes from `/api/badge`, the popover is the web page below |
+| [`public/menubar.html`](public/menubar.html) · [`menubar.js`](public/menubar.js) | the popover's guts. Calls `lib/quota.js` directly — same `quotaBar`, same sentences as the Token screen, so it cannot contradict the dashboard |
+| `/api/badge` in [`server.js`](server.js) | settles text and color band in one place. The server imports `public/lib/quota.js` (a browser module) on purpose: the waste scale gets exactly one copy |
+| [`app/make-tones.py`](app/make-tones.py) | lifts the five color codes out of `styles.css` at build time into `Tones.swift`. **Currently unused** — the bar text is an `isTemplate` image, which keeps alpha but not color. Still built alongside the app so turning color back on costs one line |
+| [`bin/install-app`](bin/install-app) | generates `Tones.swift`, compiles with `swiftc`, cuts the `.icns` from `public/icon-1024.png`. Re-runnable; refuses to overwrite if something else is sitting there |
 
-Cần Xcode Command Line Tools (`swiftc`) và macOS 13+. Đường dẫn repo ghim tuyệt đối vào
-bundle lúc dựng, và vào LaunchAgent luôn trong cùng lượt chạy (xem
-[§Bắt đầu](#bắt-đầu)) — cùng lý do: launchd/LaunchServices không giãn `~`/`$HOME`.
-**Dời repo thì chạy lại `./bin/install-app`.**
+Needs Xcode Command Line Tools (`swiftc`) and macOS 13+. The repo path is baked into the
+bundle as an absolute path at build time, and into the LaunchAgent in the same run
+(see [§Getting started](#getting-started)) — same reason: launchd/LaunchServices don't
+expand `~`/`$HOME`. **Move the repo, re-run `./bin/install-app`.**
 
-### Cài, gỡ, và sự cố thường gặp
+### Install, uninstall, and common problems
 
-Sổ tay ngắn — đủ để tự xử lý không phải lục code.
+A short runbook — enough to self-serve without reading the code.
 
-**Cài / cài lại:**
+**Install / reinstall:**
 
 ```bash
 ./bin/install-app
 ```
 
-Idempotent, chạy lại bao nhiêu lần cũng an toàn (kể cả sau khi dời repo, đổi máy, hay
-đổi `NOW_PORT`) — ghi đè sạch cả app **và** LaunchAgent mỗi lần.
+Idempotent, safe to rerun any number of times (after moving the repo, switching
+machines, or changing `NOW_PORT`) — cleanly overwrites both the app **and** the
+LaunchAgent every time.
 
-⚠️ **Nếu service đang chạy sống, lệnh trên sẽ `bootout` nó** để buộc nạp lại đường dẫn
-mới — dashboard tắt vài giây, tự lên lại vào lần kế tiếp bạn mở app hoặc gọi
-`./bin/now-dash`. Không mất dữ liệu: mọi sổ ghi ở `~/.now-dashboard/`, cài lại không đụng
-tới. Muốn nó sống lại **ngay** thay vì chờ:
+⚠️ **If the service is currently running, this command `bootout`s it** to force a
+reload of the new paths — the dashboard goes down for a few seconds and comes back the
+next time you open the app or call `./bin/now-dash`. No data is lost: everything is
+logged under `~/.now-dashboard/`, which reinstalling never touches. To bring it back up
+**immediately** instead of waiting:
 
 ```bash
 launchctl kickstart -k gui/$(id -u)/dev.hoanluu.now-dash
 ```
 
-**Yêu cầu:** macOS 13+, Xcode Command Line Tools (`xcode-select --install` nếu chưa có
-`swiftc`), Node ≥ 18.10. Thiếu `swiftc` → script dừng ngay ở bước biên dịch, **chưa kịp
-cài LaunchAgent**. Chỉ cần server nền, không cần icon thanh menu → dùng lệnh `sed` tay ở
-[§Bắt đầu](#bắt-đầu), không cần `swiftc`.
+**Requirements:** macOS 13+, Xcode Command Line Tools (`xcode-select --install` if
+`swiftc` is missing), Node ≥ 18.10. Missing `swiftc` → the script stops right at the
+compile step, **before** installing the LaunchAgent. Only want the background server,
+no menu-bar icon → use the manual `sed` command in [§Getting started](#getting-started)
+instead, which needs no `swiftc`.
 
-| Triệu chứng | Nguyên nhân | Sửa |
+| Symptom | Cause | Fix |
 |---|---|---|
-| App/web app mở ra chỉ thấy "chưa nối được tới server" | LaunchAgent chưa cài, hoặc service đang down | `./bin/now-dash` — tự `bootstrap`/`kickstart` nếu thấy plist. Chưa có plist → `./bin/install-app` trước |
-| `install-app` báo *"Đã có app khác ở … — không đè"* | Trùng tên với app KHÁC ở `~/Applications` (vd. web app Safari cũng có thể tên "NOW") — script cố tình không đè app lạ, xem [bin/install-app](bin/install-app) | Đổi tên: `APP_NAME="NOW Dashboard 2" ./bin/install-app`, hoặc tự xoá app cũ nếu chắc chắn là bản rác |
-| Dời repo sang chỗ khác, app/service vẫn gọi đường cũ | `__ROOT__` ghim tuyệt đối lúc cài, không tự giãn lại khi repo di chuyển | Chạy lại `./bin/install-app` **ở vị trí mới** của repo |
-| Đổi `NOW_PORT` nhưng service vẫn dùng cổng cũ | Cổng ghim trong plist lúc render, không đọc lại lúc chạy | `NOW_PORT=xxxx ./bin/install-app` rồi `launchctl kickstart -k gui/$(id -u)/dev.hoanluu.now-dash` |
-| Không thấy log gì dù chắc chắn có lỗi | Log của service nằm ở `~/.now-dashboard/`, không phải terminal (launchd không có stdout) | `tail -f ~/.now-dashboard/service.err.log` |
+| App/web app opens to just "can't reach the server" | LaunchAgent not installed, or the service is down | `./bin/now-dash` — self-`bootstrap`s/`kickstart`s if it finds the plist. No plist yet → run `./bin/install-app` first |
+| `install-app` says *"Something else is already at … — not overwriting"* | Name collision with a DIFFERENT app in `~/Applications` (e.g. the Safari web app can also be named "NOW") — the script deliberately refuses to overwrite a foreign app, see [bin/install-app](bin/install-app) | Rename: `APP_NAME="NOW Dashboard 2" ./bin/install-app`, or manually delete the old app once you're sure it's stale |
+| Moved the repo elsewhere, app/service still call the old path | `__ROOT__` is baked in absolute at install time, doesn't reflow when the repo moves | Re-run `./bin/install-app` **from the new location** of the repo |
+| Changed `NOW_PORT` but the service still uses the old port | The port is baked into the plist at render time, not re-read at runtime | `NOW_PORT=xxxx ./bin/install-app` then `launchctl kickstart -k gui/$(id -u)/dev.hoanluu.now-dash` |
+| No logs anywhere despite a clear error | The service's logs live under `~/.now-dashboard/`, not the terminal (launchd has no stdout) | `tail -f ~/.now-dashboard/service.err.log` |
 
-**Gỡ cài đặt — theo đúng thứ tự này:**
+**Uninstall — in this exact order:**
 
 ```bash
-# 1. Dừng và bỏ đăng ký khỏi launchd TRƯỚC — làm sau bước 3 thì service còn sống sẽ
-#    lặp lại tìm bin/now-dash-service ở đường dẫn vừa bị xoá, spam service.err.log.
+# 1. Stop and unregister from launchd FIRST — doing this after step 3 leaves a still-
+#    running service repeatedly looking for bin/now-dash-service at a path that no
+#    longer exists, spamming service.err.log.
 launchctl bootout gui/$(id -u)/dev.hoanluu.now-dash 2>/dev/null || true
 
-# 2. Xoá định nghĩa LaunchAgent và app (đổi tên nếu bạn từng cài với APP_NAME khác)
+# 2. Remove the LaunchAgent definition and the app (adjust the name if you ever
+#    installed with a custom APP_NAME)
 rm -f ~/Library/LaunchAgents/dev.hoanluu.now-dash.plist
 rm -rf ~/Applications/"NOW Dashboard.app"
 
-# 3. (tuỳ chọn) Xoá dữ liệu/log — sổ chu kỳ hạn mức, cache Cursor/Antigravity.
-#    KHÔNG PHỤC HỒI ĐƯỢC sau bước này — chỉ chạy nếu chắc chắn không cần tra lại lịch sử.
+# 3. (optional) Remove data/logs — quota cycle ledgers, Cursor/Antigravity caches.
+#    NOT RECOVERABLE past this point — only do this if you're sure you won't need the history.
 rm -rf ~/.now-dashboard
 ```
 
-Gỡ chính repo (`rm -rf` thư mục `git clone`) thì làm **sau cùng**, sau bước 1 — cùng lý
-do trong bước 1. Web app thêm qua Safari (§[Chạy như app riêng trên Dock](#chạy-như-app-riêng-trên-dock),
-thường tên `NOW.app`) là bundle khác, ba bước trên không đụng tới — gỡ nó thì kéo icon
-ra khỏi Dock rồi xoá tay ở `~/Applications`.
+Removing the repo itself (`rm -rf` the `git clone` directory) should happen **last**,
+after step 1, for the same reason given there. The web app added via Safari
+(§[Running as its own Dock app](#running-as-its-own-dock-app), usually named `NOW.app`)
+is a different bundle — the three steps above don't touch it; remove it by dragging it
+off the Dock and deleting it from `~/Applications` by hand.
 
-## Bảy màn
+## Seven screens
 
-| Phím | Màn | Trả lời câu hỏi |
+| Key | Screen | Answers |
 |---|---|---|
-| `1` | ▦ **Dự án** | Mỗi dự án đang làm gì, next action là gì, board còn tin được không |
-| `2` | ◍ **Phiên** | 20 phiên trong cùng một repo — phiên nào cầm mạch nào, resume bằng lệnh gì |
-| `3` | ◆ **Quyết định** | Xuyên dự án, trả lời cái nào trước (xếp theo độ gấp) |
-| `4` | ✓ **Đã xong** | Mấy hôm nay thực sự làm xong được gì |
-| `5` | ◔ **Thống kê** | Công sức đổ vào đâu, tồn đọng ở đâu, mình làm việc mấy giờ |
-| `6` | ◈ **Token** | Ba công cụ trả tiền hằng tháng: sắp bị chặn ở đâu, token đi đâu, tiền đi đâu |
-| `7` | ⌬ **Sức khoẻ** | Chỗ nào đang khiến dashboard nói dối |
+| `1` | ▦ **Projects** | What's each project doing, what's the next action, can the board still be trusted |
+| `2` | ◍ **Sessions** | 20 sessions in the same repo — which one holds which thread, what command resumes it |
+| `3` | ◆ **Decisions** | Cross-project, which one first (sorted by urgency) |
+| `4` | ✓ **Done** | What actually got finished the last few days |
+| `5` | ◔ **Stats** | Where the effort went, where the backlog is piling up, how many hours worked |
+| `6` | ◈ **Token** | Three paid monthly tools: what's about to hit a wall, where tokens go, where money goes |
+| `7` | ⌬ **Health** | Where the dashboard is currently lying to you |
 
-Chi tiết từng tab (Cursor/Antigravity), phím tắt, và cách dùng hàng ngày →
-[docs/DESIGN.md](docs/DESIGN.md).
+Per-tab details (Cursor/Antigravity), keybindings, and day-to-day usage →
+[docs/DESIGN.en.md](docs/DESIGN.en.md).
 
-## Tài liệu
+## Docs
 
-| Câu hỏi | Xem |
+| Question | See |
 |---|---|
-| Vì sao thiết kế/chart trông thế này | [docs/DESIGN.md](docs/DESIGN.md) |
-| Kiến trúc, nguồn dữ liệu, bản đồ file, cạm bẫy | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| Khối hạn mức tính/vẽ thế nào | [docs/QUOTA.md](docs/QUOTA.md) |
-| Đổi giao diện qua Claude Design | [design/README.md](design/README.md) |
-| Việc đang làm / quyết định đang treo | [NOW.md](NOW.md) |
-| Việc kỹ thuật còn tồn (backlog) | [BACKLOG.md](BACKLOG.md) |
+| Why the design/charts look the way they do | [docs/DESIGN.en.md](docs/DESIGN.en.md) |
+| Architecture, data sources, file map, pitfalls | [docs/ARCHITECTURE.en.md](docs/ARCHITECTURE.en.md) |
+| How the quota block is computed/drawn | [docs/QUOTA.en.md](docs/QUOTA.en.md) |
+| Changing the UI through Claude Design | [design/README.en.md](design/README.en.md) |
+| What's in progress / decisions pending | [NOW.md](NOW.md) *(Vietnamese only)* |
+| Open technical work (backlog) | [BACKLOG.md](BACKLOG.md) *(Vietnamese only)* |
 
-Chỉnh cổng/đường quét (`NOW_PORT`, `NOW_ROOTS`) và ngưỡng sức khoẻ →
-[docs/ARCHITECTURE.md#chỉnh](docs/ARCHITECTURE.md).
+Configuring the port/scan roots (`NOW_PORT`, `NOW_ROOTS`) and health thresholds →
+[docs/ARCHITECTURE.en.md#configuring](docs/ARCHITECTURE.en.md).

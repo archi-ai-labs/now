@@ -1,119 +1,142 @@
-# Khối hạn mức — vì sao đọc ngược so với thanh tiến trình quen thuộc
+# The quota block — why it reads backwards from a familiar progress bar
 
-*🇻🇳 Tiếng Việt · 🇬🇧 [English](QUOTA.en.md)*
+*🇬🇧 English · 🇻🇳 [Tiếng Việt](QUOTA.md)*
 
-Quyết định thiết kế đằng sau [`public/lib/quota.js`](../public/lib/quota.js) và các thẻ
-hạn mức ở màn Token. Bản đồ file chung xem [ARCHITECTURE.md](ARCHITECTURE.md).
+The design decisions behind [`public/lib/quota.js`](../public/lib/quota.js) and the
+quota cards on the Token screen. For the shared file map see
+[ARCHITECTURE.en.md](ARCHITECTURE.en.md).
 
-Thanh hạn mức KHÔNG đọc theo lối "đầy là nguy". Gói thuê bao đã trả tiền rồi, còn
-hạn mức thì reset theo cửa sổ và **không cộng dồn** — phần chưa dùng lúc reset là mất
-trắng. Nên "còn 57%" không phải tin tốt, và "đã tiêu 90%" không phải cảnh báo. Vì vậy cả
-màn này đảo lại so với lối vẽ quen thuộc:
+The quota bar does NOT read the familiar "full = danger" way. The subscription is
+already paid for, and quota resets per window and **does not roll over** — whatever's
+unused at reset is gone for good. So "57% left" isn't good news, and "90% spent" isn't
+a warning. Which is why this screen inverts the usual way of drawing it:
 
-- Số dẫn là **đã tiêu**, không phải còn lại. Phần chưa dùng chỉ xuất hiện dưới đúng tên
-  của nó — *bỏ phí* — và chỉ ở cột dự báo, nơi nó thật sự là một kết cục.
-- Màu đo **đúng một đại lượng: bỏ phí** (`100 − dự phóng`), và đo nó theo **cả hai
-  chiều** — trị âm nghĩa là nhịp này đòi nhiều hơn cả cửa sổ có:
+- The headline number is **spent**, never remaining. What's unused only ever appears
+  under its actual name — *waste* — and only in the forecast column, where it's genuinely
+  a possible outcome.
+- Color measures **exactly one quantity: waste** (`100 − forecast`), and measures it in
+  **both directions** — a negative value means this pace is asking for more than the
+  window has:
 
-  | bỏ phí | màu | nghĩa |
+  | waste | color | meaning |
   |---|---|---|
-  | ≥ 50% | đỏ | quá nửa hạn mức sẽ mất trắng |
-  | 10 – 50% | vàng | còn một mảng đáng kể không kịp dùng |
-  | −10% … 10% | xanh lá | hạ cánh quanh đúng 100% — đích |
-  | < −10% | đỏ tía | dùng hết mức, nhịp đòi quá trần |
-  | — | xám | chưa đọc được nhịp |
+  | ≥ 50% | red | over half the quota will be lost for good |
+  | 10 – 50% | yellow | a meaningful chunk won't get used in time |
+  | −10% … 10% | green | landing right around 100% — the target |
+  | < −10% | magenta | maxed out, current pace demands more than the cap |
+  | — | gray | pace not yet readable |
 
-  Băng xanh rộng 20 điểm về cả hai phía vì dự phóng là một đường thẳng kẻ từ đầu cửa sổ
-  còn nhịp thật thì giật cục: đòi nó hạ cánh đúng 100,0 thì mọi cửa sổ đều trượt vì một
-  chỗ lệch mà chính phép đo không phân giải nổi.
-- **Cạn trước reset không bao giờ là đỏ.** Việc cạn sớm có một cái giá riêng — ngồi không
-  chờ reset — nhưng cái giá ấy trả bằng *thời gian*, còn kênh màu đã dành trọn cho *tiền*.
-  Trộn hai thứ vào một kênh thì cùng một sắc đỏ vừa nghĩa "mất tiền" vừa nghĩa "mất buổi
-  chiều", và không nghĩa nào còn đọc được. Khoảng ngồi không vì thế ra **chữ**, qua
-  `idleMsOf`, với ngưỡng `max(6% chiều dài cửa sổ, 20 phút)` — phần trăm cầm trịch ở khung
-  dài (6% của tuần ≈ 10 giờ, cả một ngày làm việc bị chặn), sàn cầm trịch ở khung ngắn.
-- Câu của cửa sổ vượt trần **mở đầu bằng mốc cạn** — nó là phần đúng đích, và giờ màu đồng
-  ý với nó. Cái giá đi sau như một mệnh đề nhượng bộ: *"cạn sau 3 ngày, rồi ngồi không 19
-  giờ tới lúc reset."*
-- Câu dự phóng **mở đầu bằng kỳ hạn**, không bằng "nhịp này": *"dự phóng tuần này 73% —
-  bỏ phí 27%"*. Bản trước viết "nhịp này chỉ tới 73%", và câu đó thiếu đúng cái làm con số
-  dùng được — 73% *lúc nào*. Nhãn bên cạnh có ghi "7 ngày", nhưng đó là tên của cửa sổ chứ
-  không phải một mốc, nên phép ghép vẫn nằm ngoài câu. Kỳ hạn suy từ `windowMs`
-  (`periodText`) nên cùng một câu dùng được cho cả ba nguồn: *phiên 5h này* · *tuần này* ·
-  *tháng này* (chu kỳ Cursor).
+  The green band is 20 points wide on each side because the forecast is a straight line
+  drawn from the start of the window, while the real pace is jagged: demanding it land
+  on exactly 100.0 would fail every window over a gap the measurement itself can't
+  resolve.
 
-Thanh chia **ba mảng**: mảng đặc = đã tiêu · mảng gạch chéo `→52%` nhịp này sẽ tiêu thêm
-tới đâu · mảng nhạt cuối `bỏ phí 48%`. Đuôi thanh cố tình **không để trống** — rãnh trống
-đọc thành "chỗ còn dư", đúng nghĩa ngược với thứ nó đang chỉ — và mang cả **chữ** chứ
-không chỉ con số, vì "48%" đứng một mình cạnh một mảng nhạt lại đọc ra đúng cái nghĩa
-ngược ấy. Vạch dọc là **mốc trung bình**, chỗ phải đứng nếu tiêu đều theo đồng hồ, có chú
-thích `trung bình 52%` neo ngay dưới chân vạch.
+- **Running out before reset is never red.** Running out early has its own cost — sitting
+  idle until reset — but that cost is paid in *time*, while the color channel is spent
+  entirely on *money*. Mixing the two into one channel means the same red simultaneously
+  means "losing money" and "losing the afternoon," and neither meaning comes through
+  anymore. So idle time gets spelled out in **words** instead, via `idleMsOf`, with a
+  threshold of `max(6% of window length, 20 minutes)` — the percentage dominates on long
+  windows (6% of a week ≈ 10 hours, an entire workday blocked), the floor dominates on
+  short ones.
+- The sentence for a window that's about to be exceeded **opens with the run-out point**
+  — that's the part that hits the target, and now the color agrees with it. The cost
+  that follows reads as a concession clause: *"runs out in 3 days, then 19 hours idle
+  until reset."*
+- The forecast sentence **opens with the time horizon**, not with "at this pace":
+  *"this week's forecast: 73% — 27% wasted."* The earlier version wrote "at this pace,
+  only reaching 73%," and that sentence was missing exactly the thing that makes the
+  number usable — 73% *by when*. The label next to it says "7 days," but that's the
+  window's name, not a point in time, so the composition still fell on the reader. The
+  horizon is derived from `windowMs` (`periodText`), so the same sentence works for all
+  three sources: *this 5-hour session* · *this week* · *this month* (Cursor's cycle).
 
-Luật của thẻ là **mỗi con số xuất hiện đúng một lần**. Bản trước phạm ở cả bốn: `27%` to
-ở trên rồi `27%` lần nữa trong mảng đặc, `→52%` trong mảng gạch rồi "chỉ tới 52%" ở câu
-dưới, `48%` ở đuôi thanh rồi "bỏ phí 48%" cũng ở câu ấy. Từng chỗ đều có lý do riêng khi
-thêm vào, mà cộng lại thì mỗi trị đọc hai lần ở hai kiểu chữ khác nhau — mắt phải đi kiểm
-xem hai cái đó có phải cùng một con số không, và câu trả lời luôn là có. Nên:
+The bar splits into **three segments**: solid = spent · hatched `→52%` = how much further
+this pace will spend · light tail = `48% wasted`. The tail is deliberately **never left
+empty** — an empty groove reads as "room to spare," the exact opposite of what it's
+signaling — and it carries **words**, not just a number, because "48%" sitting alone next
+to a pale segment reads as that same opposite meaning. The vertical tick is the **average
+pace mark**, where you'd be if spending were metronomic, with a caption `avg 52%`
+anchored right under its foot.
 
-- **mảng đặc bỏ nhãn** — trị của nó đã là con số to nhất thẻ, cách đó 8px;
-- **câu kết luận bỏ hẳn với ca đang bỏ phí** — nó chỉ chép lại cái thanh thành văn xuôi.
-  Chữ dưới thanh chỉ còn xuất hiện khi hình **không nói hết được**: sắp kẹt (kẹt bao lâu
-  thì không có mảng nào vẽ ra được) hoặc chưa đoán nổi nhịp. Hạ cánh đúng đích thì im lặng.
+The card's rule is **every number appears exactly once**. The earlier version broke this
+in all four spots: `27%` big up top, then `27%` again in the solid segment; `→52%` in the
+hatched segment, then "only reaching 52%" in the sentence below; `48%` at the tail, then
+"48% wasted" in that same sentence. Each one had its own reason when it was added, but
+added together, every value gets read twice in two different typefaces — the eye has to
+go check whether those two are the same number, and the answer is always yes. So:
 
-Luật ấy có **đúng một ngoại lệ, do người dùng chọn**: `≈$248` — tiền của riêng cửa sổ này —
-đứng cả trên thẻ lẫn trong tooltip. Nó đáng đúp vì hai con số trả lời hai câu khác nhau:
-phần trăm nói *còn bao nhiêu phần hạn mức*, tiền nói *gói này đang moi ra được bao nhiêu* —
-và câu thứ hai là câu duy nhất so được giữa hai cửa sổ dài ngắn khác nhau. Bắt rê chuột mới
-thấy thì nó thành số của người đi soát, không phải số của người liếc một cái rồi quyết phiên
-tới chạy ở đâu.
+- **the solid segment drops its label** — its value is already the card's biggest number,
+  8px away;
+- **the closing sentence is dropped entirely for the waste case** — it was just restating
+  the bar as prose. Text under the bar only shows up when the shape **can't say it all**:
+  about to hit the cap (how long it'll stay capped has no segment that can draw it) or
+  the pace can't be estimated yet. Landing right on target stays silent.
 
-## `≈$` lấy ở đâu, và vì sao nó lệch được với phần trăm
+That rule has **exactly one exception, chosen deliberately**: `≈$248` — this window's own
+dollar cost — appears both on the card and in the tooltip. It earns the duplication
+because the two numbers answer two different questions: the percentage says *how much
+quota is left*, the dollar figure says *how much this plan is actually extracting* — and
+that second question is the only one comparable across windows of different lengths.
+Hidden behind a hover, it becomes a number for someone auditing, not for someone glancing
+once and deciding where the next session should run.
 
-Mốc mở cửa sổ = `resets_at − độ dài`, cả hai đã có sẵn trong phản hồi hạn mức. Transcript
-ghi mốc thời gian **từng lượt gọi**, nên cắt theo giờ là chính xác — `collectUsage` nhận
-danh sách cửa sổ từ [`src/state.js`](../src/state.js) và cộng ngay trong vòng lặp đã chạy trên
-28 nghìn hàng, không thêm lượt đọc nào. Sổ theo ngày không làm nổi việc này: nó không phân
-giải trong ngày.
+## Where `≈$` comes from, and why it can diverge from the percentage
 
-Ba chỗ con số ấy **không** bằng phần trăm, và giao diện nói ra cả ba (chú thích gập
-`qlg.money`):
+Window start = `resets_at − length`, both already present in the quota response. The
+transcript logs a timestamp for **every single call**, so slicing by time is exact —
+`collectUsage` takes the list of windows from [`src/state.js`](../src/state.js) and sums
+them within a loop that already runs over 28,000 rows, no extra read needed. A daily log
+can't do this: it doesn't resolve within a day.
+
+The dollar figure is **not** the same as the percentage in three ways, and the UI states
+all three (in the collapsible `qlg.money` note):
 
 | | |
 |---|---|
-| Không phải hoá đơn | bảng giá API × token, trong khi tài khoản trả theo gói |
-| Phủ khác nhau | phần trăm là của **cả tài khoản**, số $ đọc từ transcript của **máy này** |
-| `≥` thay `≈` | cửa sổ mở trước lượt gọi sớm nhất còn trên đĩa → transcript đã bị dọn, tổng thiếu |
+| Not an invoice | API price table × tokens, while the account is billed by plan |
+| Different coverage | the percentage is for the **whole account**, the dollar figure reads from **this machine's** transcripts only |
+| `≥` instead of `≈` | the window opened before the earliest call still on disk → the transcript's been pruned, the total undercounts |
 
-Cửa sổ tuần theo model nối bằng **tên**: endpoint gửi `scope.model.display_name` = `Fable`
-với `id` là `null`, nên `modelInScope` khớp từng từ với id thật (`claude-fable-5`). Đổi tên
-hiển thị là hỏng âm thầm — hỏng thì cửa sổ đó về `$0`, tức là im lặng chứ không sai số.
+The weekly per-model window matches by **name**: the endpoint sends
+`scope.model.display_name` = `Fable` with `id` set to `null`, so `modelInScope` matches
+word-for-word against the real id (`claude-fable-5`). A display-name change breaks this
+silently — when it breaks, that window shows `$0`, i.e. it goes quiet instead of showing
+a wrong number.
 
-## Còn bao lâu thì reset — ba chỗ, ba cách đặt
+## Time to reset — three places, three placements
 
-Câu "còn bao nhiêu thời gian để tiêu dần" phải trả lời được **mà không rê chuột**, nên mốc
-reset ra chữ trên màn ở cả ba khối. Chỗ đặt thì theo số đồng hồ thật có trong khối:
+The question "how much time is left to spend this down" has to be answerable **without
+hovering**, so the reset mark is spelled out as text in all three blocks. Placement
+follows whatever real clock reading already exists in that block:
 
-- **Thẻ Claude** — góc phải dòng tiêu đề thẻ, mỗi cửa sổ một mốc.
-- **Cursor** — **một dòng cho cả khối**, ngay dưới đầu khối: ba nhóm hạn mức nằm chung một
-  chu kỳ tháng và reset cùng lúc, in ba lần là ba lần nói cùng một câu.
-- **Antigravity** — trên **từng dòng**, mở đầu dòng phụ: bốn hồ × cửa sổ có bốn mốc thật
-  khác nhau.
-- **Dải quản gia** — một dòng riêng dưới thanh, trên câu dự báo.
+- **Claude card** — top-right of the card's header line, one mark per window.
+- **Cursor** — **one line for the whole block**, right under the block's header: all
+  three usage groups share one monthly cycle and reset at the same time, so printing it
+  three times would say the same sentence three times.
+- **Antigravity** — on **each line**, at the start of the sub-line: four pools × windows
+  have four genuinely different reset marks.
+- **Butler strip** — its own line under the bar, above the forecast sentence.
 
-Mọi bản đều mono, nhạt, và **không bao giờ mang màu của thang bỏ phí**: nó đo thời gian,
-mà kênh màu đã dành trọn cho tiền — cùng lý do với `idleMsOf`.
+All of them are monospace, muted, and **never carry the waste color scale** — this is a
+time measurement, and the color channel is spent entirely on money — same reasoning as
+`idleMsOf`.
 
-Mảng đủ rộng để chứa chữ hay không do **container query** quyết, không phải một ngưỡng
-phần trăm trong JS: ràng buộc thật là pixel, mà cùng một "20% bề rộng" ra 40px ở thẻ hẹp
-và 90px ở màn rộng. Đuôi thanh mang sẵn hai bản — `bỏ phí 48%` và `48%` — CSS chọn bản
-vừa chỗ; hai bản là hai chuỗi rời chứ không phải một chuỗi bị cắt, vì tiếng Việt đặt chữ
-trước số còn tiếng Anh đặt sau. Nhãn nào rơi trúng vạch trung bình thì **nép sang nửa
-rộng hơn** của mảng (`dodge()` trong `lib/quota.js`) — vạch không giấu đi được, vì đúng
-lúc nó chồng lên nhãn cũng là lúc nó đang nói điều đáng chú ý nhất.
+Whether a segment has room for its text is decided by a **container query**, not a
+percentage threshold in JS: the real constraint is pixels, and the same "20% of width"
+comes out to 40px on a narrow card and 90px on a wide screen. The tail carries two
+versions — `48% wasted` and `48%` — CSS picks whichever fits; they're two separate
+strings, not one string truncated, because Vietnamese puts the word before the number
+while English puts it after. Whichever label lands on top of the average-pace tick
+**dodges to the wider half** of the segment (`dodge()` in `lib/quota.js`) — the tick
+itself can't be hidden, because the moment it overlaps a label is exactly the moment
+it's saying the most important thing on the card.
 
-Dải quản gia hẹp 214px nên vẫn dùng bản thanh không nhãn — ở đó chữ sẽ chồng lên nhau — và
-tooltip của cả hai chỗ trải thanh ra thành bảng nhãn ↔ trị, theo đúng thứ tự các mảng, kèm
-hai thứ thanh không vẽ được: nhịp `%/giờ` và mốc reset tuyệt đối.
+The butler strip is 214px wide, narrow enough that it always uses the label-less bar
+variant — labels would overlap there — and both spots' tooltips expand the bar into a
+label↔value table, in the same order as the segments, plus the two things the bar can't
+draw: the `%/hour` pace and the absolute reset timestamp.
 
-Chú thích cách đọc thanh thì **gập lại** — hướng dẫn học một lần rồi thôi, để nó mở sẵn
-là mỗi lượt vào màn phải lướt qua sáu dòng chữ mới tới được mấy con số thật sự cần xem.
+The "how to read this bar" caption is **collapsed by default** — it's a one-time lesson,
+not something that should stay open and force six lines of text to scroll past before
+every visit reaches the numbers that actually matter.

@@ -1,221 +1,261 @@
-# Triết lý thiết kế — NOW dashboard
+# Design philosophy — NOW dashboard
 
-*🇻🇳 Tiếng Việt · 🇬🇧 [English](DESIGN.en.md)*
+*🇬🇧 English · 🇻🇳 [Tiếng Việt](DESIGN.md)*
 
-Vì sao dashboard trông và đọc như hiện tại. Bản đồ file + nguồn dữ liệu xem
-[ARCHITECTURE.md](ARCHITECTURE.md); khối hạn mức xem riêng [QUOTA.md](QUOTA.md).
+Why the dashboard looks and reads the way it does. File map + data sources are in
+[ARCHITECTURE.en.md](ARCHITECTURE.en.md); the quota block gets its own doc,
+[QUOTA.en.md](QUOTA.en.md).
 
-## Ngôn ngữ thiết kế
+## Design language
 
-**Quản gia là khối chính.** To nhất, sáng nhất, đặt trên cùng: nói **hai** câu và đưa
-luôn nút để làm điều mỗi câu vừa nói. Cả dashboard đọc trong 30 giây, nhưng khối này đọc
-trong 3 giây — liếc một cái rồi đi thì đây là thứ bạn mang theo.
+**The butler is the primary block.** Biggest, brightest, top of page: it says **two**
+sentences and hands you the button to act on each one right there. The whole dashboard
+reads in 30 seconds, but this block reads in 3 — glance and go, and this is what you
+carry with you.
 
-Hai ô **cố định**, mỗi ô một loại việc ([`public/lib/butler.js`](../public/lib/butler.js)):
+Two **fixed** slots, one per kind of concern
+([`public/lib/butler.js`](../public/lib/butler.js)):
 
-1. **Việc đáng làm** — tối đa **ba** việc, **tự chuyển 8 giây một lần**. Thứ tự là *cái gì
-   thực sự khoá tay bạn lại*, không phải thứ tự loại dữ liệu: quyết định nóng (`now`) →
-   board hết hạn → worktree sắp mất → quyết định sắp phải quyết (`soon`) → chờ người khác
-   → không gì cả thì chỉ thẳng việc kế tiếp.
+1. **Worth doing** — at most **three** items, **auto-advancing every 8 seconds**. The
+   order is *what's actually blocking your hands*, not a data-type order: a hot decision
+   (`now`) → an expired board → a worktree about to be lost → a decision about to become
+   urgent (`soon`) → waiting on someone else → and if there's nothing else, just the next
+   action.
 
-   **Không hạng mục nào là cửa nhị phân nữa**, và đó là lần sửa lưng gần nhất: bản trước
-   chỉ nhận `heat === 'now'` và chỉ nhận mục chờ quá 7 ngày, nên trên máy này — 24 quyết
-   định treo mà không cái nào `now`, hai mục QA đứng đúng 6 ngày — quản gia im hoàn toàn
-   về cả hai loại và cả ô chỉ nói được một câu. Giờ mọi mục đều lên trang, ngưỡng chỉ còn
-   chọn *giọng*: quá 7 ngày mới được nói "nhắc được rồi", chưa thì chỉ thuật lại.
+   **No category is a binary gate anymore**, and that was the most recent correction:
+   the previous version only accepted `heat === 'now'` and only accepted items pending
+   over 7 days, so on this machine — 24 pending decisions with none marked `now`, two QA
+   items sitting at exactly 6 days — the butler went completely silent about both
+   categories, and the whole slot could only ever say one sentence. Now every item makes
+   it onto the page; the threshold only changes *tone*: past 7 days it's allowed to say
+   "this is nag-worthy," before that it just reports.
 
-   Ba là **trần, không phải chỉ tiêu**: hết thứ đang chặn thì ô nói một việc rồi thôi.
-   Kéo việc kế tiếp với hàng đợi vào cho đủ ba thì ngày nào ô cũng đầy, mà một ô ngày nào
-   cũng đầy thì dòng thứ ba thành thứ mắt tự bỏ qua.
+   Three is a **ceiling, not a quota**: once whatever's blocking you runs out, the slot
+   says its piece and stops. Padding it out to three with next-actions and queue items
+   would keep the slot full every single day, and a slot that's always full is a slot
+   the eye learns to skip.
 
-   Tự chuyển **dừng khi rê chuột hoặc focus vào khối** (đang đọc thì chữ không được nhảy),
-   và bấm ‹ › thì **đếm lại từ đầu** chứ không tắt — bấm tay được trọn tám giây để đọc
-   thứ vừa lật tới. Vạch chạy cạnh "2/3" là thứ duy nhất báo trước chữ sắp đổi; thiếu nó
-   thì cái nhảy đọc ra thành trang bị lỗi. Nó cũng là thứ nói ra rằng ô đang dừng —
-   rê chuột vào là vạch biến mất.
+   Auto-advance **pauses on hover or focus into the block** (text shouldn't jump while
+   you're mid-read), and pressing ‹ › **restarts the count from zero** rather than
+   turning it off — a manual click earns the full eight seconds to read whatever it just
+   flipped to. The progress rule next to "2/3" is the only thing that warns the text is
+   about to change; without it, the jump reads as a glitch. It's also what signals the
+   slot is paused — hovering makes the rule disappear.
 
-   Con trỏ đo bằng **vị trí thật ở mỗi cú di chuột**, không bằng cặp
-   `pointerenter`/`pointerleave`. Hai sự kiện kia phải nổ đúng thành cặp mới cân, mà
-   `pointerleave` nổ thiếu ở mấy ca có thật (con trỏ ra khỏi hẳn cửa sổ, `mount()` thay
-   sạch DOM ngay dưới con trỏ) — thiếu một lần là ô kẹt vĩnh viễn ở trạng thái dừng, và
-   trên màn thì kẹt ấy trông y hệt lúc hỏng.
+   The cursor is measured by **actual position on every mousemove**, not by the
+   `pointerenter`/`pointerleave` pair. Those two events have to fire as a matched pair to
+   balance out, and `pointerleave` fails to fire in real cases (cursor leaving the window
+   entirely, `mount()` replacing the DOM right under the cursor) — miss one and the slot
+   sticks in paused state forever, and on screen that stuck state looks exactly like
+   broken.
 
-   **Ô một là một cái thẻ có nền riêng, ô hai chỉ là chữ.** Hai ô cùng là chữ trên nền
-   trắng thì ô cao hơn đọc ra thành ô quan trọng hơn — mà ô hạn mức lúc nào cũng cao gấp
-   đôi vì nó có dòng lý do ba câu cộng mấy câu Cursor/AG. Đua cỡ chữ không gỡ được, chỉ
-   làm cả hai cùng to; cắt chữ ô hai càng không, mấy câu nguồn ngoài kia mỗi tuần mới nói
-   một lần. Nên ô một thắng ở một chiều mà ô hai không tham gia: nền lấy từ chính `--voice`
-   nên đổi màu theo mức gấp, và vẫn chỉ là trang trí — mọi khác biệt có thật đều đã có chữ chở.
+   **Slot one is a card with its own background, slot two is just text.** Both as plain
+   text on a white background makes the taller one read as the more important one — and
+   the quota slot is always roughly twice as tall, since it carries a three-sentence
+   reason plus the Cursor/Antigravity lines. Racing font size doesn't fix it, it just
+   makes both bigger; trimming slot two's text doesn't work either, since those
+   outside-source sentences only speak once a week. So slot one wins along an axis slot
+   two doesn't compete on: a background pulled from `--voice` itself, which shifts color
+   with urgency and remains purely decorative — every real difference is already carried
+   by text.
 
-   Cả ba slide đều có nút chép. Mục **chờ người khác** không có lệnh nào trong skill `now`
-   (khác `chốt <mã>` và `/now update`), nhưng "không có lệnh" không phải "không có gì để
-   đưa": câu trên đã bị cắt cho vừa dòng, nên nút chép ra **bản đầy đủ** theo đúng định
-   dạng `/now update` render trong NOW.md — `{who} — {what} · từ {since}`.
-2. **Hạn mức token** — nói mọi lượt, kể cả ngày đẹp trời, và nhắc chăm hơn khi đang bỏ phí.
-   Chi tiết cách tính/vẽ → [QUOTA.md](QUOTA.md).
+   All three slides have a copy button. The **waiting on someone else** category has no
+   command in the `now` skill (unlike `chốt <mã>` and `/now update`), but "no command"
+   isn't "nothing to hand over": the on-screen sentence gets truncated to fit the line, so
+   the copy button outputs the **full version**, in the exact format `/now update` renders
+   into NOW.md — `{who} — {what} · since {since}`.
+2. **Token quota** — speaks every single time, even on a good day, and speaks more
+   insistently the more it's being wasted. Full breakdown → [QUOTA.en.md](QUOTA.en.md).
 
-Trước đây chỉ có một chỗ nói nên hai loại này phải tranh nhau. Chúng không so được với
-nhau: một quyết định treo ba ngày và một cửa sổ sắp bỏ phí 82% không nằm trên cùng một
-thang gấp, mà ép vào một thang thì thứ thua cuộc biến mất hẳn khỏi trang — trong khi nó
-vẫn đang chờ nguyên ở đó. Riêng "bỏ phí" còn không có mốc nào tự kêu lên: nó chỉ lặng lẽ
-xảy ra lúc reset.
+There used to be only one place to say anything, so these two kinds of concern had to
+compete for it. They're not comparable to begin with: a decision pending three days and
+a window about to waste 82% don't sit on the same urgency scale, and forcing them onto
+one meant the loser vanished from the page entirely — while it was still sitting there,
+unresolved. "Waste" in particular has no moment that announces itself; it just quietly
+happens at reset.
 
-Chữ trên màn hình luôn là **đúng thuật ngữ bạn sẽ nói lại với Claude**: dự án, phiên,
-quyết định, worktree, `chốt <mã>`, `/now update`, `resume`. Từ vựng bám sát skill `now`:
-🎯 Đang làm · ▶ Làm ngay · ⏭ Còn lại · Chờ bạn quyết · Chờ người khác · Hàng đợi · Vừa xong.
+The on-screen text is always **the exact vocabulary you'll say back to Claude**: project,
+session, decision, worktree, `chốt <mã>`, `/now update`, `resume`. The vocabulary tracks
+the `now` skill precisely: 🎯 In progress · ▶ Do next · ⏭ Remaining · Awaiting your call ·
+Waiting on someone else · Queue · Just finished.
 
-Hai nền, và **nền sáng là mặc định** (`app.js`) — phím `t` đổi qua lại.
+Two themes, and **light is the default** (`app.js`) — the `t` key toggles.
 
-### Điểm số lấy từ đâu
+### Where the score numbers come from
 
-Mọi con số phải có thật — một thanh XP bịa ra thì tuần sau nhìn là biết vô nghĩa và cả
-HUD mất tin cậy theo. Đây chính là lý do XP, hạng `D→S`, và dấu ưu tiên `!!` `!` `~` `✓`
-đã bị **bỏ** ở quyết định `chốt d-game` (2026-07-23, lý do đầy đủ nằm ở cuối
-[design/README.md](../design/README.md), mục `d-game`): XP cũ cộng ba trọng số bịa lên
-một con số đã là sàn chứ không phải tổng (`recentlyDone` chỉ giữ 5 mục mỗi dự án), rồi
-quy hết ra một hạng chữ cái.
+Every number has to be real — a fabricated XP bar reads as meaningless a week later and
+drags the whole HUD's credibility down with it. This is exactly why XP, the `D→S` rank,
+and the priority marks `!!` `!` `~` `✓` were **removed** in the decision `chốt d-game`
+(2026-07-23; full reasoning is at the end of [design/README.md](../design/README.md),
+under `d-game`): the old XP added three made-up weights on top of a number that was
+already a floor, not a total (`recentlyDone` keeps only 5 entries per project), then
+collapsed all of it into a single letter grade.
 
-Còn lại đúng phần **đo được thẳng, không quy đổi** —
+What's left is exactly the part that's **measured directly, with no conversion** —
 [`public/lib/game.js`](../public/lib/game.js):
 
-| Hàm | Trả về |
+| Function | Returns |
 |---|---|
-| `streak()` | số ngày liên tiếp có ít nhất một việc xong (cho phép bắt đầu từ hôm qua) |
-| `score()` | `done7` (việc xong 7 ngày) · `streak` · `fresh` (số board còn tươi) |
-| `projectState()` | tình trạng dự án bằng **chữ** ("Đang chặn" / "Cần cập nhật" / "Ổn"), không bằng hạng hay dấu |
+| `streak()` | consecutive days with at least one thing finished (allowed to start from yesterday) |
+| `score()` | `done7` (items finished in 7 days) · `streak` · `fresh` (count of fresh boards) |
+| `projectState()` | project status as **text** ("Blocked" / "Needs update" / "OK"), not a rank or a mark |
 
-Không có công thức cộng trọng số, không có ngưỡng hạng — ba con số trên hiện thẳng dạng số.
+No weighted formula, no rank thresholds — the three numbers above display as plain
+numbers.
 
-Dấu ưu tiên của dự án cố ý **không** dùng chữ S/A/B/C như hạng người chơi cũ — hai thang
-nằm cạnh nhau mà nghĩa ngược nhau (S của bạn là giỏi, S của dự án là đang cháy) thì đọc
-nhầm là chắc chắn.
+Project priority marks deliberately **don't** reuse the old player-rank letters S/A/B/C
+— two scales sitting side by side with opposite meanings (your S is "doing great," a
+project's S is "on fire") is a guaranteed misread.
 
-## Bảy màn — chi tiết
+## Seven screens — in detail
 
-Bảng nhanh 7 màn xem [README.md](../README.md). Chi tiết ba tab của màn Token:
+The quick 7-screen table is in [README.en.md](../README.en.md). Details on the Token
+screen's three tabs:
 
-Tab Cursor có ba mục. **Theo thời gian** dựng từ `GetFilteredUsageEvents` — 5.279 lượt gọi
-trải 148 ngày, mỗi lượt có mốc thời gian, tiền đã tính và `kind` (nên đếm được cả lượt lỗi
-không bị tính tiền). Kéo trọn mất ~10 giây nên nó chạy **ở nền** và chốt vào
-`~/.now-dashboard/cursor-events.json`; mỗi 15 phút kéo lại trọn hai ngày cuối rồi ghi đè —
-không cộng dồn nên không có gì để đếm hai lần. **Chu kỳ đang chạy** là hai chart cũ, do
-chính Cursor cộng. **Nhịp trong editor** dựng từ `GetUserAnalytics` (80 ngày): dòng code
-*được nhận vào file*, tỉ lệ gợi ý Tab được nhận, và loại file đang làm — trục duy nhất
-trong cả màn nói về chất chứ không về khối lượng.
+The Cursor tab has three sections. **Over time** is built from
+`GetFilteredUsageEvents` — 5,279 calls spanning 148 days, each with a timestamp,
+computed cost, and a `kind` (so even error calls that weren't billed can be counted).
+Pulling the whole thing takes ~10 seconds, so it runs **in the background** and lands in
+`~/.now-dashboard/cursor-events.json`; every 15 minutes it re-pulls the last two full days
+and overwrites — no accumulation, so nothing can get double-counted. **Current cycle** is
+two older charts, totaled by Cursor itself. **Editor rhythm** is built from
+`GetUserAnalytics` (80 days): lines *accepted into a file*, the Tab-suggestion acceptance
+rate, and the kind of file being worked on — the one axis in this whole screen about
+quality rather than volume.
 
-⚠️ Tiền của Cursor là **tiền thật Cursor đã tính**; tiền của Claude là **ước lượng** do
-dashboard tự nhân từ bảng giá API. Hai cột đô đó không cộng hay trừ cho nhau được.
+⚠️ Cursor's dollar figure is **real money Cursor already billed**; Claude's is an
+**estimate** the dashboard computes itself from the API price table. The two dollar
+columns can't be added or subtracted against each other.
 
-Tab Antigravity đọc **từng lượt gọi model** từ bảng `gen_metadata` trong SQLite của mỗi
-hội thoại (`src/collect/agturns.js`) — mốc thời gian, tên model và ngữ cảnh là trị ghi
-thẳng trong bản ghi. Cột *token viết ra* là **suy ra**: bản ghi không đặt tên trường, con
-số ấy được chọn vì độ lớn và vì tỉ số so với ngữ cảnh (82×) khớp dải của Claude Code — nên
-nó chỉ nằm trong bảng số, không bao giờ lên cột. Không có chart theo **hồ hạn mức**: nhãn
-`used_claude` trong bản ghi đếm ra 200 lượt ngoài-Gemini trong khi đếm theo tên model chỉ
-ra 161, lệch 20% nên chưa chốt được nghĩa.
+The Antigravity tab reads **individual model calls** from the `gen_metadata` table in
+each conversation's SQLite (`src/collect/agturns.js`) — timestamp, model name, and
+context are values written directly in the record. The *tokens written* column is
+**inferred**: the record doesn't name the field, that number was picked for its
+magnitude and because its ratio to context (82×) matches Claude Code's range — so it
+only ever appears in the numeric table, never on a chart. There's no chart by **quota
+pool**: the `used_claude` label in the record counts 200 non-Gemini calls while counting
+by model name gives 161 — a 20% gap, so the meaning isn't settled yet.
 
-Màn Token mang cả ba công cụ. **Khối hạn mức của cả ba đứng đầu màn, luôn hiện** —
-Claude (5 giờ / 7 ngày / tuần theo model), Cursor (chu kỳ tháng), Antigravity (hai hồ
-× hai cửa sổ) — vì "chỗ nào sắp chặn tôi trước" là câu duy nhất ở đây thật sự gấp.
-Phần chi tiết nằm trong **ba tab theo công cụ** (`←` `→` đi giữa các tab): ba nguồn
-này đo bằng ba đơn vị không quy đổi cho nhau được, nên mỗi lần trên màn chỉ có một
-đơn vị đo. Trước đây Cursor và Antigravity có màn riêng (⬡ Công cụ); `#tools` giờ tự
-chuyển hướng sang màn Token.
+The Token screen carries all three tools. **All three quota blocks sit at the top of the
+screen, always visible** — Claude (5-hour / 7-day / weekly-per-model), Cursor (monthly
+cycle), Antigravity (two pools × two windows) — because "which one runs out on me first"
+is the one question on this screen that's genuinely urgent. Detail lives in **three
+per-tool tabs** (`←` `→` moves between them): these three sources are measured in three
+units that don't convert into each other, so at any moment the screen shows exactly one
+unit. Cursor and Antigravity used to have their own screen (⬡ Tools); `#tools` now
+auto-redirects to the Token screen.
 
-"Luôn hiện" có **đúng một ngoại lệ: máy chưa cài công cụ đó.** Cursor chưa từng chạy
-(`…/Cursor/User/globalStorage/state.vscdb` không có) hoặc Antigravity chưa từng chạy
-(`~/.gemini/antigravity` không có) thì cả khối lẫn tab của nó biến mất — `hasCursor` /
-`hasAg` trong [`public/views/usage.js`](../public/views/usage.js). Đây KHÔNG phải cách xử
-lý chung cho "không đọc được số": đang đóng, chưa đăng nhập, endpoint chết đều giữ khối
-lại và nói ra mắt xích nào đứt, vì cả ba đều là việc người dùng làm được. Chỉ "chưa cài"
-mới là ca không có gì để nói và không bao giờ đổi. Hai ca này trước đây cùng ra một
-reason, nên máy không có Antigravity vẫn đọc được câu *"Antigravity đang đóng"* — một
-câu bảo người ta đi mở ứng dụng không tồn tại.
+"Always visible" has **exactly one exception: the tool was never installed on this
+machine.** If Cursor never ran (no `…/Cursor/User/globalStorage/state.vscdb`) or
+Antigravity never ran (no `~/.gemini/antigravity`), both its block and its tab disappear
+— `hasCursor` / `hasAg` in [`public/views/usage.js`](../public/views/usage.js). This is
+NOT the general handling for "couldn't read the number": closed, not logged in, dead
+endpoint all keep the block and state which link in the chain broke, because all three
+are things the user can go fix. Only "never installed" is the case with nothing to say
+and one that never changes. These two cases used to share one reason string, so a
+machine without Antigravity would read *"Antigravity is closed"* — telling someone to go
+open an app that doesn't exist.
 
-Phím khác: `c` chép việc quản gia đang đề xuất · `o` mở board dự án đầu danh sách ·
-`/` tìm · `r` quét lại · `←` `→` lật dự án khi bảng chi tiết đang mở · `esc` đóng ·
-`?` xem tất cả.
+Other keys: `c` copies the butler's current suggestion · `o` opens the top project's
+board · `/` search · `r` rescan · `←` `→` flip between projects while the detail panel
+is open · `esc` closes it · `?` shows all shortcuts.
 
-## Dùng hàng ngày
+## Daily use
 
-Ba thứ quyết định việc mở dashboard này mỗi sáng có tiện hay không.
+Three things decide whether opening this dashboard every morning is actually pleasant.
 
-**Hành động không phải đi tìm.** Việc làm nhiều nhất là chép một câu rồi dán vào
-Claude — nên nó phải ở ngay chỗ vừa đọc thấy: nút trong khối quản gia (`c`), và
-hàng nút hiện lên khi rê chuột vào thẻ dự án (chép câu làm tiếp · mở thư mục ·
-xem board đầy đủ). Bảng chi tiết đọc được luôn toàn văn `NOW.md` và lật qua dự án
-kế bằng `←` `→`, không phải đóng ra mở lại từng cái.
+**Actions shouldn't require hunting.** The most common action is copying a sentence and
+pasting it into Claude — so it has to sit right where you just read it: a button inside
+the butler block (`c`), and a row of buttons that appears on hover over a project card
+(copy the next-action sentence · open the folder · view the full board). The detail panel
+reads the full text of `NOW.md` and flips between projects with `←` `→`, instead of
+close-and-reopen for each one.
 
-**Trang không được tự nhảy.** Cứ 30 giây trang vẽ lại; nếu vị trí cuộn và các
-khối vừa mở bị đặt lại thì đang đọc dở sẽ mất chỗ. Cả hai đều được chụp lại
-trước khi vẽ và trả về ngay sau — xem `keepUI` trong [`public/app.js`](../public/app.js).
+**The page must never jump on its own.** It redraws every 30 seconds; if scroll position
+and any open sections got reset, whatever you were mid-read on loses its place. Both are
+captured before redraw and restored right after — see `keepUI` in
+[`public/app.js`](../public/app.js).
 
-**Dữ liệu chết phải trông khác dữ liệu sống.** Mất kết nối thì bảng cũ vẫn nằm
-nguyên trên màn hình và trông y hệt bảng mới, nên mất kết nối là một dải cảnh báo
-kèm giờ của ảnh chụp, không phải một chấm đỏ 6px. Giờ cập nhật cũng đứng đầu dòng
-phụ ở thanh trên, trước mọi con số khác.
+**Dead data has to look different from live data.** On disconnect, the old table just
+sits there looking identical to a fresh one, so a disconnect shows as a warning band with
+the snapshot's timestamp, not a 6px red dot. The last-updated time also leads the
+sub-line in the top bar, ahead of every other number.
 
-## Chart không được nói dối
+## Charts must not lie
 
-Màn Thống kê là chỗ nguyên tắc "mọi con số phải có thật" khó giữ nhất, vì một cột
-thấp trông y hệt "hôm đó làm ít" kể cả khi sự thật là "hôm đó board đã quên mất".
+The Stats screen is the hardest place to hold onto "every number has to be real," because
+a short bar looks exactly like "did less that day" even when the truth is "that day fell
+off the board's memory."
 
-`recentlyDone` trong `NOW.json` bị cắt còn vài mục gần nhất **mỗi dự án**. Dự án
-nào chạm trần thì việc cũ hơn biến mất, nên vẽ thô lên là ngày càng lùi về trước
-càng trông ít việc — một xu hướng hoàn toàn do trần lưu sinh ra. `coverage()`
-trong [`public/views/stats.js`](../public/views/stats.js) đo đúng chuyện đó: với mỗi
-ngày, đếm xem bao nhiêu board còn lưu lùi tới ngày ấy. Ngày nào không đủ thì cột
-mờ đi và tooltip nói rõ "số thật cao hơn". Ba chart còn lại (quyết định, hàng đợi,
-giờ mở phiên) là ảnh chụp hiện tại, đếm đủ — đó mới là phần đáng tin nhất.
+`recentlyDone` in `NOW.json` is capped to a handful of the most recent entries **per
+project**. Any project that hits the cap drops older items, so plotting the raw numbers
+makes it look like activity trails off the further back you look — a trend entirely
+manufactured by the retention cap. `coverage()` in
+[`public/views/stats.js`](../public/views/stats.js) measures exactly that: for each day,
+count how many boards still have retained data reaching back that far. Any day that's
+under-covered gets a dimmed bar, and the tooltip says outright "the real number is
+higher." The other three charts (decisions, queue, session hours) are snapshots of the
+current moment, fully counted — that's the part actually worth trusting.
 
-Quy ước vẽ, giữ nguyên ở mọi chart:
+Drawing conventions, held consistently across every chart:
 
-- **Một chart một màu**, trừ khi màu *mang nghĩa* (độ nóng quyết định — kèm chú
-  giải có ký hiệu và chữ, không bao giờ chỉ có màu). Tô mỗi cột một màu theo giá
-  trị là đốt kênh màu để lặp lại đúng cái mà chiều dài cột đã nói.
-  **Quạt tròn là ngoại lệ duy nhất**: một cung tròn không mang chữ nào, cây cầu duy nhất
-  nối nó với tên là ô màu bên chú giải — ở đó màu chính là danh tính. Thang màu xoay
-  *sắc* (200° chia đều) chứ không đổi *độ sáng*: giữ nguyên độ sáng thì mọi mảnh có cùng
-  một mức tương phản với nền (đo được 4,0–4,8:1 nền sáng, 4,6–7,7:1 nền tối), mà vẫn
-  cách nhau xa hơn thang độ sáng cũ khoảng 2,6 lần. Mảnh "còn lại" luôn xám — nó là phần
-  đuôi bị gộp, không phải một hạng mục, nên không được có sắc riêng.
-  Mỗi mảnh có một lớp phủ trong suốt cắt bằng `clip-path` để bắt chuột (cả vành chỉ là
-  một `conic-gradient`, không có phần tử nào ứng với một mảnh). Rê vào thì **những mảnh
-  khác xám đi** — làm sáng mảnh đang trỏ là thứ phải so mới thấy, còn cả vành xám trừ
-  một mảnh thì thấy ngay — và dòng chú giải tương ứng sáng theo, hai chiều. Tooltip của
-  mảnh neo theo **con trỏ** chứ không theo khung phần tử: khung của nó là cả hình tròn,
-  neo theo khung là đặt tooltip đè lên đúng thứ vừa rê vào.
-- **Không ghi số lên mọi cột** — chỉ cột đỉnh; phần còn lại để trục, tooltip và
-  bảng số gánh. Giá trị của thanh ngang ghi ở *đầu* thanh, không phải trong lòng.
-- **Tooltip không bao giờ là lối duy nhất đọc được giá trị**: mỗi chart kèm một
-  bảng số mở ra được, mọi mốc đều tới được bằng `Tab`, cả ô cột là vùng trỏ chứ
-  không riêng phần đã tô.
-- **Tooltip là bảng số thu nhỏ, không phải một câu.** `data-tip` mang một định dạng
-  `nhãn \t trị` (xem [`public/lib/tip.js`](../public/lib/tip.js)); `app.js` dựng nó thành
-  lưới hai cột — nhãn trái, trị phải bằng mono canh số, luôn cùng một chỗ ở mọi tooltip.
-  Một dòng văn xuôi thì đọc tuần tự và hai tooltip cạnh nhau không so được với nhau, vì
-  mỗi con số rơi vào một vị trí khác nhau trên dòng. Chuỗi cũ (không có tab) vẫn hiện
-  nguyên như trước, nên chuyển đổi được từng chỗ một. Nội dung dựng bằng `createElement`
-  + `textContent`, **không** `innerHTML`: đây là chỗ duy nhất chuỗi từ đĩa (tên dự án,
-  tên skill) ra thẳng DOM mà không đi qua `html` — hàm đó tự escape, chỗ này thì không.
-- Cột/thanh dày tối đa 24px, bo 4px ở đầu dữ liệu và vuông ở chân; lưới là nét
-  tóc 1px liền, lùi hẳn về sau; hai mảnh chạm nhau tách bằng **khe nền 2px** chứ
-  không viền — và bề rộng mảnh trừ lại đúng 2px đó để thanh vẫn khớp con số.
+- **One chart, one color**, unless color *carries meaning* (decision urgency — always
+  paired with a legend that has both symbol and text, never color alone). Coloring each
+  bar by its own value burns the color channel repeating exactly what the bar's length
+  already said.
+  **The donut is the sole exception**: an arc carries no text of its own, and the only
+  bridge from it to a name is the legend's color swatch — there, color *is* the identity.
+  The color scale rotates *hue* (200° evenly divided) rather than *lightness*: holding
+  lightness constant keeps every slice at the same contrast against the background
+  (measured 4.0–4.8:1 on light, 4.6–7.7:1 on dark), while still landing about 2.6× farther
+  apart than the old lightness-based scale. The "rest" slice is always gray — it's a
+  collapsed tail, not a category, so it doesn't get its own hue.
+  Each slice has a transparent overlay cut with `clip-path` to catch the pointer (the
+  ring itself is a single `conic-gradient`, no element corresponds to one slice).
+  Hovering makes **every other slice go gray** — brightening the hovered slice is
+  something you'd have to compare to notice, while graying out the whole ring except one
+  slice reads instantly — and the matching legend line lights up too, in both directions.
+  A slice's tooltip anchors to the **cursor**, not the element's bounding box: its box is
+  the entire circle, so anchoring to the box would place the tooltip over whatever was
+  just hovered.
+- **Not every bar gets a number printed on it** — only the peak; everything else is left
+  to the axis, tooltip, and the numeric table. A horizontal bar's value is printed at its
+  *tip*, never inside the bar.
+- **Tooltips are never the only way to read a value**: every chart ships with an
+  expandable numeric table, every data point is Tab-reachable, and the whole bar area is
+  the hit target, not just the painted portion.
+- **A tooltip is a miniature table, not a sentence.** `data-tip` carries a
+  `label \t value` format (see [`public/lib/tip.js`](../public/lib/tip.js)); `app.js`
+  builds it into a two-column grid — label left, value right in aligned monospace,
+  always in the same spot in every tooltip. A prose sentence reads sequentially, and two
+  tooltips side by side can't be compared, since each number lands in a different
+  position in the sentence. The old string format (no tab) still renders exactly as
+  before, so conversion can happen one spot at a time. Content is built with
+  `createElement` + `textContent`, **never** `innerHTML`: this is the one place a string
+  from disk (project name, skill name) reaches the DOM without going through `html` —
+  that helper auto-escapes, this path doesn't.
+- Bars max out at 24px thick, 4px rounded at the data end and square at the base; grid
+  lines are 1px hairlines, pushed well into the background; two adjoining segments are
+  separated by a **2px background gap**, never a border — and the segment width is
+  reduced by exactly that 2px so the bar still matches its number.
 
-Nút **phong cách chart** đổi *hình* mà không đổi số: cùng dữ liệu, cột đọc ra xu hướng,
-quạt tròn đọc ra tỉ lệ, treemap đọc ra cái nào chiếm chỗ. Chế độ ngẫu nhiên bốc **trong
-danh sách hợp lệ của từng kiểu dữ liệu** — chuỗi theo ngày không bao giờ thành quạt tròn,
-bảng xếp hạng không bao giờ thành đường ([`public/lib/skin.js`](../public/lib/skin.js)) — và
-chỉ gieo lại lúc bấm nút, vì trang tự vẽ lại 30 giây một lần. Nút đứng ở tiêu đề khối
-chart chứ **không** ở thanh công cụ trên cùng: thanh trên cùng dành cho thứ đổi cả trang
-(nền, ngôn ngữ, quét lại), còn cái này chỉ đổi được hình của mấy cái chart ngay dưới nó.
+The **chart style** button changes the *shape*, never the numbers: same data, a bar chart
+reads as a trend, a donut reads as a proportion, a treemap reads as who's taking up the
+most space. Random mode only draws **from the valid list for that data shape** — a
+day-by-day series never becomes a donut, a leaderboard never becomes a line
+([`public/lib/skin.js`](../public/lib/skin.js)) — and only reseeds on button press, since
+the page redraws itself every 30 seconds anyway. The button lives in the chart block's own
+header, **not** in the top toolbar: the top toolbar is for things that change the whole
+page (theme, language, rescan), this one only changes the shape of the charts right below
+it.
 
-Thang màu độ nóng đã chạy qua bộ kiểm mù màu (`now/soon/later`, nền `#0b0f15`):
-cặp sát nhau tệ nhất ΔE 12.5 dưới deuteranopia, trên ngưỡng 8. Bốn màu sức khoẻ
-thì chỉ đạt 7.2 — nằm trong dải chỉ hợp lệ khi có kênh phụ, nên chúng không được
-dùng làm màu chart ở đây.
+The urgency color scale has been run through a colorblindness check (`now/soon/later`,
+background `#0b0f15`): the worst adjacent pair scores ΔE 12.5 under deuteranopia,
+above the 8 threshold. The four health colors only reach 7.2 — in the range that's only
+valid with a secondary channel, so they're not used as chart colors here.
 
-Nguyên tắc chung cho mật độ: **cái gì lặp lại thì không phải thông tin.** Bảng
-quyết định bỏ cột độ nóng vì cả khối đã nằm dưới tiêu đề "SẮP CHẶN · 6"; màn phiên
-chỉ ghi trạng thái cho phiên *đang thức* vì ngủ đã là mặc định; bảy repo chưa có
-board gom thành một khối chip thay vì bảy dòng nói cùng một câu.
+General density principle: **whatever repeats isn't information.** The decisions table
+drops the urgency column because the whole block already sits under the heading "ABOUT
+TO BLOCK · 6"; the sessions screen only prints status for sessions that are *currently
+awake*, since asleep is already the default; seven repos with no board yet get collapsed
+into a single chip cluster instead of seven lines all saying the same thing.

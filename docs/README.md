@@ -1,16 +1,16 @@
-# Tài liệu — NOW dashboard
+# Docs — NOW dashboard
 
-*🇻🇳 Tiếng Việt · 🇬🇧 [English](README.en.md)*
+*🇬🇧 English · 🇻🇳 [Tiếng Việt](README.md)*
 
-Bốn chỗ tìm, theo câu hỏi:
+Four places to look, by question:
 
-| Hỏi | Xem |
+| Question | See |
 |---|---|
-| App làm gì, chạy sao, bảy màn có gì | [../README.md](../README.md) |
-| Vì sao thiết kế/chart trông thế này | [DESIGN.md](DESIGN.md) |
-| Kiến trúc, nguồn đọc, bản đồ file, cạm bẫy | [ARCHITECTURE.md](ARCHITECTURE.md) |
-| Khối hạn mức tính/vẽ thế nào | [QUOTA.md](QUOTA.md) |
-| Đổi màu/layout qua Claude Design | [../design/README.md](../design/README.md) |
-| Việc đang làm / quyết định đang treo | [../NOW.md](../NOW.md) |
-| Việc kỹ thuật còn tồn (backlog) | [../BACKLOG.md](../BACKLOG.md) |
-| Luật đã từng bị sửa lưng (cho Claude) | [../CLAUDE.md](../CLAUDE.md) |
+| What the app does, how to run it, what the seven screens are | [../README.en.md](../README.en.md) |
+| Why the design/charts look the way they do | [DESIGN.en.md](DESIGN.en.md) |
+| Architecture, data sources, file map, pitfalls | [ARCHITECTURE.en.md](ARCHITECTURE.en.md) |
+| How the quota block is computed/drawn | [QUOTA.en.md](QUOTA.en.md) |
+| Changing colors/layout through Claude Design | [../design/README.en.md](../design/README.en.md) |
+| What's in progress / decisions pending | [../NOW.md](../NOW.md) *(Vietnamese only — live operational log)* |
+| Open technical work (backlog) | [../BACKLOG.md](../BACKLOG.md) *(Vietnamese only — changes daily)* |
+| Rules learned the hard way (for Claude) | [../CLAUDE.md](../CLAUDE.md) *(Vietnamese only)* |

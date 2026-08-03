@@ -1,150 +1,170 @@
-# Kiến trúc — NOW dashboard
+# Architecture — NOW dashboard
 
-*🇻🇳 Tiếng Việt · 🇬🇧 [English](ARCHITECTURE.en.md)*
+*🇬🇧 English · 🇻🇳 [Tiếng Việt](ARCHITECTURE.md)*
 
-Bản đồ file, nguồn dữ liệu, và bốn cạm bẫy đã từng sập. Vì sao thiết kế trông thế này xem
-[DESIGN.md](DESIGN.md); khối hạn mức xem riêng [QUOTA.md](QUOTA.md).
+File map, data sources, and four pitfalls that have already bitten. For why the design
+looks the way it does, see [DESIGN.en.md](DESIGN.en.md); for the quota block specifically,
+see [QUOTA.en.md](QUOTA.en.md).
 
-## Nó đọc gì
+## What it reads
 
-Tất cả đều là file có sẵn trên máy — dashboard **chỉ đọc, không bao giờ ghi**.
+Everything is a file already sitting on disk — the dashboard **only reads, never writes**.
 
-| Nguồn | Cho ra |
+| Source | Yields |
 |---|---|
-| `~/Projects/*/*/NOW.json` | focus, next action, quyết định, chờ ai, hàng đợi, vừa xong |
-| `~/.claude/sessions/<pid>.json` | phiên đang sống: pid, cwd, tên, lúc mở |
-| `~/.claude/projects/<cwd>/<uuid>.jsonl` | tên phiên (`customTitle`/`aiTitle`) + hoạt động cuối |
-| `~/.claude/tasks/<sessionId>/*.json` | danh sách việc của từng phiên |
-| `git` | nhánh, file chưa commit, số commit lệch khỏi mốc board, worktree phụ |
-| `ps -eo pid,ppid,lstart,args` | app CHỦ của mỗi phiên — Cursor, VS Code, Antigravity, Terminal hay Claude Desktop |
-| `~/Library/…/{Cursor,Code}/User/globalStorage/storage.json` | thư mục các editor đang mở (`backupWorkspaces`) |
-| `~/.gemini/antigravity/agyhub_summaries_proto.pb` | hội thoại Antigravity: tiêu đề, workspace, số bước, mốc tạo/cập nhật |
-| `~/.gemini/antigravity/conversations/<id>.db` | mtime = lần ghi cuối của hội thoại đó |
+| `~/Projects/*/*/NOW.json` | focus, next action, decisions, who it's waiting on, queue, recently done |
+| `~/.claude/sessions/<pid>.json` | live sessions: pid, cwd, name, opened-at |
+| `~/.claude/projects/<cwd>/<uuid>.jsonl` | session name (`customTitle`/`aiTitle`) + last activity |
+| `~/.claude/tasks/<sessionId>/*.json` | each session's todo list |
+| `git` | branch, uncommitted files, commits behind the board's marker, extra worktrees |
+| `ps -eo pid,ppid,lstart,args` | the HOST app of each session — Cursor, VS Code, Antigravity, Terminal, or Claude Desktop |
+| `~/Library/…/{Cursor,Code}/User/globalStorage/storage.json` | which folders each editor has open (`backupWorkspaces`) |
+| `~/.gemini/antigravity/agyhub_summaries_proto.pb` | Antigravity conversations: title, workspace, step count, created/updated marks |
+| `~/.gemini/antigravity/conversations/<id>.db` | mtime = that conversation's last write |
 
-Nguồn sự thật vẫn là `/now update` chạy trong chính dự án. Dashboard là cái gương,
-không phải cái bút.
+The source of truth is still `/now update` run inside the actual project. The dashboard
+is a mirror, not a pen.
 
-### Bậc gói — ba nguồn, ba mức tin cậy
+### Plan tier — three sources, three trust levels
 
-Hạn mức trả lời *"đã tiêu bao nhiêu phần"*; bậc gói trả lời *"bao nhiêu phần **của cái
-gì**"*. Không nguồn nào gửi mẫu số kèm phần trăm, nên thiếu bậc gói thì 58% hôm nay và
-58% tháng trước không so được — nâng gói xong là cả lịch sử lặng lẽ đổi nghĩa.
+Usage answers *"how much of it have I spent"*; plan tier answers *"how much of **what**"*.
+No source sends a denominator alongside its percentage, so without a plan tier, today's
+58% and last month's 58% aren't comparable — upgrade your plan and the whole history
+silently changes meaning.
 
-| Công cụ | Đọc ở đâu | Server tự khai tên gói? |
+| Tool | Read from | Does the server self-report the tier? |
 |---|---|---|
-| Claude | `~/.claude.json` → `oauthAccount.organizationRateLimitTier` | có |
-| Antigravity | RPC `GetUserStatus` ở localhost → `planInfo.planName` | có |
-| Cursor | **suy ra** từ `planUsage.includedSpend` ($20 → Pro) | **không** |
+| Claude | `~/.claude.json` → `oauthAccount.organizationRateLimitTier` | yes |
+| Antigravity | localhost RPC `GetUserStatus` → `planInfo.planName` | yes |
+| Cursor | **inferred** from `planUsage.includedSpend` ($20 → Pro) | **no** |
 
-Chip Cursor vì thế mang **viền chấm** thay vì viền liền, và tooltip nói thẳng nó là phép
-tra ngược bảng giá. Nét chứ không phải màu — theme daltonized làm đỏ/lục hết phân biệt,
-nên màu không bao giờ được là kênh duy nhất chở một khác biệt có thật.
+That's why the Cursor chip has a **dotted** border instead of solid, and its tooltip
+says outright that it's a reverse price-table lookup. A stroke, not a color — the
+daltonized theme collapses red/green, so color can never be the only channel carrying
+a real distinction.
 
-**Chỗ sẽ hỏng trước, và hỏng im lặng:** bảng giá Cursor (`CURSOR_PLANS` trong
-[`src/collect/plans.js`](../src/collect/plans.js)). Anysphere đổi giá hoặc thêm bậc là cái
-tên sai mà không có gì báo. Đã chọn cách hỏng an toàn: giá không tra được thì in đúng số
-đo được (`$25/tháng`) chứ không đoán tên — một con số không tên vẫn đúng, một cái tên
-đoán sai thì người đọc mang đi đối chiếu hoá đơn rồi kết luận cả dashboard hỏng.
+**Where this breaks first, and breaks silently:** the Cursor price table (`CURSOR_PLANS`
+in [`src/collect/plans.js`](../src/collect/plans.js)). If Anysphere changes pricing or
+adds a tier, the label goes wrong with nothing to flag it. The chosen failure mode is
+the safe one: when the price can't be matched, print the measured number (`$25/month`)
+instead of guessing a name — an unlabeled number is still correct, a wrongly-guessed
+label sends the reader off to reconcile against an invoice and conclude the whole
+dashboard is broken.
 
-**Hai chỗ KHÔNG được đọc, dù chúng có vẻ đúng chỗ hơn:**
+**Two places that are deliberately NOT read, even though they look like the right spot:**
 
-- `platform.claude.com/api/oauth/usage` — không có một trường nào về gói. Đo trên máy
-  này: đủ `five_hour`, `seven_day`, `limits[]`, `extra_usage`, `spend`, không chữ tier nào.
-- **Keychain** `claudeAiOauth.rateLimitTier` — CÓ trường, và nó **cũ**. Máy này đọc ra
-  `default_claude_max_5x` trong khi tài khoản đang là Max 20x: giá trị ghi lúc đăng nhập
-  rồi nằm im, nâng gói không viết lại nó. Sai kiểu tệ nhất — đúng định dạng, đúng kiểu,
-  chỉ sai nội dung, nên không phép kiểm tra nào bắt được ngoài đối chiếu bằng mắt với app.
+- `platform.claude.com/api/oauth/usage` — has no field about the plan at all. Measured on
+  this machine: `five_hour`, `seven_day`, `limits[]`, `extra_usage`, `spend` are all
+  there, no tier field anywhere.
+- **Keychain** `claudeAiOauth.rateLimitTier` — DOES have a field, and it's **stale**. On
+  this machine it reads `default_claude_max_5x` while the account is actually on Max
+  20x: the value is written at login and never touched again, so upgrading the plan
+  doesn't update it. The worst kind of wrong — right format, right type, only the
+  content is wrong — so no format check catches it, only eyeballing it against the app.
 
-Ngoại lệ duy nhất của "chỉ đọc": `~/.now-dashboard/` — sổ riêng của dashboard (tổng
-token theo ngày, ảnh chụp hạn mức, và sổ app chủ của từng phiên). Không bao giờ ghi
-vào `~/.claude` hay vào thư mục dự án.
+The one exception to "read-only": `~/.now-dashboard/` — the dashboard's own notebook
+(daily token totals, quota snapshots, and the per-session host-app log). Never written
+to `~/.claude` or into any project directory.
 
-## Ba bề mặt làm việc
+## Three surfaces
 
-![Ba bề mặt làm việc gộp vào một dashboard](assets/surfaces.svg)
+![Three work surfaces feeding one dashboard](assets/surfaces.en.svg)
 
-Máy này chạy ba thứ cùng lúc, và chúng **không cùng loại** — sở chỉ huy phải đo mỗi
-thứ bằng đúng đơn vị của nó:
+This machine runs three things at once, and they are **not the same kind of thing** —
+the command center has to measure each one in its own unit:
 
-| Bề mặt | Đơn vị | Có tiêu token Claude không |
+| Surface | Unit | Burns Claude tokens? |
 |---|---|---|
-| Claude Desktop · Terminal | phiên Claude Code | có |
-| Cursor · VS Code | thư mục đang mở, cộng phiên Claude Code chạy bên trong | có |
-| Antigravity | hội thoại của agent riêng | **không** — nó không đụng gì tới Claude Code |
+| Claude Desktop · Terminal | a Claude Code session | yes |
+| Cursor · VS Code | an open folder, plus any Claude Code session running inside it | yes |
+| Antigravity | a conversation with its own agent | **no** — doesn't touch Claude Code at all |
 
-Từ thẻ dự án bấm được thẳng "mở trong Cursor / Antigravity"; danh sách app cho phép
-khoá cứng ở `server.js`, không nhận tên tự do từ client.
+A project card can jump straight to "open in Cursor / Antigravity"; the list of allowed
+apps is hard-coded in `server.js`, not taken as a free-form name from the client.
 
-## Ba chỗ dễ làm sai
+## Three easy mistakes
 
-Khối hạn mức có cạm bẫy riêng của nó (thang màu hai chiều, cách trừ "cạn trước reset") —
-xem [QUOTA.md](QUOTA.md). Ba chỗ dưới đây là về phiên và host.
+The quota block has its own pitfalls (the two-way color scale, how "ran out before
+reset" is handled) — see [QUOTA.en.md](QUOTA.en.md). The three below are about sessions
+and hosts.
 
-**1. Phiên sống hay đã chết.** `~/.claude/sessions/` không tự dọn. Kiểm tra bằng
-`kill -0 <pid>` sẽ báo sống cho cả những file mà PID đã được hệ điều hành cấp lại cho
-tiến trình khác. Phải đối chiếu thêm thời điểm khởi động tiến trình.
+**1. Live vs. dead session.** `~/.claude/sessions/` doesn't clean itself up. Checking
+with `kill -0 <pid>` will report "alive" even for files whose PID has since been
+reassigned by the OS to an unrelated process. You have to cross-check the process's
+actual start time too.
 
-**2. `procStart` ghi theo UTC, `ps lstart` in theo giờ địa phương.** So chuỗi trực tiếp
-thì **không phiên nào khớp** (lệch đúng 7 tiếng ở máy này). Phải quy về epoch rồi so,
-cho phép sai lệch 2 giây — xem [`src/collect/sessions.js`](../src/collect/sessions.js).
+**2. `procStart` is recorded in UTC, `ps lstart` prints local time.** Comparing the
+strings directly means **no session ever matches** (off by exactly 7 hours on this
+machine). Both have to be normalized to epoch first, with a 2-second tolerance — see
+[`src/collect/sessions.js`](../src/collect/sessions.js).
 
-**3. `claude-vscode` là MỘT cái tên cho BA cái editor.** VS Code, Cursor và mọi bản
-fork khác đều dùng chung extension nên transcript ghi y hệt nhau — trên máy này đó là
-29% lượng token đứng dưới một nhãn không phân biệt được gì. Thứ duy nhất tách được
-chúng là cây tiến trình, mà cây tiến trình thì chết theo phiên; nên
-[`src/collect/hosts.js`](../src/collect/hosts.js) chốt app chủ vào sổ ngay khi còn nhìn
-thấy phiên sống. Phần lịch sử cũ vẫn nằm ở "Editor chưa rõ" và màn Token **nói ra tỉ lệ
-đó** thay vì gộp bừa.
+**3. `claude-vscode` is ONE name for THREE editors.** VS Code, Cursor, and every other
+fork share the same extension, so the transcript logs them identically — on this
+machine that's 29% of token volume sitting under a label that distinguishes nothing.
+The only thing that can tell them apart is the process tree, and the process tree dies
+with the session; so [`src/collect/hosts.js`](../src/collect/hosts.js) commits the host
+app to its log the moment the session is still observably alive. Older history stays
+under "Unknown editor," and the Token screen **states that ratio outright** instead of
+lumping it in blindly.
 
-## Cấu trúc
+## Layout
 
 ```
-server.js              HTTP + SSE, zero-dep; theo dõi fs, gom sự kiện, quét lại mỗi 30s
-src/config.js          ngưỡng sức khoẻ, đường dẫn, cổng
-src/state.js           gộp mọi nguồn thành một snapshot; gắn phiên vào dự án; gửi mốc mở
-                       của từng cửa sổ hạn mức sang lượt quét token rồi gắn tiền ngược lại
-src/collect/now.js     quét NOW.json, validate schema v1, chấm sức khoẻ
-src/collect/sessions.js  phát hiện phiên sống thật + tên phiên + hoạt động cuối
-src/collect/procs.js   một lượt `ps` dùng chung: chống PID tái dùng + tìm app chủ
-src/collect/hosts.js   sổ "phiên nào chạy trong app nào", để quy token về đúng editor
-src/collect/antigravity.js  hội thoại Antigravity, đọc từ protobuf không có tài liệu
-src/collect/agturns.js từng lượt gọi model của Antigravity — mốc thời gian, model, ngữ
-                       cảnh; đọc bảng gen_metadata trong SQLite của từng hội thoại
-src/collect/cursor.js  hạn mức gói Cursor + nhịp trong editor (dòng nhận, tỉ lệ Tab)
-src/collect/cursorevents.js  sổ từng lượt gọi Cursor — trục thời gian; kéo ở NỀN, ghi đè
-                       hai ngày cuối mỗi lượt, chốt vào ~/.now-dashboard/cursor-events.json
-src/collect/editors.js thư mục Cursor/VS Code đang mở
-src/collect/git.js     nhánh, độ lệch, file bẩn, worktree phụ
-src/collect/tasks.js   todo của từng phiên
-src/lib/pb.js          bộ đọc protobuf mức dây, không cần .proto
-public/app.js          khung: định tuyến, phím tắt, ngăn kéo, giữ cuộn qua mỗi lượt vẽ
-public/lib/butler.js   giọng quản gia: HAI ô cố định — việc đáng làm + hạn mức token
-public/lib/game.js     số đo được thẳng: streak, done7, tình trạng dự án bằng chữ
-public/lib/chart.js    cột / vùng / kẹo mút / thanh / quạt tròn / treemap, HTML-CSS thuần
-public/lib/skin.js     phong cách vẽ chart + hàng rào "hình nào hợp với kiểu dữ liệu nào"
-public/lib/quota.js    hạn mức đọc thành câu: đã tiêu, bỏ phí, thang màu, mốc reset, tiền
-                       ước tính của cửa sổ — đích là tiêu hết
-public/lib/tip.js      định dạng tooltip nhãn ↔ trị, nhét vừa một thuộc tính HTML
-public/lib/surface.js  tên và ký hiệu của từng bề mặt làm việc
-public/lib/tabs.js     tab của màn Token: trạng thái sống ngoài DOM, nhớ qua localStorage
-public/styles.css      hệ thiết kế HUD (tokens, khung góc, thanh đo)
-public/views/          7 màn, mỗi màn một file — trừ views/tools.js là nửa Cursor +
-                       Antigravity của màn Token, không phải một màn riêng
+server.js              HTTP + SSE, zero-dep; watches fs, batches events, rescans every 30s
+src/config.js           health thresholds, paths, port
+src/state.js            merges every source into one snapshot; attaches sessions to
+                        projects; passes each quota window's open time to the token
+                        scan so it can attach the dollar estimate back
+src/collect/now.js      scans NOW.json, validates schema v1, scores health
+src/collect/sessions.js  detects genuinely live sessions + session name + last activity
+src/collect/procs.js    one shared `ps` pass: guards against PID reuse + finds host app
+src/collect/hosts.js    log of "which session ran in which app," to attribute tokens
+                        to the right editor
+src/collect/antigravity.js  Antigravity conversations, read from an undocumented protobuf
+src/collect/agturns.js  each individual Antigravity model call — timestamp, model,
+                        context; reads the gen_metadata table in each conversation's SQLite
+src/collect/cursor.js   Cursor plan usage + in-editor rhythm (lines accepted, Tab
+                        acceptance rate)
+src/collect/cursorevents.js  log of individual Cursor calls — the timeline; pulled in the
+                        BACKGROUND, overwrites the last two days each round, persisted to
+                        ~/.now-dashboard/cursor-events.json
+src/collect/editors.js  open Cursor/VS Code folders
+src/collect/git.js      branch, drift, dirty files, extra worktrees
+src/collect/tasks.js    each session's todo list
+src/lib/pb.js           wire-level protobuf reader, no .proto file needed
+public/app.js           shell: routing, keybindings, drawers, keeps scroll position across
+                        every redraw
+public/lib/butler.js    the butler's voice: TWO fixed slots — worth-doing items + token quota
+public/lib/game.js      numbers measured directly: streak, done7, project status as text
+public/lib/chart.js     bar / area / lollipop / stacked bar / donut / treemap, plain HTML+CSS
+public/lib/skin.js      chart rendering styles + the "which shape fits which data" guardrail
+public/lib/quota.js     turns quota numbers into sentences: spent, wasted, color scale,
+                        reset time, the window's estimated dollar cost — the target is
+                        to spend it all
+public/lib/tip.js       tooltip label↔value formatting, packed into a single HTML attribute
+public/lib/surface.js   name and glyph for each work surface
+public/lib/tabs.js      Token screen's tab state, kept outside the DOM, remembered via
+                        localStorage
+public/styles.css       the HUD design system (tokens, cornered frames, gauges)
+public/views/           7 screens, one file each — except views/tools.js, which is half
+                        the Cursor + Antigravity content of the Token screen, not a
+                        screen of its own
 ```
 
-`/api/now-md?project=<id>` trả toàn văn `NOW.md`; bản dựng markdown tối thiểu nằm
-ngay trong `app.js` — chỉ đủ tiêu đề, gạch đầu dòng, đậm/nghiêng, `code`, trích
-dẫn, đúng những gì `/now update` sinh ra. Không kéo thư viện về chỉ để hiện một
-file mình tự sinh; nội dung được escape trước rồi mới nhận diện cú pháp.
+`/api/now-md?project=<id>` returns the full text of `NOW.md`; the minimal markdown
+renderer lives right inside `app.js` — just enough for headings, bullets, bold/italic,
+`code`, blockquotes, exactly what `/now update` generates. No library pulled in just to
+display a file the app generates itself; content is escaped first, then syntax is
+recognized.
 
-## Chỉnh
+## Configuring
 
-Đặt biến môi trường trước khi chạy:
+Set environment variables before running:
 
 ```bash
 NOW_PORT=5000 NOW_ROOTS=~/Projects,~/work ./bin/now-dash
 ```
 
-Ngưỡng "board còn tin được không" nằm ở `HEALTH` trong
-[`src/config.js`](../src/config.js) — mặc định: lệch từ 3 ngày / 5 commit, hết hạn từ
-7 ngày / 15 commit.
+The "can this board still be trusted" thresholds live in `HEALTH` in
+[`src/config.js`](../src/config.js) — defaults: drifting from 3 days / 5 commits,
+expired from 7 days / 15 commits.
