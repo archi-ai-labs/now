@@ -281,6 +281,17 @@ export const CONVO_KEEP_DAYS = 14;
 /** Cửa sổ tối đa của chart token theo ngày. */
 export const USAGE_DAYS = 45;
 
+/**
+ * Giá ba gói đang trả, USD/THÁNG — config tay, sửa ở đây khi đổi gói.
+ *
+ * Con số phỏng vấn chốt 28/7 (docs/PROPOSAL-nhin-lai.md, câu 9–12): Claude Max 20x $200,
+ * Cursor Pro $20, Google AI Pro (Antigravity) $20. Không đọc được từ nguồn nào — Cursor
+ * chỉ khai `includedSpend` (trùng giá gói là tình cờ của bậc Pro), hai nguồn kia không
+ * khai gì. Cái giá của config tay: đổi gói mà quên sửa thì mọi con số tiền của màn
+ * "Nhìn lại" sai — nên màn in giá đang khai NGAY CẠNH số, để mắt bắt được, không cần nhớ.
+ */
+export const PLANS = { claude: 200, cursor: 20, antigravity: 20 };
+
 /*
  * `USAGE_TTL_MS` từng đứng ở đây: trần tuổi 15 giây cho một lượt quét token. Bỏ đi vì
  * nó ngắn hơn chính nhịp quét nền 30 giây, nên nhịp nền trượt memo ở MỌI lượt — cái

@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { briefing } from '../public/lib/butler.js';
-import { bindingOf, cardText, idleMsOf, stripRows, toneOf, verdictOf } from '../public/lib/quota.js';
+import { bindingOf, cardText, idleMsOf, quotaBar, stripRows, toneOf, usedText, verdictOf } from '../public/lib/quota.js';
+import { rawText } from '../public/lib/dom.js';
 
 /**
  * Quản gia có HAI ô cố định, và cái đắt nhất ở đây là chúng không tranh nhau.
@@ -20,6 +21,15 @@ import { bindingOf, cardText, idleMsOf, stripRows, toneOf, verdictOf } from '../
  */
 
 const H = 3600_000;
+
+/**
+ * Lời chào đổi theo GIỜ MÁY — năm bản, không phải một (`greet` trong lib/butler.js).
+ *
+ * Bản trước chốt chết `/^Chào /`, nên hai test này đỏ mỗi khi chạy sau 22h hoặc trước 5h:
+ * lúc ấy quản gia nói "Khuya rồi, sếp". Thứ cần canh là "có chào hay không", không phải
+ * chào bằng câu nào — nên khuôn phải phủ cả năm bản.
+ */
+const GREET = '(?:Chào buổi (?:sáng|trưa|chiều|tối)|Khuya rồi), sếp';
 const D = 86400_000;
 
 /** Một cửa sổ như `collect/quota.js` dựng ra, đã tính sẵn phần trôi qua và dự báo. */
@@ -150,7 +160,7 @@ test('quyết định `soon` cũng lên được ô việc — không cái nào 
   assert.equal(b.works[0].key, 'soon');
   assert.match(b.works[0].text, /d-cu/, 'lấy cái CŨ NHẤT, không phải cái đầu danh sách');
   assert.doesNotMatch(b.works[0].text, /d-xa/, '`later` không được đếm vào đây');
-  assert.match(b.works[0].text, /^Chào .*\b2 quyết định\b/, 'số đếm chỉ tính `soon`');
+  assert.match(b.works[0].text, new RegExp(`^${GREET}.*\\b2 quyết định\\b`), 'số đếm chỉ tính `soon`');
   assert.match(b.works[0].action.copy, /^chốt d-cu/);
 });
 
@@ -232,8 +242,8 @@ test('lời chào chỉ ở slide ĐẦU — bấm sang slide hai không bị ch
       projects: [stalePrj('board-cu')],
     }),
   );
-  assert.match(b.works[0].text, /^Chào /, 'slide đầu chào một lần');
-  assert.doesNotMatch(b.works[1].text, /^Chào /);
+  assert.match(b.works[0].text, new RegExp(`^${GREET}`), 'slide đầu chào một lần');
+  assert.doesNotMatch(b.works[1].text, new RegExp(`^${GREET}`));
   // Và lời chào không được ăn mất chữ đang phải nói việc.
   assert.match(b.works[1].text, /board-cu/);
 });
@@ -310,6 +320,24 @@ test('cửa sổ đã lăn thì không còn là mối lo — số cũ không đ�
   assert.equal(toneOf(rolled), 'mute');
 });
 
+test('cửa sổ đã lăn thì KHÔNG in con số nào — số ấy nói về một chu kỳ khác', () => {
+  // `used` của một cửa sổ đã qua mốc reset là số cuối của chu kỳ ĐÃ ĐÓNG. In nó dưới
+  // nhãn của cửa sổ đang chạy là để người đọc hiểu ngược, mà đây là con số to nhất khối.
+  //
+  // Ca thật 3/8: token OAuth hết hạn lúc 17:08 nên bản đọc kẹt ở `used: 6`; tới 23:20 đã
+  // trôi qua HƠN MỘT cửa sổ 5 giờ trọn vẹn, tức 6% còn không phải số của chu kỳ liền
+  // trước. Popover, thẻ màn Token, dải quản gia và cả huy hiệu thanh menu đều in "6%".
+  const rolled = { ...win(6, 1, 5 * H), expired: true };
+  assert.equal(usedText(rolled), '—');
+  assert.equal(usedText(win(6, 0.5, 5 * H)), '6%', 'cửa sổ đang chạy thì vẫn in số');
+  assert.equal(usedText(null), '—', 'không có cửa sổ cũng là không có số');
+
+  // Thanh phải im theo, không được vẽ một mảng đặc dài 6% cãi lại dấu gạch ngay trên nó.
+  const bar = rawText(quotaBar(rolled, { labels: true }));
+  assert.match(bar, /qb-fill" style="width:0%/);
+  assert.doesNotMatch(bar, /qb-waste/);
+});
+
 /* ── Đích là tiêu hết ───────────────────────────────────────────────────────────
    Nhóm này canh đúng một chỗ dễ trượt về nếp cũ: coi thanh dài là nguy, thanh ngắn là
    an toàn. Hạn mức reset theo cửa sổ và KHÔNG cộng dồn, nên phần chưa dùng lúc reset
@@ -351,6 +379,31 @@ test('bốn băng cắt đúng ở ±10% và 50% bỏ phí', () => {
   assert.equal(verdictOf(win(56, 0.5, 7 * D)), 'over'); // 112 → bỏ phí −12
 });
 
+test('không có dự phóng thì thanh KHÔNG vẽ mảng bỏ phí', () => {
+  // Bỏ phí là một lời tiên đoán, nên nó chỉ tồn tại khi có nhịp để suy. Bản trước để
+  // `projected` rơi về `used` khi thiếu dự báo, và `100 - used` vẫn ra một con số trông
+  // hợp lý — nên cái thanh khẳng định thay cho một phép tính chưa từng chạy.
+  // Ba ca gặp thật cùng lúc trên máy 3/8: khung 5 giờ đã sang chu kỳ mới vẽ "bỏ phí 94%",
+  // Cursor vừa mở cửa sổ vẽ "bỏ phí 91%" ngay cạnh câu "chưa đủ để đọc nhịp", và quỹ 5
+  // giờ của Antigravity ở 0% vẽ "bỏ phí 100%".
+  const blind = (reason, used) => ({ ...win(used, 0.5, 5 * H), forecast: { known: false, reason } });
+  for (const [reason, used] of [
+    ['rolled', 6],
+    ['early', 8.9],
+    ['unknown', 40],
+  ]) {
+    const bar = rawText(quotaBar(blind(reason, used), { labels: true }));
+    assert.doesNotMatch(bar, /qb-waste/, `${reason}: không được có mảng bỏ phí`);
+    assert.doesNotMatch(bar, /wasting/, `${reason}: rãnh không được nhuốm sắc cảnh báo`);
+    assert.match(bar, new RegExp(`qb-fill" style="width:${used}%`), `${reason}: mảng đặc vẫn vẽ đúng`);
+  }
+
+  // Có dự báo thì mảng vẫn phải còn — đây là ca thường, không được sửa lây sang.
+  const seen = rawText(quotaBar(win(25, 0.5, 7 * D), { labels: true }));
+  assert.match(seen, /qb-waste/);
+  assert.match(seen, /bỏ phí 50%/);
+});
+
 test('ngồi không là chi phí THỜI GIAN — nó ra chữ, không ra màu', () => {
   // Ca thật: khung tuần đã tiêu 97% lúc còn 10% cửa sổ. Nó hạ cánh ở 107,8% nên màu là
   // xanh lá — đúng đích về tiền — nhưng vẫn cạn sớm hơn reset khoảng nửa ngày, và câu
@@ -374,8 +427,8 @@ test('ngưỡng "ngồi không" đo theo cửa sổ, và có sàn cho khung ng�
    Hai nguồn này cũng trả tiền theo chu kỳ không cộng dồn, nên "tiêu không hết" ở đó
    cũng là tiền mất y như bên Claude. Nhưng chúng đổi chậm hơn cả chục lần, nên chúng
    không có thanh trong dải — dải là của hạn mức Claude. Thay vào đó là một câu văn
-   xuôi dưới câu chính, và luật chen vào giữ nguyên: xuất hiện KHI VÀ CHỈ KHI có
-   chuyện (bỏ phí / sắp chạm trần), và không bao giờ cướp câu chính — bỏ phí không gấp. */
+   xuôi dưới câu chính, và luật chen vào là: xuất hiện KHI VÀ CHỈ KHI đang BỎ PHÍ, và
+   không bao giờ cướp câu chính — bỏ phí không gấp. */
 
 test('Cursor tiêu không hết thì thành một CÂU cảnh báo, không phải hàng trong dải', () => {
   // Chu kỳ tháng trôi 60% mà mới tiêu 20% → hạ cánh ~33%, bỏ phí ~67%.
@@ -403,6 +456,23 @@ test('Antigravity: khung TUẦN bỏ phí thì có câu, khung 5 giờ thì khô
   const b = briefing(state(onTarget, { agQuota }));
   assert.ok(b.tools.find((l) => l.key === 'ag-gemini-weekly'), 'khung tuần bỏ phí phải có câu');
   assert.equal(b.tools.find((l) => l.key === 'ag-gemini-5h'), undefined, 'khung 5 giờ không được lên tiếng');
+});
+
+test('nguồn ngoài tiêu vượt cả cửa sổ thì KHÔNG lên tiếng — dự phóng ấy mỏng nhất', () => {
+  // Khung TUẦN của Antigravity, mới trôi 7% (~12 giờ) mà đã tiêu 34%: ngoại suy ra hơn
+  // 400%, và câu sinh ra là "cạn sau …, rồi ngồi không … tới lúc reset". Mười hai tiếng
+  // đủ qua cửa `early` (3% cửa sổ ≈ 5 giờ với khung tuần), nên MỘT buổi làm mạnh là đủ
+  // dựng lên một tai hoạ cả tuần. Gỡ ngày 4/8: dòng văn xuôi chỉ chở kênh bỏ phí.
+  const weekly = { ...win(34, 0.07, 7 * D), window: 'weekly', label: 'Weekly', key: 'gpt-weekly' };
+  const agQuota = { ok: true, groups: [{ key: 'gpt', name: 'Claude and GPT models', buckets: [weekly] }] };
+  const b = briefing(state(onTarget, { agQuota }));
+
+  assert.equal(toneOf(weekly), 'cheer', 'ca dựng ra đúng là băng vượt nhịp, không phải ca khác');
+  assert.deepEqual(b.tools, [], 'băng vượt nhịp không được thành câu');
+
+  // Cursor vượt nhịp cũng vậy — luật theo BĂNG, không theo tên nguồn.
+  const cursor = { ok: true, total: win(34, 0.07, 30 * D) };
+  assert.deepEqual(briefing(state(onTarget, { cursor })).tools, []);
 });
 
 test('nguồn ngoài không đọc được thì im lặng: dải giữ nguyên, không câu nào', () => {

@@ -359,9 +359,13 @@ export async function collectQuota({ now = Date.now(), watched = true } = {}) {
   if (!memo) memo = await readCache();
   if (memo && now - memo.at < QUOTA_TTL_MS) return { ...parseApiQuota(memo.body, memo.at, now), calls };
 
-  // Không ai mở tab thì không gõ cửa endpoint. Nhịp dựng lại trạng thái 30 giây vẫn
-  // chạy kể cả khi đã đóng hết tab, nên bỏ chốt này là dashboard nằm không vẫn gọi
-  // 720 lượt mỗi ngày cho không ai đọc.
+  // Không bề mặt nào đang BÀY con số này thì không gõ cửa endpoint. Nhịp dựng lại trạng
+  // thái 30 giây vẫn chạy kể cả khi đã đóng hết tab, nên bỏ chốt này là dashboard nằm
+  // không vẫn gọi 720 lượt mỗi ngày cho không ai đọc.
+  //
+  // "Bề mặt" chứ không phải "tab": mục trên thanh menu cũng in ra hai con số này, nên nó
+  // cũng bật cờ (`badge` trong `buildState`). Đọc `watched` ở đây thành "có chỗ nào đang
+  // hiện số", không phải "có cửa sổ trình duyệt nào đang mở".
   const attempt = !watched
     ? { ok: false, reason: 'idle' }
     : now < blockUntil

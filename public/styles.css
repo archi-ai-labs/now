@@ -36,7 +36,12 @@
    bắt đầu tải font — hai vòng nối tiếp trước khi trang vẽ được — và khi máy không
    có mạng thì nó treo cả trang cho tới lúc DNS bỏ cuộc, dù dữ liệu đều ở localhost. */
 
-:root {
+/* `.theme-light` là anh em của `.theme-dark` ở khối dưới: hai lớp để LẬT NỀN CỦA MỘT
+   KHỐI mà không đụng vào thẻ html. Bàn chỉnh cần cả hai — nó xem popover ở cả hai nền
+   trong lúc chính cái panel đang đọc dở phải đứng yên, mà lật `data-theme` trên html thì
+   cả trang nhảy theo. Có `.theme-dark` từ đầu nhưng thiếu vế còn lại, nên trên máy đang
+   để nền tối thì không có đường nào xem thử nền sáng. */
+:root, .theme-light {
   --bg: #eef1f6;
   --surface: #ffffff;
   --surface-2: #f3f5f9;
@@ -48,6 +53,9 @@
   --text-3: #636a77;
   --accent: #4f46e5;
   --accent-ink: #4338ca;
+  /* Chữ nằm TRÊN nền `--accent`. Không phải lúc nào cũng trắng: bản tối lấy tím nhạt
+     làm accent, chữ trắng trên nó chỉ được 2,9:1 — dưới ngưỡng đọc của chữ 11px. */
+  --on-accent: #ffffff;
   --ok: #15803d;
   --warn: #b45309;
   --crit: #dc2626;
@@ -95,6 +103,7 @@
   --text-3: #8f96a4;
   --accent: #8b83f7;
   --accent-ink: #b4aefb;
+  --on-accent: #14161c;
   --ok: #46c47c;
   --warn: #e0a24a;
   --crit: #f26b64;
@@ -613,6 +622,28 @@ button { font: inherit; color: inherit; background: none; border: none; margin: 
 }
 .qb-mark.l { translate: -7px 0; }
 .qb-mark.r { translate: calc(-100% + 7px) 0; }
+
+/* Hai chỗ đứng KHÁC cho nhãn dự phóng, đang bày ở bàn chỉnh popover để chọn.
+   Cả hai đều phá luật "số nằm trong đúng mảng nó nói về" — nên chúng phải trả giá, và
+   giá được ghi thẳng ở đây chứ không giấu đi. */
+/* `below`: nhãn rời hẳn xuống dưới thanh. Giá là 15px mỗi cửa sổ (`.qbar.lab`) và một
+   phép ghép nữa cho người đọc: mũi tên không còn dính vào mảng nào cả. */
+.qb-est {
+  position: absolute; right: 0; bottom: -1px; white-space: nowrap;
+  font: 10px var(--mono); color: var(--text-3); font-variant-numeric: tabular-nums;
+}
+/* `tail`: nhãn neo vào mép phải rãnh. Giá là chỗ của nhãn bỏ phí — nó phải rút về bản
+   trơ số và dạt sang trái, nếu không hai nhãn chồng lên nhau ở đúng mọi cửa sổ có bỏ
+   phí, tức là gần như mọi cửa sổ. */
+.qb-tail {
+  position: absolute; top: 50%; right: 3px; translate: 0 -50%;
+  padding: 0 4px; border-radius: 3px; white-space: nowrap;
+  font: 700 10px var(--mono); font-variant-numeric: tabular-nums;
+  background: var(--surface-3); color: var(--text-2);
+}
+.qbar.est-tail .qb-waste > b { place-content: center start; padding-left: 6px; }
+.qbar.est-tail .qb-waste > b > em { display: none; }
+.qbar.est-tail .qb-waste > b > span { display: inline; }
 
 /* Khung hẹp: cột tụt xuống dưới câu, và vì lúc đó nó chạy hết bề ngang nên các khung
    xếp cạnh nhau thay vì chồng lên nhau. */
@@ -1637,3 +1668,470 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
    (lỗi cũ số 4). Chấm chỉ để liếc nhanh; nghĩa nằm ở chữ ngay bên cạnh. */
 .st { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); }
 .st::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--text-3)); flex: none; }
+
+/* ── Màn Nhìn lại (phím 8) ─────────────────────────────────────────────────────
+   Bố cục là hợp đồng đã duyệt: design/mock-nhin-lai.html (28/7). Hình học chép từ
+   mock, màu đi qua token của app nên hai nền tự khớp. Cột ăn sắc theo thang bỏ phí
+   của lib/quota.js — và không bao giờ là kênh duy nhất: cột nào cũng mang nhãn %,
+   tooltip chữ, và cột theo-dõi-hụt về xám kèm chú thích (máy này dùng theme
+   daltonized, màu đứng một mình là không đọc được). */
+
+.lb-tools { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.lb-q { margin: -4px 0 14px; }
+
+.lb-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 14px; }
+.lb-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r, 12px); padding: 16px; box-shadow: var(--shadow); }
+.lb-card h4 { font-size: 13.5px; font-weight: 700; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 0; }
+.lb-plan { font-weight: 500; font-size: 11.5px; color: var(--text-3); }
+
+.lb-lead { font: 700 21px/1.25 var(--mono); font-variant-numeric: tabular-nums; margin: 8px 0 2px; }
+.lb-lead small { font: 500 12px/1.4 var(--sans); color: var(--text-2); }
+.lb-line { font-size: 12.5px; color: var(--text-2); margin-top: 6px; }
+.lb-line b { font-weight: 600; }
+.lb-money { font-size: 12.5px; color: var(--text-2); margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+
+/* Giọng chữ theo thang bỏ phí — cùng biến với mọi màn khác. */
+.lb-ok { color: var(--ok); }
+.lb-warn { color: var(--warn); }
+.lb-crit { color: var(--crit); }
+.lb-cheer { color: var(--cheer); }
+.lb-mute { color: var(--text-3); }
+
+/* Dãy cột: cột là DIV tự mang chiều cao, mọc từ đáy; nhãn đậu trên đầu cột nên khối
+   chừa sẵn 17px trần (padding-top) cho chữ khỏi tràn ra ngoài thẻ. */
+.lb-bars { display: flex; align-items: flex-end; gap: 6px; height: 74px; margin: 22px 0 4px; }
+.lb-bar { flex: 1; min-width: 10px; max-width: 44px; border-radius: 4px 4px 0 0; position: relative; }
+.lb-bar i { position: absolute; top: -17px; left: 50%; translate: -50% 0; font: 600 10px var(--mono); font-style: normal; color: var(--text-2); white-space: nowrap; }
+.lb-bar.ok { background: var(--ok); }
+.lb-bar.warn { background: var(--warn); }
+.lb-bar.crit { background: var(--crit); }
+.lb-bar.cheer { background: var(--cheer); }
+.lb-bar.mute { background: var(--border-strong); }
+.lb-bar.run { outline: 2px dashed var(--accent-line); outline-offset: 2px; }
+.lb-bar:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.lb-cap { display: flex; justify-content: space-between; gap: 8px; font: 10.5px var(--mono); color: var(--text-3); }
+.lb-cap span:nth-child(2) { text-align: center; }
+.lb-cap span:last-child { text-align: right; }
+
+/* Dải ngày/tuần của khối B, C — thẻ bề ngang trọn màn, cột thấp hơn thẻ khối A. */
+.lb-strip { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r, 12px); padding: 14px 16px; box-shadow: var(--shadow); margin-bottom: 12px; }
+.lb-strip h4 { font-size: 12.5px; font-weight: 600; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin: 0; }
+.lb-strip h4 span { font-weight: 400; font-size: 11.5px; color: var(--text-3); }
+.lb-strip .lb-bars { height: 46px; }
+.lb-strip .lb-bar { min-width: 4px; }
+
+.lb-total { font-size: 12.5px; color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm, 8px); padding: 10px 14px; margin-top: 14px; }
+.lb-prose { border-left-color: var(--warn); }
+.lb-foot { margin-top: 26px; }
+
+@media (max-width: 620px) {
+  .lb-bars { gap: 3px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   POPOVER THANH MENU — public/menubar.html
+
+   Rộng cố định 360pt vì popover của macOS không co giãn theo nội dung sau khi đã
+   bật ra. Nền vẫn là `--bg` của theme — chỉ thêm hai vệt sáng trên CÙNG mặt phẳng
+   ấy, không phải một lớp nền thứ hai: một lớp nữa chồng lên vật liệu mờ của macOS
+   thì viền popover hiện thành hai đường.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.mb-body { background: var(--bg); color: var(--text); font-family: var(--sans); margin: 0; }
+/* Bề rộng do TRANG đặt, không phải Swift: nó là một quyết định bố cục, và trang khai
+   lại số này cho app qua `webkit.messageHandlers.size` mỗi lần vẽ. Đổi bề rộng vì thế
+   không phải dựng lại app — xem `menubar-demo.html`. */
+/* Khoảng cách 11px, không phải 14. Nhãn nhóm có sợi kẻ đã gánh việc ngăn hai LOẠI nội
+   dung, nên khoảng trống thôi phải gánh nó — mà một khoảng trống đủ to để nói "hết
+   loại này" thì cũng đủ to để mỗi mục trong cùng một loại trôi rời khỏi nhau. */
+/* MỘT nguồn sáng cho cả popover, ở TRÊN-TRÁI. Mặt trời trong khung, vệt nắng hắt vào
+   nền, cạnh sáng của quản gia, gờ sáng trên mỗi cái thanh — tất cả quay về cùng một
+   phía. Hai nguồn thì mỗi component tự bịa một hướng và cả trang trông như dán.
+
+   Sắc nắng là CAM SAN HÔ chứ không phải hổ phách: `--warn` là hổ phách, mà nắng thì
+   phủ khắp trang nên nó không được trùng sắc với một băng cảnh báo. Nó cũng ĐỨNG YÊN —
+   thứ không bao giờ đổi thì không đọc thành trạng thái. */
+.mb-wrap {
+  --skin: #a78bfa;
+  --skin-deep: #2a1b4d;
+  /* `--sun-hi` là ánh sáng dùng cho MẤY CÁI THANH, và nó cố định qua cả bốn buổi. Khung
+     trời đổi được vì nó là tranh; cái thanh thì là dữ liệu, mà một mảng đổi sắc theo giờ
+     là một mảng người đọc phải hỏi "sáng nay nó có màu này không". Buổi chỉ đổi `--lux`
+     và `--lux-hi` — hai token của riêng khung trời và vệt nắng nền. */
+  --sun: #ff9d5c;
+  --sun-hi: #ffe3c2;
+  --lux: #ff9d5c;
+  --lux-hi: #ffe3c2;
+  --sky-a: #130e29;
+  --sky-b: #2a1b4d;
+  --sky-c: #48294c;
+  --star: 0.5;
+  /* Quầng sáng quanh vật phát sáng. Mặt trăng KHÔNG được lấy cùng cường độ với mặt trời:
+     cùng một quầng đặt trên nền đêm gần đen thì nó nở ra thành một vệt trắng to hơn cả
+     cái vật, và cái vật thì mất hình. */
+  --halo: 62%;
+  /* Ba núm của VỆT NẮNG NỀN, tách ra thành token để bàn chỉnh vặn được bằng tay rồi mới
+     chốt số vào đây (xem `menubar-demo.js`, khối "Ánh sáng"). Không có núm nào trong số
+     này đổi theo buổi: nắng đổi SẮC theo giờ (`--lux`), còn nó phủ rộng bao nhiêu và đậm
+     bao nhiêu thì là một quyết định bố cục — đổi cả cái đó theo giờ thì bốn buổi thành
+     bốn bản thiết kế khác nhau.
+     `--wash-k` nhân vào cả hai trục của mỗi vệt, nên vặn nó là phóng to thu nhỏ cùng một
+     hình chứ không phải kéo méo nó.
+     Chốt 3/8 sau một buổi vặn ở bàn chỉnh: rộng hơn và đậm hơn bản đầu (1 · 20% · 15%).
+     Đổi số ở đây thì đổi cả `LIGHT0` trong `menubar-demo.js` — bàn chỉnh đánh dấu "đã
+     chốt" theo bảng ấy, mà một cái dấu nói sai chỗ thì tệ hơn không có dấu nào. */
+  --wash-k: 1.4;
+  --wash-sun: 30%;
+  --wash-skin: 22%;
+  /* Hai núm của VỆT LOÁ dọc bề dày thanh hạn mức. Khai ở đây chứ không ở `.qb-fill` dù
+     chỉ mình nó dùng: cùng với `--wash-*` bên trên, chúng là bộ ánh sáng của cả popover,
+     và một bộ nằm rải hai chỗ thì bàn chỉnh phải với tay vào hai chỗ.
+     `--gloss` nhân vào MỌI độ mờ của lớp loá — kể cả gờ sáng `box-shadow`, vì gờ ấy là
+     mép trên của cùng một mặt bóng; để nó ngoài thì vặn loá về 0 mà thanh vẫn còn một
+     vạch sáng lơ lửng không thuộc về cái gì.
+     `--gloss-cut` là chỗ CẮT giữa nửa hứng sáng và nửa khuất — cái làm mặt thanh đọc ra
+     bóng chứ không ra mờ dần. Hai mốc quanh nó bám theo bằng calc để cả hình trượt
+     nguyên khối, không phải ba số rời nhau phải chỉnh tay cho khớp. */
+  --gloss: 1;
+  --gloss-cut: 51%;
+  width: var(--mb-w, 360px); padding: 13px 16px 12px; display: flex; flex-direction: column; gap: 11px;
+  background:
+    radial-gradient(calc(128% * var(--wash-k)) calc(62% * var(--wash-k)) at 6% -12%,
+      color-mix(in srgb, var(--lux) var(--wash-sun), transparent) 0%, transparent 62%),
+    radial-gradient(calc(84% * var(--wash-k)) calc(52% * var(--wash-k)) at 106% 110%,
+      color-mix(in srgb, var(--skin) var(--wash-skin), transparent) 0%, transparent 66%),
+    var(--bg);
+}
+
+/* BỐN BUỔI, lấy theo giờ máy (`phaseOf` trong lib/menubar-view.js).
+   Chỉ bảng màu khung trời đổi — bố cục, hướng nắng và sắc quản gia đứng yên cả bốn.
+   Sao mờ dần theo buổi thay vì bật/tắt: một bầu sao biến mất đột ngột lúc 9h đọc thành
+   trang bị hỏng, còn mờ dần thì đọc thành trời sáng lên. */
+.mb-wrap.sky-dawn { --lux: #ff8f6b; --lux-hi: #ffd9b8; --sky-a: #2b2350; --sky-b: #7c4a6d; --sky-c: #f0a074; --star: 0.22; --halo: 58%; }
+.mb-wrap.sky-day { --lux: #ffc44d; --lux-hi: #fff6d8; --sky-a: #2d5f9e; --sky-b: #5d97cd; --sky-c: #93bfe0; --star: 0; --halo: 66%; }
+.mb-wrap.sky-dusk { --lux: #ff9d5c; --lux-hi: #ffe3c2; --sky-a: #130e29; --sky-b: #2a1b4d; --sky-c: #48294c; --star: 0.5; --halo: 62%; }
+.mb-wrap.sky-night { --lux: #b9c6f5; --lux-hi: #f2f5ff; --sky-a: #05070f; --sky-b: #101736; --sky-c: #1e2547; --star: 0.9; --halo: 22%; }
+.mb-wait, .mb-none { padding: 22px 16px; text-align: center; color: var(--text-3); font-size: 12.5px; }
+.mb-none-sm { padding: 10px 0; text-align: left; font-size: 11.5px; }
+
+/* ── Khung cảnh: trời sao + quản gia ────────────────────────────────────────
+   Nhân vật chỉ được chiếm 76px của một cửa sổ đang bị ép cho gọn vì nó CHỞ TIN:
+   nó ngủ gật đúng lúc tiền nằm không (băng crit/warn), mở mắt khi nhịp đã bám đích.
+   Hình dáng là kênh thứ hai bên cạnh sắc — theme daltonized không được dựa vào mỗi
+   một khác biệt màu. Tắt được bằng `hero: false` trong DEFAULTS. */
+.mb-scene { display: flex; flex-direction: column; gap: 8px; }
+/* Khung trời luôn là trời chiều, kể cả ở theme sáng: nó là một BỨC TRANH lồng trong
+   giao diện, giống ảnh bìa — không phải một mảng nền phải lật theo theme. Lật theo
+   thì bản sáng mất sạch sao và mặt trời không còn gì để nổi lên. */
+.mb-sky {
+  position: relative; height: 74px; border-radius: var(--r-sm, 8px); overflow: hidden;
+  background:
+    radial-gradient(34px 30px at 8% 31%, color-mix(in srgb, var(--lux) var(--halo), transparent) 0%, transparent 70%),
+    radial-gradient(48px 42px at 50% 62%, color-mix(in srgb, var(--skin) 24%, transparent) 0%, transparent 74%),
+    radial-gradient(150% 96% at 16% 118%, color-mix(in srgb, var(--lux) calc(var(--halo) * 0.62), transparent) 0%, transparent 60%),
+    linear-gradient(180deg, var(--sky-a) 0%, var(--sky-b) 66%, var(--sky-c) 100%);
+  border: 1px solid color-mix(in srgb, var(--skin) 26%, transparent);
+}
+/* Sắc của băng đổ vào một biến riêng rồi mới dùng, để chấm nhịp và chữ "z" lấy từ MỘT
+   chỗ — hai chỗ tự đặt màu là hai chỗ sẽ trôi khỏi nhau. */
+.mb-scene { --tone-c: var(--later); }
+.mb-scene.tone-crit { --tone-c: var(--crit); }
+.mb-scene.tone-warn { --tone-c: var(--warn); }
+.mb-scene.tone-ok { --tone-c: var(--ok); }
+.mb-scene.tone-cheer { --tone-c: var(--cheer); }
+
+.mb-star { position: absolute; width: 2px; height: 2px; background: #ffeedc; opacity: var(--star); }
+/* Vài ngôi to hơn để trời không thành lưới chấm đều. Chọn theo vị trí trong danh sách,
+   không theo ngẫu nhiên — trời phải giống nhau qua mỗi lần mở. */
+.mb-star:nth-child(3n) { width: 3px; height: 3px; opacity: calc(var(--star) * 1.55); }
+/* Mặt trời và mặt trăng đứng CÙNG chỗ: nguồn sáng không đổi hướng qua các buổi, nên vật
+   phát sáng cũng không được đổi chỗ. Cái đổi là hình (đĩa/khuyết) và sắc. */
+.mb-sun, .mb-moon { position: absolute; left: 13px; top: 9px; width: 28px; height: 28px; }
+.mb-cloud { position: absolute; right: 15px; top: 14px; width: 36px; height: 12px; opacity: 0.9; }
+/* Bóng đổ CỨNG, lệch xuống dưới-phải: đúng phía khuất nắng, và không mờ viền — một
+   vệt mờ đứng cạnh mấy ô vuông 4px thì lạc phong cách ngay. */
+.mb-sprite {
+  position: absolute; left: 50%; bottom: 3px; width: 64px; height: 64px; transform: translateX(-50%);
+  filter: drop-shadow(2px 2px 0 rgb(10 6 24 / 0.42));
+}
+
+/* Bốn sắc độ, suy từ hướng nắng trong `shadeOf` — một mảng tím phẳng đọc thành hình
+   dán, không đọc thành vật có khối. */
+.px { position: absolute; width: 4px; height: 4px; }
+.mb-scene .px { background: var(--skin); }
+.mb-scene .px.rim { background: color-mix(in srgb, var(--skin) 52%, var(--sun-hi)); }
+.mb-scene .px.shade { background: color-mix(in srgb, var(--skin) 54%, #150e2b); }
+.mb-scene .px.tie { background: var(--sun); }
+/* MẶT TỐI trong lòng viên kim cương — viền tím, lòng đen, đúng hình cái mark. Nó cũng
+   là nền để hai con mắt sáng có chỗ đứng: mắt sáng đặt trên nền tím sáng thì nhoè vào
+   nhau, mà mắt tối đặt trên nền tím sáng thì cả cái mặt chỉ còn là hai vệt. */
+.mb-scene .px.face { background: color-mix(in srgb, var(--skin-deep) 46%, #000); }
+/* Đốm nắng nhỏ ở góc trên-trái mỗi con mắt — đúng phía mặt trời, và nó là thứ tắt đi
+   khi ngủ. */
+.mb-scene .px.eye { background: color-mix(in srgb, var(--sun-hi) 84%, var(--sun)); }
+.mb-scene .px.eye.spark { background: #fffdf7; }
+/* Mắt nhắm là một GẠCH cao một ô và mờ hẳn đi, mắt mở là khối cao hai ô có đốm nắng —
+   phân biệt được cả khi không nhận ra màu, mà theme daltonized thì bắt buộc phải có
+   kênh thứ hai ấy. */
+.mb-scene .px.eye.shut { background: color-mix(in srgb, var(--sun-hi) 38%, var(--skin-deep)); }
+.mb-scene .mb-sun .px { background: var(--lux); }
+.mb-scene .mb-sun .px.core { background: var(--lux-hi); }
+/* Trăng ngược lớp với trời: vành ngoài sáng, phía trong tối dần — đó là chỗ bóng của
+   chính nó, và cũng là thứ làm nó không đọc thành một cái đĩa nữa. */
+.mb-scene .mb-moon .px { background: var(--lux-hi); }
+.mb-scene .mb-moon .px.core { background: color-mix(in srgb, var(--lux) 52%, var(--sky-b)); }
+.mb-scene .mb-cloud .px { background: color-mix(in srgb, var(--sky-c) 62%, var(--lux)); }
+.mb-zzz {
+  position: absolute; right: 4px; top: 6px; font: 700 11px var(--mono); color: var(--tone-c);
+  opacity: 0.75; animation: mb-float 2.6s ease-in-out infinite;
+}
+@keyframes mb-float { 0%, 100% { transform: translateY(0); opacity: 0.3; } 50% { transform: translateY(-5px); opacity: 0.85; } }
+@media (prefers-reduced-motion: reduce) { .mb-zzz, .mb-pulse, .mb-wrap .qb-pred { animation: none; } }
+
+.mb-say { display: flex; align-items: center; gap: 7px; font-size: 11.5px; line-height: 1.4; color: var(--text-2); }
+.mb-say b { color: var(--text); font-weight: 600; }
+.mb-pulse { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--tone-c); animation: mb-blink 3s ease-in-out infinite; }
+@keyframes mb-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* Thanh hạn mức trong popover cũng đứng dưới đúng cái nắng ấy: gờ trên bắt sáng ẤM
+   (pha với `--sun-hi`, không phải với trắng), đáy chìm vào bóng tím. Sắc thân vẫn
+   nguyên `--c` — nắng chỉ thêm khối, không được đụng vào cái sắc đang chở nghĩa băng.
+
+   Gradient chạy DỌC bề dày, không bao giờ dọc chiều dài. Chiều dài của thanh chính là
+   con số; một dải màu chạy dọc chiều ấy sẽ mời người đọc hiểu nó thành thang thứ hai.
+
+   Khoanh trong `.mb-wrap` để màn hình web giữ nguyên thanh phẳng như cũ. */
+.mb-wrap .qb-track { box-shadow: inset 0 1px 2px rgb(21 14 43 / 0.3); }
+.mb-wrap .qb-fill {
+  background:
+    /* Vệt loá dọc bề dày, nhẹ thôi: nó chỉ còn việc dựng khối cho mặt bóng, còn sắc thì
+       đã do lớp dưới lo. Để nặng như trước thì hai lớp sáng đè nhau và cái ramp mất. */
+    linear-gradient(
+      180deg,
+      rgb(255 246 232 / calc(0.3 * var(--gloss))) 0%,
+      rgb(255 238 214 / calc(0.14 * var(--gloss))) calc(var(--gloss-cut) - 7%),
+      rgb(255 238 214 / 0) var(--gloss-cut),
+      rgb(26 14 46 / calc(0.08 * var(--gloss))) calc(var(--gloss-cut) + 15%),
+      rgb(26 14 46 / calc(0.26 * var(--gloss))) 100%
+    ),
+    /* RAMP DỌC CHIỀU DÀI — nhạt ở gốc, đậm nhất ở mũi mảng.
+       Đây là thứ trước đây cấm, và lý do cấm vẫn đúng: một dải màu chạy dọc chiều dài
+       mời người đọc hiểu chiều ấy thành thang thứ hai. Nó được vào vì neo vào CHÍNH
+       MẢNG ĐẶC, không vào rãnh: mảng 6% và mảng 94% đều chạy trọn nhạt→đậm trên bề dài
+       của mình, nên ở bất kỳ trị nào cái ramp cũng cho ra đúng một hình — không chở tin
+       thì không cãi được với con số. Đổi lại nó cho thêm một thứ: chỗ đậm nhất luôn nằm
+       ở mũi mảng, tức là "đang ở đây".
+       Neo vào rãnh thì ngược hẳn — sắc tại một điểm sẽ đứng yên còn mảng thì chạy qua
+       nó, và đó mới đúng là cái thang thứ hai. Đừng đổi sang background-attachment. */
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--c) 40%, var(--sun-hi)) 0%,
+      color-mix(in srgb, var(--c) 74%, var(--sun-hi)) 44%,
+      var(--c) 82%,
+      color-mix(in srgb, var(--c) 86%, #2a1440) 100%
+    );
+  box-shadow: inset 0 1px 0 rgb(255 252 246 / calc(0.42 * var(--gloss)));
+}
+/* Vân của mảng dự phóng BÒ dần sang phải. Mảng này là thứ duy nhất trên thanh chưa xảy
+   ra, mà mọi thứ khác trong popover thì đứng yên — nên chuyển động chính là cái kênh nói
+   "cái này đang chạy tới, chưa chốt". Dịch đúng MỘT bước vân rồi lặp: chu kỳ vân là 5px
+   đo vuông góc, nghiêng 45° nên một bước theo trục ngang là 5/cos45° = 7,071px; sai số ở
+   đây là một cú giật thấy rõ mỗi vòng lặp. */
+@keyframes qb-march { to { background-position: 7.071px 0; } }
+.mb-wrap .qb-pred { animation: qb-march 1.7s linear infinite; }
+
+/* Tab — hai ô trong một rãnh, kiểu segmented control của macOS. Không phải hai cái nút
+   rời: chúng loại trừ nhau, mà hai nút rời thì trông như hai việc làm được cùng lúc. */
+.mb-tabs { display: flex; gap: 2px; padding: 2px; background: var(--surface-2); border-radius: var(--r-sm, 8px); }
+.mb-tab {
+  flex: 1; border: 0; background: none; cursor: pointer; font: inherit; font-size: 11.5px;
+  color: var(--text-3); padding: 5px 6px; border-radius: 6px;
+}
+.mb-tab.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgb(0 0 0 / 0.16); }
+/* Số việc đang chờ nằm NGAY TRÊN nhãn tab. Không có nó thì đổi tab là một canh bạc:
+   người đọc phải bấm mới biết bên kia có gì, mà cái popover này mở ra để liếc. */
+.mb-tab b { font-family: var(--mono); font-weight: 700; color: var(--crit); }
+.mb-tab.on b { color: var(--crit); }
+.mb-tabbody, .mb-agents { display: flex; flex-direction: column; gap: 11px; }
+
+/* Tab Token: ba công cụ, mỗi công cụ một khối có tên. Tên đứng riêng một hàng có kẻ
+   ngang vì ba khối này là ba SỔ KHÁC NHAU — trộn thẳng mười mấy cái thanh vào một cột
+   thì "7 ngày" của Claude và "tuần" của Antigravity đọc thành cùng một cửa sổ. */
+.mb-agent { display: flex; flex-direction: column; gap: 10px; }
+.mb-agent-h { display: flex; align-items: center; gap: 8px; }
+.mb-agent-n { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+.mb-agent-h .rule { flex: 1; height: 1px; background: var(--border); }
+
+.mb-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+/* Mark + tên trong một cái nút — cửa ra dashboard, thay cho hàng nút ở đáy đã bỏ.
+   Nó mang NỀN VÀ VIỀN sẵn chứ không đợi rê chuột mới hiện ra: popover mở rồi đóng
+   trong vài giây, một cái nút chỉ lộ diện lúc rê là một cái nút không tồn tại. Bản
+   trước thử gắn mũi tên chéo vào cuối chữ cho nó "trông bấm được" — một ký tự lạc
+   loài cạnh một wordmark, và nó xấu đúng như thế.
+   Mark ◈ và cặp mark-tên lấy nguyên của `.brand-mark` ở thanh rail dashboard: hai chỗ
+   này là cùng một cửa, nên phải mang cùng một mặt. */
+.mb-title {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  font-family: var(--mono); font-weight: 700; font-size: 12px; letter-spacing: 0.08em;
+  color: var(--accent-ink); text-decoration: none; white-space: nowrap;
+  padding: 4px 10px 4px 7px; border-radius: 7px;
+  background: var(--accent-weak); border: 1px solid var(--accent-line);
+}
+.mb-mark { font-size: 13px; line-height: 1; color: var(--amber); }
+.mb-title:hover { background: var(--accent); border-color: var(--accent); color: var(--on-accent, #fff); }
+.mb-title:hover .mb-mark { color: var(--on-accent, #fff); }
+.mb-age { font-size: 11px; color: var(--text-3); text-align: right; }
+
+/* Việc đáng làm — hai câu, mỗi câu một cái bấm.
+   Rãnh màu bên trái chứ không phải nền tô: khối hạn mức ngay dưới đã dùng màu để chở
+   thang bỏ phí, nên một mảng nền màu ở đây sẽ đọc thành cùng một thang. Rãnh 2px là
+   kênh riêng — nó chỉ nói "gấp cỡ nào", và nó không tranh chỗ với cái thanh. */
+/* Việc đáng làm — chấm tròn + câu, không còn thẻ có nền.
+   Bản trước bọc mỗi việc trong một hộp `--surface` viền trái: 28px padding cho hai
+   việc, để nói đúng cái mà một chấm 6px nói được. Mà chính mấy câu này là thứ PHẢI
+   ĐỌC — chúng cần khoảng thở của chữ, không cần khung. */
+.mb-works { display: flex; flex-direction: column; gap: 8px; }
+.mb-work {
+  display: flex; gap: 8px; align-items: flex-start;
+  text-decoration: none; font-size: 12px; line-height: 1.42; color: var(--text);
+  margin: 0 -6px; padding: 3px 6px; border-radius: 6px;
+}
+.mb-work:hover { background: var(--accent-weak); }
+/* Chấm canh theo DÒNG ĐẦU của câu, không theo giữa khối: câu một dòng và câu hai dòng
+   nằm cạnh nhau thì canh giữa làm hai cái chấm lệch nhau, và cái lệch ấy đọc thành
+   một thứ bậc không có thật. */
+.mb-dot { flex: none; width: 6px; height: 6px; margin-top: 5px; border-radius: 50%; background: var(--later); }
+.mb-work span {
+  /* Câu của quản gia có ca dài 130 ký tự (ô tự do trong NOW board). Ba dòng ở đây là
+     đẩy cái thanh hạn mức xuống dưới tầm liếc — toàn văn vẫn nằm ở màn mà chính dòng
+     này bấm tới. */
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.mb-work.tone-crit .mb-dot { background: var(--crit); }
+.mb-work.tone-warn .mb-dot { background: var(--warn); }
+.mb-work.tone-ok .mb-dot { background: var(--ok); }
+
+/* Nhãn nhóm: chữ nhỏ, sợi kẻ, đuôi phải. Ranh giới giữa hai LOẠI nội dung phải khác
+   ranh giới giữa hai mục cùng loại — trước đây cả hai đều là một khoảng trống 14px. */
+.mb-eyebrow { display: flex; align-items: center; gap: 8px; }
+/* Chữ thường, không viết hoa toàn bộ. Nhãn nhóm ở đây có đuôi là một MỆNH ĐỀ
+   ("7 ngày đang quyết"), mà một mệnh đề viết hoa hết thì đọc thành tiếng quát — khác
+   hẳn `.mb-agent-n`, nơi chữ hoa rơi vào đúng tên riêng (CLAUDE, CURSOR). */
+.mb-eyebrow-k { font-size: 10px; letter-spacing: 0.06em; color: var(--text-3); white-space: nowrap; }
+.mb-eyebrow .rule { flex: 1; height: 1px; background: var(--border); }
+
+.mb-wins { display: flex; flex-direction: column; gap: 13px; }
+/* Hàng đầu chia HAI CỰC: tên và mấy thứ phụ dồn trái, con số đã tiêu đứng riêng ở lề
+   phải. Bản trước xếp cả bốn thứ chảy từ trái sang, nên mắt phải quét hết hàng mới gặp
+   con số — mà đó là thứ duy nhất trong hàng người ta mở popover ra để xem. */
+.mb-win-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 11.5px; margin-bottom: 5px; }
+.mb-win-lead { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
+.mb-win-meta { font-size: 10.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mb-win-name { color: var(--text-2); }
+/* Số đã tiêu là số dẫn của cả khối, nên nó mang cỡ chữ lớn nhất ở đây — và mang màu
+   của bậc bỏ phí, cùng bảng màu với cái thanh ngay dưới nó. */
+.mb-win-used { font-family: var(--mono); font-weight: 700; font-size: 14px; }
+.mb-win-used.tone-crit { color: var(--crit); }
+.mb-win-used.tone-warn { color: var(--warn); }
+.mb-win-used.tone-ok { color: var(--ok); }
+.mb-win-used.tone-cheer { color: var(--cheer); }
+.mb-win-used.tone-mute { color: var(--later); }
+.mb-win-say { margin-top: 5px; font-size: 11.5px; line-height: 1.45; color: var(--text-2); }
+
+.mb-win-bar { display: block; }
+
+/* Biến thể GỘP HÀNG: nhãn cửa sổ đứng cạnh thanh thay vì trên nó. Đổi chiều cao lấy bề
+   rộng thanh — mỗi cửa sổ tiết kiệm một dòng, đúng cái giá là thanh ngắn đi chừng ấy.
+   Mốc reset rời sang tooltip: nó là thứ duy nhất trong hàng đầu KHÔNG đổi trong vài
+   giờ, nên nó là thứ đáng bỏ đi trước khi phải cắt vào con số hay tiền. */
+/* Canh theo THÂN thanh, không theo cả khối thanh: `.qbar.lab` còn cõng 15px chừa chỗ
+   nhãn ở dưới, nên căn giữa cả khối sẽ đẩy nhãn cửa sổ lên cao hơn tâm thanh đúng
+   chừng ấy nửa. */
+/* `wrap` là bắt buộc chứ không phải phòng xa: câu `cardText` mang `flex-basis:100%` để
+   xuống hàng riêng, mà không có `wrap` thì nó không xuống được — nó chỉ bị bóp lại và
+   nằm chen ngay cạnh thanh. */
+.mb-win.inline { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; }
+.mb-win.inline .mb-win-head { flex: none; width: 118px; margin-bottom: 0; padding-top: 2px; }
+.mb-win.inline .mb-win-bar { flex: 1; min-width: 0; }
+/* Gộp hàng thì hàng đầu chỉ còn tên và con số — mốc reset với tiền rời sang tooltip.
+   Chúng là hai thứ duy nhất ở đó KHÔNG đổi trong vài giờ, nên là hai thứ đáng bỏ trước
+   khi phải cắt vào con số. */
+.mb-win.inline .mb-win-meta { display: none; }
+.mb-win.inline .mb-win-say { flex-basis: 100%; }
+
+/* Cursor · Antigravity — câu văn xuôi, và chỉ khi có chuyện. Không thanh: hai nguồn
+   này đổi chậm hơn Claude cả chục lần. Xem `toolLines` trong lib/butler.js. */
+.mb-tools { display: flex; flex-direction: column; gap: 5px; font-size: 11.5px; line-height: 1.4; color: var(--text-2); }
+.mb-tool { padding-left: 9px; border-left: 2px solid var(--later); }
+.mb-tool.tone-crit { border-left-color: var(--crit); }
+.mb-tool.tone-warn { border-left-color: var(--warn); }
+.mb-tool.tone-cheer { border-left-color: var(--cheer); }
+
+/* Hàng nút ở đáy đã bỏ — cửa ra dashboard nay là chính chữ NOW ở góc trái (`.mb-title`).
+   Hai cái nút cũ tốn 48px kể cả khoảng cách, để nói đúng một việc mà cái tên đã nói
+   được. Trước đó chúng còn có một đời sống tệ hơn: nằm dưới mốc cắt 320pt của popover
+   nên chưa bao giờ hiện ra. */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BÀN CHỈNH POPOVER — public/menubar-demo.html
+
+   Chỉ là khung ngắm: popover bên trong nó do `popoverView` vẽ, cùng hàm app gọi.
+   Mọi thứ ở đây mang tiền tố `mbd-` để không một luật nào rơi vào popover thật.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* `body` toàn cục khoá cuộn (`overflow: hidden`) vì dashboard là một khung cố định tự
+   cuộn từng cột bên trong. Bàn chỉnh thì không — nó là một trang giấy dài, và với luật
+   kia thì mọi công tắc nằm dưới mép màn hình đều không tới được. Mở lại ở ĐÚNG trang
+   này, không sửa luật toàn cục. */
+.mbd-body { background: var(--bg); color: var(--text); font-family: var(--sans); margin: 0; overflow: auto; height: auto; }
+.mbd-h1 { font-size: 15px; margin: 0; padding: 28px 28px 0; }
+.mbd { display: flex; gap: 32px; align-items: flex-start; padding: 28px; flex-wrap: wrap; }
+/* Trong dashboard thì cột nội dung đã có lề của nó rồi — cộng thêm 28px nữa là bàn chỉnh
+   thụt vào sâu hơn bảy màn kia, mà cái sân khấu thì đang cần từng pixel bề ngang. */
+#view .mbd { padding: 0; }
+/* Khung xem GHIM lại khi cuộn: cả trang này tồn tại để nhìn cái popover trong lúc vặn
+   công tắc, mà công tắc thì dài hơn màn hình — cuộn xuống tới cái cần vặn rồi mà thứ nó
+   thay đổi đã trôi khỏi màn thì bàn chỉnh không chỉnh được gì. */
+.mbd-stage { flex: none; position: sticky; top: 28px; }
+/* Dải giả lập thanh menu. Popover thật luôn treo dưới một dải cỡ này, và mấy quyết định
+   về tương phản chỉ đúng khi nhìn cùng cái nền ấy. */
+.mbd-bar {
+  height: 24px; display: flex; align-items: center; justify-content: flex-end;
+  padding: 0 14px; border-radius: 6px 6px 0 0;
+  background: color-mix(in srgb, var(--text) 12%, var(--bg));
+}
+.mbd-item { font-size: 7px; line-height: 1.35; text-align: center; letter-spacing: 0.08em; color: var(--text-2); }
+.mbd-item b { font-family: var(--mono); font-size: 10px; color: var(--text); }
+.mbd-pop { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-top: 6px; box-shadow: 0 12px 32px rgb(0 0 0 / 0.22); }
+.mbd-meas { margin-top: 10px; font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+.mbd-ok { color: var(--ok); }
+.mbd-bad { color: var(--crit); font-weight: 700; }
+
+.mbd-panel { flex: 1; min-width: 280px; max-width: 460px; }
+.mbd-panel h1 { font-size: 15px; margin: 0 0 4px; }
+.mbd-panel h2 { font-size: 12px; margin: 22px 0 6px; color: var(--text-2); }
+.mbd-note { font-size: 12px; color: var(--text-3); margin: 0 0 16px; line-height: 1.5; }
+.mbd-ctl { margin-bottom: 16px; }
+.mbd-k { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; }
+.mbd-opt { display: flex; gap: 8px; align-items: center; padding: 6px 9px; border: 1px solid var(--border); border-radius: 7px; margin-bottom: 4px; font-size: 12px; cursor: pointer; }
+.mbd-opt.on { border-color: var(--accent); background: var(--accent-weak); color: var(--accent-ink); }
+/* Nút tròn KHÔNG nhận chuột. Bảng công tắc dài hơn màn hình nên phải lăn chuột qua nó,
+   mà con lăn dừng trên một nút radio thì trình duyệt hiểu là "đổi lựa chọn" — lăn một
+   cái là buổi nhảy sang đêm và bề rộng nhảy sang 400pt. Thẻ label bọc ngoài vẫn ăn cú
+   bấm như thường, nên chỉ mất đúng cái hành vi không ai muốn. */
+.mbd-opt input { pointer-events: none; }
+/* Núm có nhãn là một MỨC ("rộng", "1.4", "đậm") xếp thành một hàng ngang thay vì bốn
+   hàng dọc. Bảng này có mười một núm, mà bàn chỉnh chỉ dùng được khi thứ đang vặn và
+   thứ nó làm đổi cùng nằm trong một màn hình — bốn hàng để nói bốn chữ là bốn lần trả
+   tiền cho khoảng trắng. Núm nào nhãn là một câu giải thích thì vẫn xếp dọc: câu ấy
+   không rút ngắn được, mà nhồi vào hàng ngang thì nó xuống dòng giữa chừng.
+   Nút tròn ẩn đi ở đây — chỉ có một hàng nên cái được chọn tự nổi bằng nền accent, và
+   ba chấm tròn trong một hàng bốn chữ thì chiếm mất chỗ của chính chữ. */
+/* Dấu "đã chốt" — trị mà bản thật đang mang. Câm và nhỏ: nó là chú thích cho lựa chọn,
+   không phải một trạng thái tranh chỗ với cái viền accent ngay bên cạnh. */
+.mbd-now { margin-left: auto; padding: 1px 5px; border-radius: 4px; font-style: normal; font-size: 9.5px; letter-spacing: 0.04em; background: var(--surface-3); color: var(--text-3); }
+.mbd-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.mbd-chips .mbd-opt { margin-bottom: 0; padding: 5px 10px; }
+.mbd-chips .mbd-opt input { display: none; }
+.mbd-code { font-family: var(--mono); font-size: 11px; line-height: 1.6; background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px; padding: 10px; white-space: pre-wrap; word-break: break-all; }

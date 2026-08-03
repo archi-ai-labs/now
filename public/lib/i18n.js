@@ -14,6 +14,31 @@
  * HTML tĩnh trong `index.html`.
  */
 
+/**
+ * BỘ THUẬT NGỮ TRÊN MÀN — chốt 30/7/2026, sau một lần bị sửa lưng thật: chữ trên màn
+ * dịch từng-chữ thuật ngữ tiếng Anh (target → "đích", manual → "khai tay", pool → nơi
+ * gọi "túi" nơi gọi "hồ"). Một khái niệm một từ, dùng xuyên suốt cả hai ngôn ngữ;
+ * gặp khái niệm mới thì chốt vào bảng này TRƯỚC khi viết chuỗi.
+ *
+ *   khái niệm                      | VI trên màn                         | EN trên màn
+ *   pool hạn mức (AG)              | quỹ (quỹ Gemini, quỹ 5 giờ)         | pool
+ *   partial coverage của tracker   | theo dõi hụt (+ chú giải 1 lần)     | under-watched
+ *   lower / upper bound            | mức sàn / mức trần                  | lower / upper bound
+ *   gán giá tiền                   | quy ra tiền                         | assign dollars
+ *   dựng lại dữ liệu quá khứ       | dựng lại dữ liệu quá khứ (backfill) | backfill
+ *   bảng số của chart (tableTwin)  | bảng số đi kèm                      | companion data table
+ *   đồng hồ máy đang chạy app      | giờ hệ thống                        | system clock
+ *   cấu hình bằng tay              | nhập tay (trong config)             | set by hand
+ *   so được với nhau               | so sánh trực tiếp                   | compared side by side
+ *   đủ dữ liệu để tin              | đáng tin                            | trustworthy
+ *   sổ mở sau cùng (đặt nhịp cổng) | sổ mở muộn nhất                     | youngest ledger
+ *   tiêu hết hạn mức               | tiêu hết là mục tiêu                | the GOAL, not an alarm
+ *
+ * "túi", "hồ", "song sinh", "cận dưới" vẫn còn trong code/docs/tên nội bộ (tableTwin,
+ * bucketId) — đó là chữ cho dev, không lên màn. Luật văn phong đầy đủ: khối
+ * "LUẬT CHỮ NGHĨA" giữa file này.
+ */
+
 // Tooltip là bảng nhãn ↔ trị, không phải một câu, nên chuỗi của nó được đóng gói chứ
 // không nối tay. Xem `lib/tip.js` — module đó không import gì, nên không có vòng lặp.
 import { tipOf } from './tip.js';
@@ -120,6 +145,29 @@ const DICT = {
     'butler.slidePrev': 'việc trước',
     'butler.slideNext': 'việc tiếp',
     'butler.slideAria': (o) => `Việc ${o.i} trên ${o.n}`,
+
+    // ── Popover trên thanh menu (menubar.html) ──
+    // Chỗ hẹp nhất của cả sản phẩm: 360pt và ba giây. Nhãn ở đây là nhãn NGẮN NHẤT còn
+    // giữ đúng thuật ngữ — "phiên", "dự án", "Màn Token" đã có nghĩa cố định ở bảng đầu
+    // file, không được rút thành từ khác chỉ vì hẹp.
+    'mb.scan': (o) => `quét ${o.ago}`,
+    'mb.tabWork': 'Việc',
+    'mb.tabToken': 'Token',
+    // Vắng mặt vì "đang yên" và vắng mặt vì "hỏng thu thập" phải khác nhau ở tab này —
+    // đây là chỗ người ta mở ra để đối chiếu ba công cụ.
+    'mb.noSource': (o) => `chưa đọc được sổ ${o.name}`,
+    // Gọi tên công cụ, không chỉ "hạn mức": tab Việc chỉ trưng sổ Claude, mà tab Token
+    // ngay cạnh thì có cả ba — một chữ "hạn mức" trơ giữa hai tab ấy là câu hỏi bỏ ngỏ.
+    // Giữ tiếng Việt: bộ thuật ngữ ở đầu file chốt quota = hạn mức, và một nhãn nửa Anh
+    // nửa Việt đứng cạnh "Việc"/"Token" thì đọc thành hai người viết.
+    'mb.secQuota': 'hạn mức Claude',
+    'mb.awake': (o) => `${o.n} phiên thức`,
+    // Hai chuỗi này nay là TOOLTIP của chữ NOW, không phải nhãn nút — nhãn hiện ra là
+    // "NOW", nên chỗ duy nhất còn gọi tên đích là đây. Phải mở bằng động từ.
+    'mb.open': 'Mở dashboard',
+    'mb.openUsage': 'Mở màn Token',
+    'mb.noQuota': 'chưa đọc được hạn mức',
+    'mb.offline': 'không nối được tới server',
 
     // ── Thanh trên ──
     'top.connecting': 'đang nối…',
@@ -693,12 +741,12 @@ const DICT = {
     'qlg.toneOk': 'đúng đích',
     'qlg.toneCheer': 'dùng hết mức',
     'qlg.caveat':
-      'Dự phóng là ngoại suy từ nhịp tính tới giờ — “nếu cứ như lúc này”, không phải lời tiên tri. <b>Đỏ</b> chỉ có một nghĩa: quá nửa hạn mức sẽ mất trắng lúc reset. Cạn trước reset không bao giờ đỏ — đó là đích.',
+      'Dự phóng là ngoại suy từ nhịp tính tới giờ — “nếu cứ như lúc này”, không phải lời tiên tri. <b>Đỏ</b> chỉ có một nghĩa: quá nửa hạn mức sẽ mất trắng lúc reset. Cạn trước reset không bao giờ đỏ — đó là mục tiêu.',
     // Đứng ở chú thích gập lại, không ở thẻ: đây là ba câu học một lần rồi thôi, mà thẻ thì
     // đọc lại mỗi lượt. Câu thứ hai là chỗ dễ mất niềm tin nhất — phần trăm và số $ đếm trên
     // hai phạm vi khác nhau, nên chúng LỆCH được mà không có bên nào sai.
     'qlg.money':
-      '<b>≈$248</b> cạnh phần trăm là tiền của <b>riêng cửa sổ này</b>: token trong cửa sổ nhân bảng giá API. Không phải hoá đơn — tài khoản trả theo gói, nên đọc nó như câu “gói này đang moi ra được bao nhiêu”. Phần trăm do server đếm cho <b>cả tài khoản</b>, còn số $ đọc từ transcript của <b>máy này</b>, nên chạy Claude Code ở máy khác thì phần trăm biết mà số $ không. Dấu <b>≥</b> thay cho <b>≈</b> nghĩa là cửa sổ mở trước lượt gọi sớm nhất còn trên đĩa — transcript đã bị dọn, tổng chắc chắn thiếu.',
+      '<b>≈$248</b> cạnh phần trăm là tiền tính riêng cho <b>cửa sổ này</b>: token trong cửa sổ nhân bảng giá API. Không phải hoá đơn — tài khoản trả theo gói, nên đọc nó như câu “gói này đang khai thác được bao nhiêu”. Phần trăm do server đếm cho <b>cả tài khoản</b>, còn số $ đọc từ transcript của <b>máy này</b>, nên chạy Claude Code ở máy khác thì phần trăm vẫn tính đúng, còn số $ thì không. Dấu <b>≥</b> thay cho <b>≈</b> nghĩa là cửa sổ mở trước lượt gọi sớm nhất còn trên đĩa — transcript đã bị dọn, tổng chắc chắn thiếu.',
 
     // ── Dự báo hạn mức ──
     'qf.perHour': (o) => `${o.v}/giờ`,
@@ -725,6 +773,12 @@ const DICT = {
     // `periodText` suy từ `windowMs` — xem `lib/quota.js`.
     'qf.landsNear': (o) => `dự phóng ${o.period} ${o.p} — coi như dùng trọn`,
     'qf.slack': (o) => `dự phóng ${o.period} ${o.p} — bỏ phí ${o.w}`,
+    // Bản rút cho mấy dòng văn xuôi không có thanh đi kèm (`proseText`): bỏ con số dự
+    // phóng, giữ phần bỏ phí. Cạnh một cái thanh thì hai vế ấy trỏ hai chỗ khác nhau
+    // trên thanh; đứng lẻ trong câu thì chúng là một sự thật nói hai lần.
+    // "dự phóng {kỳ hạn}" giữ nguyên cụm đã dùng ở `qf.slack` — cùng một phép ngoại suy
+    // thì phải cùng một chữ, chỉ đổi cái được ngoại suy.
+    'qf.slackShort': (o) => `dự phóng ${o.period} bỏ phí ${o.w}`,
     'qf.pdShort': (o) => `phiên ${o.h}h này`,
     'qf.pdWeek': 'tuần này',
     'qf.pdMonth': 'tháng này',
@@ -831,12 +885,12 @@ const DICT = {
     'usage.unitByDay': 'Giá cho mỗi 1M token Claude viết ra',
     // Trị trung vị KHÔNG có ở đây: `refLine` đã in nó ngay trên vạch, và vạch nói thêm
     // được thứ phụ đề không nói nổi — nó nằm ở đâu so với từng cột.
-    'usage.unitByDaySub': 'Cùng một lượng token Claude viết ra thì ngày nào tốn hơn. Cột vượt vạch = hôm đó đắt hơn mức thường của bạn.',
+    'usage.unitByDaySub': 'Cùng một lượng token Claude viết ra thì ngày nào tốn hơn. Cột vượt mức giữa = hôm đó đắt hơn mức thường của bạn.',
     // Ngày bị bỏ phải ĐẾM RA, không lặng lẽ: trục X hụt một ngày mà không nói vì sao thì
     // người đọc tưởng hôm đó không dùng Claude. Và phải nói ra VÌ SAO bỏ — "ngày quá mỏng
     // để chia" là tiếng lóng của người viết code, người đọc không có cách nào đoán ra.
     'usage.unitByDaySubThin': (o) =>
-      `Cùng một lượng token Claude viết ra thì ngày nào tốn hơn. Cột vượt vạch = hôm đó đắt hơn mức thường của bạn. Đã bỏ ${o.thin} ngày dùng quá ít (dưới 10 lượt gọi hoặc ${o.min} token viết ra) — chia trên vài lượt lẻ thì tỉ số chỉ là nhiễu.`,
+      `Cùng một lượng token Claude viết ra thì ngày nào tốn hơn. Cột vượt mức giữa = hôm đó đắt hơn mức thường của bạn. Đã bỏ ${o.thin} ngày dùng quá ít (dưới 10 lượt gọi hoặc ${o.min} token viết ra) — chia trên vài lượt lẻ thì tỉ số chỉ là nhiễu.`,
     'usage.refMedian': 'mức giữa',
     'usage.tipUnitDay': (o) =>
       tipOf({
@@ -999,7 +1053,7 @@ const DICT = {
     'usage.cycleWarmingLine':
       'Chưa dựng được <b>bỏ phí hạn mức theo chu kỳ</b>: endpoint không trả lịch sử, nên sổ phải tự ghi trong lúc chu kỳ đang chạy. Khung 5 giờ chốt khoảng bốn lần một ngày — mở dashboard chừng một ngày là đủ cột để so.',
     'usage.cycleCap': (o) =>
-      `Đỉnh ghi được là <b>cận dưới</b>, nên "bỏ phí" suy từ đó là <b>cận trên</b>. Chu kỳ được theo tới dưới ${o.watched} cửa sổ bị bỏ khỏi hình, vẫn giữ trong bảng số với dấu ⚠.`,
+      `Đỉnh ghi được chỉ là <b>mức sàn</b> — số thật có thể cao hơn — nên "bỏ phí" suy từ đó là <b>mức trần</b>. Chu kỳ được theo tới dưới ${o.watched} cửa sổ bị bỏ khỏi hình, vẫn giữ trong bảng số với dấu ⚠.`,
     'usage.tipCycle': (o) =>
       tipOf({
         head: `${o.kind} · chốt ${o.end}`,
@@ -1020,7 +1074,7 @@ const DICT = {
     'usage.cShare': 'Tỉ lệ tiền',
 
     'usage.costByModel': 'Tiền đi đâu, theo model',
-    'usage.costByModelSub': 'Chia theo TIỀN chứ không theo số token. Nhờ vậy phần đọc từ bộ đệm co về đúng sức nặng thật của nó — nó rẻ hơn đọc mới mười lần, nên đếm theo token thì nó nuốt trọn thanh và che mất phần còn lại.',
+    'usage.costByModelSub': 'Chia theo TIỀN chứ không theo số token. Nhờ vậy phần đọc từ bộ đệm được tính đúng theo trọng số thật của nó — nó rẻ hơn đọc mới mười lần, nên đếm theo token thì nó nuốt trọn thanh và che mất phần còn lại.',
     'usage.partOut': 'Claude viết ra',
     'usage.partCacheWrite': 'Nạp vào bộ đệm',
     'usage.partCacheRead': 'Đọc từ bộ đệm',
@@ -1059,8 +1113,8 @@ const DICT = {
     // Hai chuỗi này gộp lại từng dài năm dòng trong một cột 381px — dài nhất màn sau khi
     // gỡ chart plugin, và phần lớn là GIẢI THÍCH chứ không phải số. Giữ lại đúng cái chart
     // không tự nói được: nhãn thô gộp mấy editor làm một, và bao nhiêu phần chưa gỡ ra được.
-    'usage.byEntrypointSub': 'VS Code, Cursor và mọi bản fork đều khai chung một nhãn',
-    'usage.byEntrypointVague': (o) => `${o.share} chưa quy được về editor nào — chỉ chốt được khi dashboard thấy phiên lúc còn sống, nên phần này teo dần.`,
+    'usage.byEntrypointSub': 'VS Code, Cursor và mọi bản fork đều dùng chung một nhãn',
+    'usage.byEntrypointVague': (o) => `${o.share} chưa quy được về editor nào — chỉ chốt được khi dashboard thấy phiên lúc còn sống, nên phần này giảm dần.`,
     'usage.tipEntry': (o) =>
       tipOf({
         head: o.name,
@@ -1122,7 +1176,7 @@ const DICT = {
       `Gói bạn mua là ${o.plan}/tháng; Cursor cộng thêm ${o.bonus} miễn phí trong chu kỳ này. Đó là lý do tiêu quá ${o.plan} mà vẫn chưa chạm trần.`,
     'tools.capHelp': 'Trần đô này ở đâu ra',
     'tools.capNote':
-      'Cursor <b>không gửi trần dùng</b> trong phản hồi — dashboard suy ngược ra từ phần trăm: <b>trần = đã tiêu ÷ phần trăm</b>. Trường <b>limit</b> mà Cursor gửi kèm là <b>giá gói ($20/tháng)</b>, không phải trần: lấy nó chia thì ra 244% trong khi Cursor tự báo 14%. Nên phần trăm là số gốc và luôn được hiện to; cặp đô chỉ là cách viết lại nó, và biến mất khi chưa tiêu đủ để chia.',
+      'Cursor <b>không gửi mức trần sử dụng</b> trong phản hồi — dashboard suy ngược ra từ phần trăm: <b>trần = đã tiêu ÷ phần trăm</b>. Trường <b>limit</b> mà Cursor gửi kèm là <b>giá gói ($20/tháng)</b>, không phải trần: lấy nó chia thì ra 244% trong khi Cursor tự báo 14%. Nên phần trăm là số gốc và luôn được hiện to; cặp đô chỉ là cách viết lại nó, và biến mất khi chưa tiêu đủ để chia.',
     'tools.cNoAuth':
       'Không đọc được token đăng nhập Cursor. Dashboard lấy nó từ SQLite của Cursor (~/Library/Application Support/Cursor), nên cần đăng nhập Cursor ít nhất một lần.',
     'tools.cHttp': 'Endpoint hạn mức của Cursor trả về lỗi. Đây là RPC nội bộ không có tài liệu — hình dạng có thể đã đổi.',
@@ -1263,10 +1317,10 @@ const DICT = {
     'tools.agQHttp': 'Máy chủ nội bộ của Antigravity từ chối lượt hỏi. Số dưới đây là ảnh chụp lần đọc gần nhất.',
     'tools.agQOffline': 'Không hỏi được máy chủ nội bộ của Antigravity. Số dưới đây là ảnh chụp lần đọc gần nhất.',
     'tools.agQBroken': 'Chưa đọc được hạn mức Antigravity.',
-    'tools.agQEmpty': 'Antigravity trả lời nhưng không có hồ hạn mức nào — thường là tài khoản chưa gắn gói.',
+    'tools.agQEmpty': 'Antigravity trả lời nhưng không có quỹ hạn mức nào — thường là tài khoản chưa gắn gói.',
     'tools.agQHelp': 'vì sao số ở đây khác số trong app Antigravity?',
     'tools.agQNote':
-      'Cùng một sự thật, hai cách nói: app Antigravity hiện phần <b>còn lại</b>, dashboard này hiện phần <b>đã tiêu</b> — giống Claude và Cursor ở hai khối trên. Thấy app ghi 71% mà đây ghi 29% thì không có gì lệch: 29 + 71 = 100. Phần còn lại vẫn in ngay dưới mỗi thanh.<br><br>Hai hồ chứa tiêu <b>độc lập</b>: Gemini một hồ, Claude+GPT một hồ, mỗi hồ có khung 5 giờ và khung tuần riêng. Cạn hồ này không đụng gì tới hồ kia, nên bốn con số không cộng lại được.<br><br>Quota tiêu theo <b>chi phí</b> token chứ không theo số lượt, nên số bước ở khối dưới không quy đổi ra được phần trăm ở đây — hai thứ nằm cạnh nhau, không nói cùng một chuyện.',
+      'Cùng một sự thật, hai cách nói: app Antigravity hiện phần <b>còn lại</b>, dashboard này hiện phần <b>đã tiêu</b> — giống Claude và Cursor ở hai khối trên. Thấy app ghi 71% mà đây ghi 29% thì không có gì lệch: 29 + 71 = 100. Phần còn lại vẫn in ngay dưới mỗi thanh.<br><br>Hai quỹ hạn mức tiêu <b>độc lập</b>: Gemini một quỹ, Claude+GPT một quỹ, mỗi quỹ có khung 5 giờ và khung tuần riêng. Cạn quỹ này không đụng gì tới quỹ kia, nên bốn con số không cộng lại được.<br><br>Quota tiêu theo <b>chi phí</b> token chứ không theo số lượt, nên số bước ở khối dưới không quy đổi ra được phần trăm ở đây — hai thứ nằm cạnh nhau, không nói cùng một chuyện.',
     'tools.agKeep': (o) => `Chỉ đếm hội thoại có ghi trong ${o.d} ngày gần nhất.`,
 
     // ── chart ──
@@ -1303,7 +1357,7 @@ const DICT = {
       head: 'Chưa chép được',
       note: 'Trình duyệt chặn clipboard khi cửa sổ chưa được chọn. Bấm vào cửa sổ dashboard một lần rồi bấm lại nút này.',
     }),
-    'report.stamp': (o) => `Số chốt lúc ${o.at} (giờ máy). Mọi bảng dưới đây là bảng số song sinh của chart tương ứng.`,
+    'report.stamp': (o) => `Số chốt lúc ${o.at} (giờ hệ thống). Mỗi bảng dưới đây là bảng số đi kèm của chart tương ứng.`,
     'report.ask':
       'Nhiệm vụ: đọc các bảng dưới đây, chỉ ra chỗ bất thường và chỗ cải thiện được, kèm hành động cụ thể. Mỗi kết luận phải chỉ rõ con số nào dẫn tới nó. Không đủ dữ kiện thì nói là không đủ, đừng suy diễn.',
     'report.quotaH': 'Hạn mức',
@@ -1315,9 +1369,183 @@ const DICT = {
 3. **Cái đáng đọc là TỈ SỐ, không phải khối lượng.** Mục "đắt hơn, hay chỉ là làm nhiều hơn" là chỗ đã chia sẵn: giá mỗi 1M token Claude viết ra, lượng phải đọc lại ở mỗi lượt, tiền trả thêm khi nghỉ lâu rồi quay lại. Một ngày đắt hơn chỉ vì làm nhiều hơn thì không phải vấn đề; đắt hơn trong khi làm bằng nhau thì mới là.
 4. **Ràng buộc thật là hạn mức, không phải tiền.** Hạn mức 5 giờ / 7 ngày không cộng dồn: phần chưa dùng khi reset là mất, không phải để dành. Đúng với cả ba công cụ: "mới tiêu 14% mà đã qua 75% chu kỳ" là một khoản lỗ, không phải một tin tốt.
 5. **Khoảng phủ hẹp dần về quá khứ.** Claude Code tự dọn transcript cũ, nên "ít dữ liệu ở ngày xa" là cơ chế dọn dẹp, không phải "hồi đó dùng ít".
-6. **Ba công cụ đo bằng ba đơn vị KHÁC NHAU. Đừng cộng, đừng trừ.** Claude đo bằng phần trăm của hai cửa sổ trượt, Cursor bằng đô theo tháng dương lịch, Antigravity bằng phần trăm của hai hồ chứa tách rời. Khối hạn mức đầu bản báo cáo có cả ba; phần bảng số bên dưới chỉ là của **một** công cụ — tên nó nằm ở tiêu đề mục ngay trước bảng đầu tiên.
+6. **Ba công cụ đo bằng ba đơn vị KHÁC NHAU. Đừng cộng, đừng trừ.** Claude đo bằng phần trăm của hai cửa sổ trượt, Cursor bằng đô theo tháng dương lịch, Antigravity bằng phần trăm của hai quỹ tách rời. Khối hạn mức đầu bản báo cáo có cả ba; phần bảng số bên dưới chỉ là của **một** công cụ — tên nó nằm ở tiêu đề mục ngay trước bảng đầu tiên.
 7. **Tiền của Cursor là tiền THẬT, tiền của Claude là ước tính.** Số \`$\` của Cursor do chính Cursor tính; số \`$\` của Claude do dashboard nhân ra như ở điểm 1. Hai cột đô này không so với nhau được. Và trần đô của Cursor là số **suy ra** (\`đã tiêu ÷ phần trăm\`), không phải số Cursor gửi — trường \`limit\` trong phản hồi là giá gói, chia theo nó ra 244% trong khi Cursor tự báo 14%. Phần trăm là số gốc.`,
     'report.howStats': `**Cách đọc bộ số này:** mọi con số ở đây đến từ NOW board do người tự viết, nên nó đo **việc đã được GHI LẠI**, không đo việc đã làm. Ngày trống có thể là ngày không cập nhật board, không phải ngày không làm gì — chỗ nào chart đã tự trừ ra thì phụ đề của chart nói rõ.`,
+
+    // ── Màn Nhìn lại (phím 8) ──
+    //
+    // Màn duy nhất đọc LỊCH SỬ — sổ chu kỳ của ba công cụ. Chữ theo đúng luật của màn
+    // Token: số ngoại suy mang chân trời ("hết cửa sổ này", "tuần này"), không danh từ
+    // trừu tượng, và chu kỳ theo dõi hụt thì nói thẳng "không quy ra tiền" thay vì im lặng.
+    'nav.lookback': 'Nhìn lại',
+    'title.lookback': 'Ba gói trả tháng, theo từng chu kỳ đã qua',
+    // Bàn chỉnh: chỉ TÊN MÀN đi qua i18n. Ba chục nhãn công tắc bên trong nó ở lại
+    // tiếng Việt trần trong `views/bench.js` — chúng gọi tên thứ chỉ có nghĩa với người
+    // đang sửa repo, nên chúng bám theo mã nguồn chứ không bám theo người đọc.
+    'nav.bench': 'Bàn chỉnh',
+    'title.bench': 'Vặn thử popover thanh menu, rồi chép giá trị vào code',
+    'lookback.broken': 'Chưa dựng được phần nhìn lại',
+    'lookback.noLive': 'không đọc được hạn mức lúc này — thẻ chỉ còn phần lịch sử',
+    'lookback.buySection': 'Gói có đáng tiền không',
+    'lookback.buyQ':
+      'Mỗi thẻ chạy trên chu kỳ của chính công cụ đó — ba thẻ không so sánh trực tiếp với nhau được; chỉ dòng cuối khối quy cả ba về tuần, và nói rõ là quy đổi.',
+    'lookback.capRun': 'đang chạy',
+    'lookback.wasteTail': (o) => `bỏ phí quy ra tiền ≈ ${o.usd}`,
+
+    // Thẻ Claude — cửa sổ 7 ngày mang tiền, dãy 5 giờ trung tính.
+    'lookback.planClaude': (o) => `${o.tier} · $${o.plan}/tháng nhập tay trong config ≈ ${o.cycle} / cửa sổ 7 ngày`,
+    'lookback.leadClaude': (o) => `đã tiêu của cửa sổ 7 ngày, reset ${o.at}`,
+    'lookback.scopedShare': (o) => `Riêng hạn mức ${o.model} đã tiêu ${o.pct} trần riêng của nó.`,
+    'lookback.capWindow': (o) => `cửa sổ 7 ngày, ${o.from} →`,
+    'lookback.sevenCapNote': 'vàng = bỏ phí 10–50% · xanh = ±10%',
+    'lookback.fivesCap': (o) => `đỉnh từng chu kỳ 5h, ${o.from} →`,
+    'lookback.fiveNever': (o) => `Trần 5h chưa bao giờ là ràng buộc — đỉnh cao nhất từ khi sổ mở: ${o.max}.`,
+    'lookback.fiveHit': (o) => `Trần 5h đã có lần chạm ${o.max} — khung ngắn cũng từng chặn tay.`,
+    'lookback.sevenYoung': (o) =>
+      `Sổ chu kỳ mở ${o.opened} — chưa cửa sổ 7 ngày nào đóng. Dãy cột 7 ngày kèm tiền đầy dần từ ${o.first}.`,
+    'lookback.sevenMoney': (o) => `${o.n} cửa sổ đóng: bỏ phí ${o.waste} trên ${o.paid} đã trả`,
+    'lookback.sevenWorst': (o) => `tệ nhất là cửa sổ chốt ${o.week}: để phí ${o.usd}`,
+    'lookback.partialSkip': (o) => `${o.n} chu kỳ theo dõi hụt (cột xám) không quy ra tiền`,
+    'lookback.fiveStill': (o) => `trần 5h: đỉnh của ${o.n} chu kỳ vẫn chỉ ${o.max}`,
+    'lookback.tipSeven': (o) =>
+      tipOf({
+        head: `Cửa sổ 7 ngày → ${o.end}`,
+        rows: [
+          ['Đã tiêu', o.used],
+          ['Bỏ phí', o.usd ? `${o.waste} · ${o.usd}` : o.waste],
+          ['Theo dõi tới', o.watched],
+        ],
+        note: o.partial ? 'Theo dõi hụt: đỉnh ghi được chỉ là mức sàn, bỏ phí suy ra là mức trần — không quy ra tiền.' : '',
+      }),
+    'lookback.tipFive': (o) =>
+      tipOf({
+        head: `Chu kỳ 5 giờ → ${o.end}`,
+        rows: [['Đỉnh', o.used]],
+        note: 'Dãy 5 giờ trung tính — phần lớn chu kỳ rơi vào lúc ngủ, không quy ra tiền.',
+      }),
+
+    // Thẻ Cursor — cents thật, vượt gói là quà.
+    'lookback.planCursor': (o) => `${o.tier} · $${o.plan}/chu kỳ billing ${o.from} → ${o.to}`,
+    'lookback.leadCursorOver': (o) => `đã dùng trên gói $${o.plan} — vượt ${o.x}×`,
+    'lookback.leadCursorUnder': (o) => `đã dùng trên gói $${o.plan}`,
+    'lookback.cursorOverLine': (o) =>
+      `Included $${o.plan} tiêu hết + nhà cung cấp bù ${o.bonus} · ${o.elapsed} thời gian chu kỳ đã trôi`,
+    'lookback.cursorUnderLine': (o) => `Còn ${o.left} của gói chưa dùng · ${o.elapsed} thời gian chu kỳ đã trôi`,
+    'lookback.cursorMoneyOverRun': 'Bỏ phí chu kỳ này: $0 — phần đã trả dùng sạch, phần vượt là quà nhà cung cấp, ăn màu "vượt mức".',
+    'lookback.cursorMoneyProj': (o) => `Dự phóng hết chu kỳ (${o.to}): ~${o.proj} — bỏ phí ≈ ${o.waste}`,
+    'lookback.cursorCycles': (o) => `${o.n} chu kỳ đóng: bỏ phí ${o.waste}`,
+    'lookback.cursorAllOver': (o) => ` — $${o.plan} nào cũng dùng sạch, phần vượt là bonus nhà cung cấp`,
+    'lookback.cursorCap': (o) => `chu kỳ ${o.from}→${o.to}`,
+    'lookback.cursorCapNote': 'tím = vượt phần đã trả',
+    'lookback.tipBilling': (o) =>
+      tipOf({
+        head: `Chu kỳ billing → ${o.end}`,
+        rows: [
+          ['Đã dùng', o.cents],
+          ['Gói', o.plan],
+          ['Bonus', o.bonus],
+          ['Bỏ phí', o.waste],
+        ],
+        note: o.partial ? 'Theo dõi hụt — không quy ra tiền.' : '',
+      }),
+    'lookback.tipCursorRun': (o) =>
+      tipOf({
+        head: 'Chu kỳ đang chạy',
+        rows: [
+          ['Đã dùng', o.cents],
+          ['Gói', o.plan],
+          ['Thời gian đã trôi', o.elapsed],
+          ['Reset', o.reset],
+        ],
+      }),
+
+    // Thẻ Antigravity — tiền neo vào quỹ Gemini, quỹ Claude/GPT chỉ ra chữ.
+    'lookback.planAg': (o) => `${o.tier} · $${o.plan}/tháng ≈ ${o.cycle} / tuần — tiền neo vào quỹ Gemini`,
+    'lookback.leadAg': (o) => `đã tiêu quỹ Gemini tuần này, reset ${o.at}`,
+    'lookback.agWeekCap': (o) => `tuần ${o.from} → ${o.to}`,
+    'lookback.threepLine': (o) => `Quỹ Claude/GPT cùng gói: đã tiêu ${o.used} khi tuần mới trôi ${o.elapsed}`,
+    'lookback.threepPace': (o) => ` — nhịp này đòi ~${o.x} tuần mới đủ`,
+    'lookback.threepCapped': (o) => `Quỹ Claude/GPT cùng gói đã chạm trần tuần — reset ${o.at}.`,
+    'lookback.threep5h': 'quỹ 5 giờ của nó đang chạm trần lúc này',
+    'lookback.threepNoMoney': (o) => `Không quy ra tiền: một gói $${o.plan} mua cả hai quỹ, tách giá là bịa ra một phép chia.`,
+    'lookback.agMoney': (o) => `${o.n} tuần đóng: bỏ phí ${o.waste} trên ${o.paid} đã trả`,
+    'lookback.agYoung': (o) => `Sổ chu kỳ AG mở ${o.opened} — tuần đầu tiên đóng lúc reset ${o.first}.`,
+    'lookback.tipGemini': (o) =>
+      tipOf({
+        head: `Tuần Gemini → ${o.end}`,
+        rows: [
+          ['Đã tiêu', o.used],
+          ['Bỏ phí', o.usd ? `${o.waste} · ${o.usd}` : o.waste],
+          ['Theo dõi tới', o.watched],
+        ],
+        note: o.partial ? 'Theo dõi hụt: đỉnh ghi được chỉ là mức sàn, bỏ phí suy ra là mức trần — không quy ra tiền.' : '',
+      }),
+
+    // Dòng cộng ngang duy nhất của khối A.
+    'lookback.weekTotal': (o) => `Quy cùng về tuần để cộng được: ba gói ≈ ${o.sum}/tuần — tuần này dự phóng bỏ phí ≈ ${o.waste}. `,
+    'lookback.weekTight': 'Hạn mức đang được vắt gần kiệt — đúng đích.',
+    'lookback.weekLoose': (o) => `Phần bỏ phí lớn nhất đang nằm ở ${o.tool}.`,
+
+    // Khối B — nhịp 14 ngày.
+    'lookback.rhythmSection': 'Nhịp 14 ngày',
+    'lookback.rhythmQ': 'Mỗi công cụ một dải, đơn vị riêng — ba đơn vị không cộng vào nhau được nên không vẽ chung một cột.',
+    'lookback.stripClaude': 'Claude — token viết ra mỗi ngày',
+    'lookback.stripClaudeSrc': (o) => `nguồn: sổ usage-rollup, sâu ${o.days} ngày`,
+    'lookback.stripCursor': 'Cursor — lượt gọi mỗi ngày',
+    'lookback.stripCursorSrc': (o) => `nguồn: sổ cursor-events, sâu ${o.days} ngày`,
+    'lookback.stripAg': 'Antigravity — lượt agent mỗi ngày',
+    'lookback.stripAgSrc': (o) => `nguồn: bảng gen_metadata, sâu ${o.days} ngày`,
+    'lookback.agNoDaily':
+      'Antigravity chưa có lượt agent nào đọc được trong 14 ngày qua — dải này chỉ hiện khi bảng gen_metadata còn hội thoại mới.',
+    'lookback.peakAt': (o) => `đỉnh ${o.day}: ${o.v}`,
+    'lookback.zeroDays': (o) => `trống ${o.days} — ngày không mở ${o.tool}`,
+    'lookback.zeroMany': (o) => `${o.n} ngày không mở ${o.tool}`,
+    'lookback.tipClaudeDay': (o) =>
+      tipOf({
+        head: o.day,
+        rows: [
+          ['Claude viết ra', o.out],
+          ['Lượt gọi', o.msgs],
+        ],
+      }),
+    'lookback.tipCursorDay': (o) =>
+      tipOf({
+        head: o.day,
+        rows: [
+          ['Lượt gọi', o.events],
+          ['Tiền thật', o.cost],
+        ],
+      }),
+    'lookback.tipAgDay': (o) =>
+      tipOf({
+        head: o.day,
+        rows: [
+          ['Lượt agent', o.turns],
+          ['Token sinh ra', o.out],
+        ],
+      }),
+
+    // Khối C — xu hướng tuần, sau cổng 3 tuần.
+    'lookback.trendSection': 'Xu hướng tuần',
+    'lookback.trendQ': 'So tuần với tuần — chỉ đáng tin khi có ít nhất 3 tuần sổ chu kỳ.',
+    'lookback.trendWait': (o) =>
+      `Khối này tự mở khi sổ chu kỳ mở muộn nhất đủ 3 tuần tuổi — khoảng ${o.opens} (sổ đó mở ${o.opened}). Trong lúc chờ, khối "Nhịp 14 ngày" ở trên đã nhìn lại được nửa tháng.`,
+    'lookback.trendNoLedger': 'Chưa sổ chu kỳ nào mở — khối này chờ sổ đủ 3 tuần kể từ lượt quét đầu.',
+    'lookback.trendThin': 'Sổ đã đủ 3 tuần nhưng chưa nguồn nào gom đủ 2 tuần có số — thêm vài ngày nữa là có cột.',
+    'lookback.trendClaude': 'Claude — token viết ra mỗi tuần',
+    'lookback.trendCursor': 'Cursor — tiền thật mỗi tuần',
+    'lookback.trendAg': 'Antigravity — đỉnh quỹ Gemini mỗi tuần',
+    'lookback.trendWeeks': (o) => `${o.n} tuần, tuần mở thứ hai`,
+    'lookback.tipWeek': (o) =>
+      tipOf({
+        head: `Tuần ${o.week}`,
+        rows: [['Tổng', o.v]],
+      }),
+
+    'lookback.note':
+      'Giá gói đọc từ PLANS trong src/config.js — đổi gói thì sửa ở đó, tiền ba thẻ trên đổi theo. Sổ chu kỳ nằm ở ~/.now-dashboard, ghi từ 25–28/7/2026; ngày trước đó không có số — đã chốt không dựng lại dữ liệu quá khứ (backfill).',
+    'report.howLookback': `**Cách đọc bộ số này:** mỗi công cụ đo trên chu kỳ CỦA CHÍNH NÓ (Claude: cửa sổ 7 ngày · Cursor: chu kỳ billing ~tháng · Antigravity: tuần của quỹ Gemini) — ba thẻ không so sánh trực tiếp với nhau được, chỉ dòng "quy cùng về tuần" là được cộng và nó nói rõ là quy đổi. Bỏ phí = phần đã trả tiền mà không dùng tới lúc reset; hạn mức không cộng dồn nên tiêu hết là mục tiêu, không phải báo động. Tiền Claude/AG là giá gói chia theo chu kỳ (giá nhập tay trong config); tiền Cursor là cents thật do Cursor tính. Chu kỳ ghi "theo dõi hụt" — tracker bỏ theo dõi một quãng — có đỉnh chỉ là mức sàn, số thật có thể cao hơn, nên không quy ra tiền; bảng đã ghi rõ từng chu kỳ như vậy.`,
   },
 
   en: {
@@ -1334,6 +1562,18 @@ const DICT = {
     'butler.slidePrev': 'previous item',
     'butler.slideNext': 'next item',
     'butler.slideAria': (o) => `Item ${o.i} of ${o.n}`,
+
+    // ── Menu bar popover (menubar.html) ──
+    'mb.scan': (o) => `scanned ${o.ago}`,
+    'mb.tabWork': 'Work',
+    'mb.tabToken': 'Tokens',
+    'mb.noSource': (o) => `no readable ledger for ${o.name}`,
+    'mb.secQuota': 'Claude quota',
+    'mb.awake': (o) => `${o.n} ${p(o.n, 'session', 'sessions')} awake`,
+    'mb.open': 'Open dashboard',
+    'mb.openUsage': 'Open the Tokens screen',
+    'mb.noQuota': 'quota unreadable',
+    'mb.offline': 'cannot reach the server',
 
     // ── Top bar ──
     'top.connecting': 'connecting…',
@@ -1910,6 +2150,10 @@ const DICT = {
     // so the joining is still left to the reader. `periodText` derives it from `windowMs`.
     'qf.landsNear': (o) => `${o.period} projects to ${o.p} — effectively all of it`,
     'qf.slack': (o) => `${o.period} projects to ${o.p} — ${o.w} wasted`,
+    // Short form for the prose lines that carry no bar (`proseText`): the projection
+    // number goes, the waste stays. Next to a bar those two clauses point at two
+    // different places on it; alone in a sentence they are one fact stated twice.
+    'qf.slackShort': (o) => `${o.period} projects to ${o.w} wasted`,
     'qf.pdShort': (o) => `this ${o.h}h session`,
     'qf.pdWeek': 'this week',
     'qf.pdMonth': 'this month',
@@ -2413,7 +2657,7 @@ const DICT = {
       head: 'Not copied',
       note: 'The browser blocks the clipboard while the window is unfocused. Click the dashboard window once, then click this button again.',
     }),
-    'report.stamp': (o) => `Numbers as of ${o.at} (machine time). Every table below is the twin data table of its chart.`,
+    'report.stamp': (o) => `Numbers as of ${o.at} (system clock). Every table below is the companion data table of its chart.`,
     'report.ask':
       'Task: read the tables below, point out what looks off and what can be improved, with concrete actions. Every conclusion must name the number it came from. If the data is not enough, say so instead of guessing.',
     'report.quotaH': 'Quota',
@@ -2428,5 +2672,168 @@ const DICT = {
 6. **Three tools, three DIFFERENT units. Do not add them, do not subtract them.** Claude is percent of two rolling windows, Cursor is dollars per calendar month, Antigravity is percent of two separate pools. The limit block at the top of this report covers all three; every data table below belongs to **one** tool — named in the section heading right before the first table.
 7. **Cursor's dollars are REAL; Claude's are estimated.** Cursor's \`$\` is what Cursor charged; Claude's \`$\` is the dashboard's own multiplication, per point 1. These two dollar columns are not comparable. And Cursor's dollar cap is **derived** (\`spent ÷ percent\`), not reported — the \`limit\` field in the response is the plan price, and dividing by that gives 244% while Cursor itself reports 14%. The percentage is the real number.`,
     'report.howStats': `**How to read these numbers:** everything here comes from hand-written NOW boards, so it measures **what was RECORDED**, not what was done. An empty day may be a day the board went un-updated, not a day with no work — where a chart already excludes such days, its subtitle says so.`,
+
+    // ── Lookback view (key 8) ──
+    'nav.lookback': 'Lookback',
+    'title.lookback': 'Three monthly plans, cycle by cycle',
+    // The bench itself stays in Vietnamese — see the note on the VI side. Only the
+    // screen's own name is translated, because it sits on the rail next to seven others.
+    'nav.bench': 'Bench',
+    'title.bench': 'Turn the menu-bar popover knobs, then paste the values into code',
+    'lookback.broken': 'Could not build the lookback data',
+    'lookback.noLive': 'quota unreadable right now — this card shows history only',
+    'lookback.buySection': 'Are the plans earning their keep',
+    'lookback.buyQ':
+      'Each card runs on its own tool’s cycle — the three cards cannot be compared side by side; only the last line of this block converts all three to weeks, and says so.',
+    'lookback.capRun': 'running',
+    'lookback.wasteTail': (o) => `waste in dollars ≈ ${o.usd}`,
+
+    'lookback.planClaude': (o) => `${o.tier} · $${o.plan}/month as declared in config ≈ ${o.cycle} / 7-day window`,
+    'lookback.leadClaude': (o) => `of the 7-day window spent, resets ${o.at}`,
+    'lookback.scopedShare': (o) => `The ${o.model} model quota alone has spent ${o.pct} of its own cap.`,
+    'lookback.capWindow': (o) => `7-day windows, ${o.from} →`,
+    'lookback.sevenCapNote': 'amber = 10–50% wasted · green = ±10%',
+    'lookback.fivesCap': (o) => `peak of each 5h cycle, ${o.from} →`,
+    'lookback.fiveNever': (o) => `The 5h cap has never been the constraint — highest peak since the ledger opened: ${o.max}.`,
+    'lookback.fiveHit': (o) => `The 5h cap has been hit (${o.max}) — the short window has blocked work before.`,
+    'lookback.sevenYoung': (o) =>
+      `Cycle ledger opened ${o.opened} — no 7-day window has closed yet. The priced 7-day columns fill in from ${o.first}.`,
+    'lookback.sevenMoney': (o) => `${o.n} ${p(o.n, 'window', 'windows')} closed: ${o.waste} wasted of ${o.paid} paid`,
+    'lookback.sevenWorst': (o) => `worst was the window ending ${o.week}: ${o.usd} left unused`,
+    'lookback.partialSkip': (o) => `${o.n} under-watched ${p(o.n, 'cycle', 'cycles')} (grey) ${p(o.n, 'carries', 'carry')} no dollars`,
+    'lookback.fiveStill': (o) => `5h cap: peak across ${o.n} cycles still only ${o.max}`,
+    'lookback.tipSeven': (o) =>
+      tipOf({
+        head: `7-day window → ${o.end}`,
+        rows: [
+          ['Spent', o.used],
+          ['Wasted', o.usd ? `${o.waste} · ${o.usd}` : o.waste],
+          ['Watched to', o.watched],
+        ],
+        note: o.partial ? 'Under-watched: the peak is a lower bound, waste an upper bound — no dollars assigned.' : '',
+      }),
+    'lookback.tipFive': (o) =>
+      tipOf({
+        head: `5-hour cycle → ${o.end}`,
+        rows: [['Peak', o.used]],
+        note: 'The 5h series is neutral — most cycles land while asleep, no dollars assigned.',
+      }),
+
+    'lookback.planCursor': (o) => `${o.tier} · $${o.plan}/billing cycle ${o.from} → ${o.to}`,
+    'lookback.leadCursorOver': (o) => `used on the $${o.plan} plan — ${o.x}× over`,
+    'lookback.leadCursorUnder': (o) => `used on the $${o.plan} plan`,
+    'lookback.cursorOverLine': (o) =>
+      `The included $${o.plan} is fully used + provider bonus ${o.bonus} · ${o.elapsed} of the cycle elapsed`,
+    'lookback.cursorUnderLine': (o) => `${o.left} of the plan still unused · ${o.elapsed} of the cycle elapsed`,
+    'lookback.cursorMoneyOverRun': 'Waste this cycle: $0 — the paid part is fully used; the overshoot is a provider gift, shown in the "beyond target" colour.',
+    'lookback.cursorMoneyProj': (o) => `Projected by cycle end (${o.to}): ~${o.proj} — waste ≈ ${o.waste}`,
+    'lookback.cursorCycles': (o) => `${o.n} ${p(o.n, 'cycle', 'cycles')} closed: ${o.waste} wasted`,
+    'lookback.cursorAllOver': (o) => ` — every $${o.plan} was fully used; the overshoot is provider bonus`,
+    'lookback.cursorCap': (o) => `cycle ${o.from}→${o.to}`,
+    'lookback.cursorCapNote': 'purple = beyond the paid part',
+    'lookback.tipBilling': (o) =>
+      tipOf({
+        head: `Billing cycle → ${o.end}`,
+        rows: [
+          ['Used', o.cents],
+          ['Plan', o.plan],
+          ['Bonus', o.bonus],
+          ['Wasted', o.waste],
+        ],
+        note: o.partial ? 'Under-watched — no dollars assigned.' : '',
+      }),
+    'lookback.tipCursorRun': (o) =>
+      tipOf({
+        head: 'Running cycle',
+        rows: [
+          ['Used', o.cents],
+          ['Plan', o.plan],
+          ['Elapsed', o.elapsed],
+          ['Resets', o.reset],
+        ],
+      }),
+
+    'lookback.planAg': (o) => `${o.tier} · $${o.plan}/month ≈ ${o.cycle} / week — dollars anchored to the Gemini pool`,
+    'lookback.leadAg': (o) => `of this week’s Gemini pool spent, resets ${o.at}`,
+    'lookback.agWeekCap': (o) => `week ${o.from} → ${o.to}`,
+    'lookback.threepLine': (o) => `The Claude/GPT pool on the same plan: ${o.used} spent with only ${o.elapsed} of the week elapsed`,
+    'lookback.threepPace': (o) => ` — this pace asks for ~${o.x} weeks`,
+    'lookback.threepCapped': (o) => `The Claude/GPT pool on the same plan has hit its weekly cap — resets ${o.at}.`,
+    'lookback.threep5h': 'its 5h pool is at its cap right now',
+    'lookback.threepNoMoney': (o) => `No dollars assigned: one $${o.plan} plan buys both pools; splitting the price would invent a division.`,
+    'lookback.agMoney': (o) => `${o.n} ${p(o.n, 'week', 'weeks')} closed: ${o.waste} wasted of ${o.paid} paid`,
+    'lookback.agYoung': (o) => `The AG cycle ledger opened ${o.opened} — the first week closes at the ${o.first} reset.`,
+    'lookback.tipGemini': (o) =>
+      tipOf({
+        head: `Gemini week → ${o.end}`,
+        rows: [
+          ['Spent', o.used],
+          ['Wasted', o.usd ? `${o.waste} · ${o.usd}` : o.waste],
+          ['Watched to', o.watched],
+        ],
+        note: o.partial ? 'Under-watched: the peak is a lower bound, waste an upper bound — no dollars assigned.' : '',
+      }),
+
+    'lookback.weekTotal': (o) => `Converted to weeks so they can be added: the three plans ≈ ${o.sum}/week — projected waste this week ≈ ${o.waste}. `,
+    'lookback.weekTight': 'The quotas are being squeezed nearly dry — exactly the goal.',
+    'lookback.weekLoose': (o) => `The largest share of the waste sits with ${o.tool}.`,
+
+    'lookback.rhythmSection': '14-day rhythm',
+    'lookback.rhythmQ': 'One strip per tool, each in its own unit — the units cannot be added, so they are never drawn as one column.',
+    'lookback.stripClaude': 'Claude — tokens written per day',
+    'lookback.stripClaudeSrc': (o) => `source: usage-rollup ledger, ${o.days} days deep`,
+    'lookback.stripCursor': 'Cursor — calls per day',
+    'lookback.stripCursorSrc': (o) => `source: cursor-events ledger, ${o.days} days deep`,
+    'lookback.stripAg': 'Antigravity — agent turns per day',
+    'lookback.stripAgSrc': (o) => `source: gen_metadata table, ${o.days} days deep`,
+    'lookback.agNoDaily':
+      'No Antigravity agent turns readable in the last 14 days — this strip appears only while the gen_metadata table still has recent conversations.',
+    'lookback.peakAt': (o) => `peak ${o.day}: ${o.v}`,
+    'lookback.zeroDays': (o) => `empty ${o.days} — days ${o.tool} was not opened`,
+    'lookback.zeroMany': (o) => `${o.n} ${p(o.n, 'day', 'days')} without opening ${o.tool}`,
+    'lookback.tipClaudeDay': (o) =>
+      tipOf({
+        head: o.day,
+        rows: [
+          ['Claude wrote', o.out],
+          ['Requests', o.msgs],
+        ],
+      }),
+    'lookback.tipCursorDay': (o) =>
+      tipOf({
+        head: o.day,
+        rows: [
+          ['Calls', o.events],
+          ['Real dollars', o.cost],
+        ],
+      }),
+    'lookback.tipAgDay': (o) =>
+      tipOf({
+        head: o.day,
+        rows: [
+          ['Agent turns', o.turns],
+          ['Tokens generated', o.out],
+        ],
+      }),
+
+    'lookback.trendSection': 'Weekly trend',
+    'lookback.trendQ': 'Week against week — only stands once the cycle ledgers are at least 3 weeks old.',
+    'lookback.trendWait': (o) =>
+      `This block opens itself once the youngest cycle ledger is 3 weeks old — around ${o.opens} (youngest ledger opened ${o.opened}). Meanwhile the "14-day rhythm" block above already looks back half a month.`,
+    'lookback.trendNoLedger': 'No cycle ledger has opened yet — this block waits for 3 weeks of ledger from the first scan.',
+    'lookback.trendThin': 'The ledgers are 3 weeks old but no source has 2 weeks with numbers yet — a few more days and the columns appear.',
+    'lookback.trendClaude': 'Claude — tokens written per week',
+    'lookback.trendCursor': 'Cursor — real dollars per week',
+    'lookback.trendAg': 'Antigravity — Gemini pool peak per week',
+    'lookback.trendWeeks': (o) => `${o.n} ${p(o.n, 'week', 'weeks')}, weeks start Monday`,
+    'lookback.tipWeek': (o) =>
+      tipOf({
+        head: `Week of ${o.week}`,
+        rows: [['Total', o.v]],
+      }),
+
+    'lookback.note':
+      'Plan prices come from PLANS in src/config.js — change plans there and the three cards follow. The cycle ledgers live in ~/.now-dashboard, recording since 25–28 Jul 2026; earlier days cannot be rebuilt (decided: no backfill).',
+    'report.howLookback': `**How to read these numbers:** each tool is measured on ITS OWN cycle (Claude: 7-day window · Cursor: ~monthly billing cycle · Antigravity: Gemini pool week) — the three cards cannot be compared side by side; only the "converted to weeks" line may be added, and it says it is a conversion. Waste = the paid part left unused at reset; quotas do not roll over, so spending them fully is the GOAL, not an alarm. Claude/AG dollars are the plan price split per cycle (price set by hand in config); Cursor dollars are real cents charged by Cursor. Cycles marked "under-watched" — the tracker missed part of the cycle — have lower-bound peaks, so the real number may be higher; they carry no dollars, and the table marks each one.`,
   },
 };

@@ -14,6 +14,8 @@ import { renderTimeline } from './views/timeline.js';
 import { renderHealth } from './views/health.js';
 import { renderStats } from './views/stats.js';
 import { renderUsage } from './views/usage.js';
+import { renderLookback } from './views/lookback.js';
+import { renderBench, initBench } from './views/bench.js';
 
 // Nhãn và tiêu đề giữ dưới dạng KHOÁ i18n rồi dịch lúc vẽ — không phải chuỗi cố định,
 // vì cả VIEWS được dựng một lần lúc nạp module còn ngôn ngữ thì đổi được giữa chừng.
@@ -28,6 +30,17 @@ const VIEWS = {
   // trước* — không màn nào trả lời nổi vì mỗi màn chỉ giữ một nửa số. Xem `views/usage.js`.
   usage: { icon: '◈', labelKey: 'nav.usage', titleKey: 'title.usage', render: renderUsage },
   health: { icon: '⌬', labelKey: 'nav.health', titleKey: 'title.health', render: renderHealth },
+  // Màn Nhìn lại đứng CUỐI, phím 8: nó đọc lịch sử — mọi màn trước nó là hiện tại, và
+  // thứ tự nav đi từ "đang cháy" tới "đã qua". Phím số ăn theo ORDER nên chỉ cần thêm ở đây.
+  lookback: { icon: '⟲', labelKey: 'nav.lookback', titleKey: 'title.lookback', render: renderLookback },
+  // Bàn chỉnh đứng SAU cả Nhìn lại, phím 9. Bảy màn trên là chỗ đọc số; cái này là một
+  // cái tuốc-nơ-vít — nó không nói gì về hôm nay cả, nên nó không được chen vào giữa
+  // dòng "đang cháy → đã qua".
+  //
+  // Nhưng nó PHẢI ở trong nav. Trước 3/8 nó chỉ sống ở /menubar-demo.html, không một
+  // đường nào trên dashboard trỏ tới — và một công cụ phải nhớ URL mới mở được thì lần
+  // sau cần đến sẽ tìm không ra. Đó đúng là chuyện đã xảy ra.
+  bench: { icon: '⚙', labelKey: 'nav.bench', titleKey: 'title.bench', render: renderBench },
 };
 const ORDER = Object.keys(VIEWS);
 
@@ -1273,6 +1286,11 @@ window.addEventListener('hashchange', () => {
   const v = viewFromHash();
   if (VIEWS[v] && v !== app.view) go(v);
 });
+
+// Vặn một núm ở bàn chỉnh thì phải vẽ lại. `views/bench.js` không được tự gọi `render()`
+// ở đây — nó còn chạy cả trong trang lẻ `/menubar-demo.html`, nơi không có `app.js` nào
+// cả. Nên chỗ CHỦ đưa cách vẽ của mình vào, và bàn chỉnh không biết mình đang ở nhà ai.
+initBench(render);
 
 connect();
 render();

@@ -2,8 +2,11 @@
 
 *Lập 2026-07-28, sau ba vòng phỏng vấn (12 câu đã chốt — bảng ở cuối). Trạng thái:
 **đã duyệt cùng tối 28/7** — [design/mock-nhin-lai.html](../design/mock-nhin-lai.html) là
-hợp đồng bố cục. Mục "Ngay" (tracker sổ chu kỳ) đã làm xong, khối ✅ ở mục 4; hai vòng thi
-công còn lại nằm ở [BACKLOG `B19`](../BACKLOG.md).*
+hợp đồng bố cục. Mục "Ngay" (tracker sổ chu kỳ) đã làm xong, khối ✅ ở mục 4.*
+
+*Cập nhật 2026-07-30: **`B19` đã thi công xong và lên màn** — chi tiết + số đo trong
+khối ✅ của [BACKLOG `B19`](../BACKLOG.md). Ba rủi ro ở mục 6 đều đã ngã ngũ, ghi ngay
+dưới từng rủi ro.*
 
 ---
 
@@ -158,10 +161,23 @@ i18n hai bên). Mock và spec này không tính — đã trả rồi.
    — nhiều khả năng là giá-trị-API-quy-đổi của usage). Trước khi vẽ tiền QUÁ KHỨ của
    Cursor phải đối chiếu với `planUsage`; nếu không khớp thì chu kỳ cũ của Cursor chỉ
    hiện events, không hiện đô.
+   *→ Ngã ngũ 30/7: **khớp 0,0%** — cents sự kiện cộng trong đúng chu kỳ billing =
+   `planUsage.totalSpend` ($68,07 = $68,07). June $236 là tháng `bonusSpend` nhà cung
+   cấp bù lớn, không phải API-quy-đổi. Tiền quá khứ Cursor được vẽ.*
 2. **Ranh gấp chu kỳ 7d của Claude chưa kiểm được** — sổ mới có một chu kỳ, chưa thấy nó
    lăn qua reset lần nào. Test phải dựng ca này bằng dữ liệu giả.
+   *→ Test dựng ca lăn-qua-reset bằng chính `bumpWindows` trong
+   [test/cycles.test.js](../test/cycles.test.js); ranh thật đầu tiên tự kiểm lúc cửa sổ
+   7d đóng 31/7 01:00.*
 3. **AG theo ngày** phụ thuộc `gen_metadata` có timestamp hay không — kiểm 15 phút lúc
    làm, hai nhánh đều đã có chỗ đứng trong thiết kế (có → thêm dải; không → câu văn xuôi).
+   *→ Ngã ngũ 30/7: **CÓ** — `agTurns.series` đã gấp sẵn theo ngày từ timestamp của
+   từng lượt; khối B mang dải AG thật (đỉnh đo được 28/7: 1.631 lượt/ngày).*
+
+Một rủi ro mục 6 KHÔNG lường trước, phát hiện lúc làm: **hai túi 5 giờ của AG có mốc
+reset TRƯỢT theo lượt đọc** — sổ `ag-cycles` đầy bản ghi giả một-mẫu (328 sau hai ngày).
+Vô hại (trim có trần) nhưng mọi phép gấp của màn chỉ nhận kind `-weekly`; ghi lại ở đầu
+[src/lib/cycles.js](../src/lib/cycles.js) để người đọc sổ sau khỏi cộng nhầm rác.
 
 ## 7 · Hồ sơ phỏng vấn — 12 câu đã chốt (28/7)
 

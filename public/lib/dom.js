@@ -22,9 +22,19 @@ export function html(strings, ...vals) {
   return raw(strings.reduce((acc, s, i) => acc + s + (i < vals.length ? interpolate(vals[i]) : ''), ''));
 }
 
+/**
+ * Chuỗi HTML thật bên trong kết quả `html`.
+ *
+ * Có cửa này vì `RAW` là Symbol nội bộ, mà test thì chạy trong Node — không có DOM để
+ * `mount` vào, nên cách duy nhất soát được cái `quotaBar` vẽ ra là đọc thẳng chuỗi. Không
+ * xuất ra thì test phải tự mò `Object.getOwnPropertySymbols`, tức là bám vào đúng thứ
+ * `RAW` sinh ra để giấu đi.
+ */
+export const rawText = (tpl) => tpl?.[RAW] ?? String(tpl ?? '');
+
 /** Dựng DOM từ kết quả `html` và gắn vào một phần tử. */
 export function mount(el, tpl) {
-  el.innerHTML = tpl[RAW] ?? String(tpl);
+  el.innerHTML = rawText(tpl);
   return el;
 }
 

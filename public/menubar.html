@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>NOW — thanh menu</title>
+
+<!-- Trang này chỉ sống trong popover của app trên thanh menu, rộng 360pt. Nó KHÔNG
+     phải một màn thứ tám của dashboard: không nav, không router, không SSE. Mở là
+     đọc một lượt rồi đóng.
+
+     Không có <link rel=manifest> và không có font Google ở đây. Popover phải hiện
+     trong vài chục mili giây, mà font ngoài mạng thì lúc máy mất mạng treo tới khi
+     DNS bỏ cuộc — trên một cửa sổ bật ra rồi tắt ngay, cái giá đó không đáng. Chữ số
+     rơi về SF Mono của hệ thống, cùng họ với chính thanh menu ở trên. -->
+<link rel="stylesheet" href="/styles.css">
+
+<!-- Nền đặt TRƯỚC nhịp vẽ đầu, như index.html. Khác một chỗ: ở đây theme đi theo
+     APPEARANCE CỦA MACOS chứ không theo localStorage. WKWebView trong app Swift có
+     kho riêng, không dùng chung với Safari — đọc localStorage ở đây thì lần nào cũng
+     rỗng và popover luôn ra nền sáng, nằm chình ình dưới một thanh menu tối. -->
+<script>
+  var dark = matchMedia('(prefers-color-scheme: dark)');
+  function paint(m) { document.documentElement.setAttribute('data-theme', m.matches ? 'dark' : 'light'); }
+  paint(dark);
+  dark.addEventListener('change', paint);
+</script>
+</head>
+<body class="mb-body">
+<div id="mb">
+  <div class="mb-wait">đang đọc…</div>
+</div>
+<script type="module" src="/menubar.js"></script>
+</body>
+</html>

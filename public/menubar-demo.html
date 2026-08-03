@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>NOW — chỉnh popover thanh menu</title>
+
+<!-- Bàn chỉnh popover, bản trang lẻ. Nó KHÔNG dựng lại giao diện popover: nó gọi đúng
+     popoverView mà app đang gọi, chỉ khác bộ công tắc truyền vào. Một bản "gần giống"
+     để ngắm là bản sẽ lệch khỏi bản chạy thật — đã dính đúng bẫy đó một lần khi canh
+     chữ trên thanh menu, và lần ấy phải bắt app tự chụp mình mới ra được sự thật.
+
+     Cùng bàn chỉnh này còn là một màn trong dashboard (#bench). Ruột chung ở
+     public/views/bench.js; trang này chỉ khác ở chỗ quanh popover không có gì cả.
+
+     Chốt được cấu hình nào thì chép hai khối mã ở cột phải vào code. -->
+<link rel="stylesheet" href="/styles.css">
+<script>
+  var dark = matchMedia('(prefers-color-scheme: dark)');
+  function paint(m) { document.documentElement.setAttribute('data-theme', m.matches ? 'dark' : 'light'); }
+  paint(dark);
+  dark.addEventListener('change', paint);
+</script>
+</head>
+<body class="mbd-body">
+<h1 class="mbd-h1">Chỉnh popover</h1>
+<div id="bench"></div>
+<script type="module" src="/menubar-demo.js"></script>
+</body>
+</html>

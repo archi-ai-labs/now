@@ -33,7 +33,7 @@
 
 import { t } from './i18n.js';
 import { ago } from './dom.js';
-import { bindingOf, forecastText, forecastTip, idleMsOf, paceText, pctText, periodText, toneOf, verdictOf, windowsOf } from './quota.js';
+import { bindingOf, forecastText, forecastTip, idleMsOf, paceText, pctText, periodText, proseText, toneOf, verdictOf, windowsOf } from './quota.js';
 
 const hour = () => new Date().getHours();
 
@@ -208,8 +208,8 @@ function burnLead(state) {
  * thêm hai cái thanh cho một chuyện mỗi tuần mới nói một lần. Một câu văn xuôi nói đủ:
  * tên, đã tiêu, và kết cục — số chi tiết vẫn nằm trong tooltip của chính câu đó.
  *
- * Luật CHEN VÀO giữ nguyên như thời còn ở dải: chỉ xuất hiện khi có chuyện (bỏ phí,
- * hoặc sắp chạm trần), và không bao giờ là câu chính — bỏ phí không gấp.
+ * Luật CHEN VÀO: chỉ xuất hiện khi có BỎ PHÍ, và không bao giờ là câu chính — bỏ phí
+ * không gấp.
  *
  * Với Antigravity chỉ lấy khung TUẦN, bỏ khung 5 giờ: một buổi không mở Antigravity
  * thì khung 5 giờ của nó đương nhiên trống — báo "bỏ phí" mỗi 5 tiếng cho một app
@@ -217,10 +217,46 @@ function burnLead(state) {
  * đã trả tiền mà có thể cứu kịp. Cursor thì cả chu kỳ (tháng) là một cửa sổ duy nhất.
  */
 export function toolLines(state) {
+  return (
+    toolWindows(state)
+      // CHỈ hai băng bỏ phí. Băng `cheer` — nhịp đòi nhiều hơn cả cửa sổ có — từng được
+      // nói ở đây, và bị gỡ ngày 4/8 vì nó là câu duy nhất trên popover báo một tai hoạ
+      // ("cạn sau 12 giờ, rồi ngồi không 6 ngày") dựa trên mảnh bằng chứng mỏng nhất:
+      // với khung TUẦN của Antigravity, mười hai tiếng đầu đã đủ qua cửa `qf.early`, nên
+      // một buổi làm mạnh là ngoại suy ra cả tuần cháy sạch. Nói sai về phía hoảng loạn,
+      // mỗi ngày một lần, thì lần thứ ba người đọc bỏ qua cả khối chữ này.
+      //
+      // Con số ấy KHÔNG mất: màn/tab Token vẫn bày cả ba công cụ không lọc băng nào
+      // (`toolWindows` ngay dưới), và tooltip của chính dòng này vẫn có đủ.
+      .filter((r) => r.tone === 'crit' || r.tone === 'warn')
+      .map((r) => ({
+        key: r.key,
+        tone: r.tone,
+        // `proseText`, không phải `forecastText`: dòng này đứng MỘT MÌNH, không có thanh
+        // nào bên cạnh để hai vế "dự phóng X" và "bỏ phí Y" trỏ vào hai chỗ khác nhau.
+        text: t('butler.toolLine', { name: r.short, used: pctText(r.w.used), line: proseText(r.w) }),
+        tip: forecastTip(r),
+      }))
+  );
+}
+
+/**
+ * Cửa sổ hạn mức của Cursor và Antigravity — CHƯA lọc, còn nguyên `w` để vẽ thanh.
+ *
+ * Tách khỏi `toolLines` vì hai chỗ dùng cần hai thứ khác nhau. Quản gia cần mấy CÂU và
+ * chỉ khi có chuyện — im lặng là đúng ở đó. Còn màn/tab Token thì ngược lại: mở nó ra là
+ * để đối chiếu ba công cụ, mà một công cụ vắng mặt vì "đang yên" thì người đọc không
+ * phân biệt được với "không đọc được sổ của nó".
+ */
+export function toolWindows(state) {
   const rows = [];
   const c = state.cursor;
   if (c?.ok && c.total?.used != null && !c.total.expired) {
-    rows.push({ key: 'cursor', label: `Cursor · ${t('tools.bTotal')}`, short: 'Cursor', w: c.total, overLabel: 'tools.rowOver' });
+    // `short` mang tên công cụ vì quản gia nói một câu đứng lẻ ("Cursor đã tiêu 82%…").
+    // `win` thì bỏ tên ấy đi, dành cho chỗ đã có tiêu đề công cụ ở trên — dưới một cái
+    // đầu đề "CURSOR" mà mỗi hàng lại mở bằng "Cursor" thì cái tên chiếm chỗ hai lần.
+    // Tên viết ĐỦ, không viết tắt: xem chú thích ở nhánh Antigravity ngay dưới.
+    rows.push({ key: 'cursor', label: `Cursor · ${t('tools.bTotal')}`, short: 'Cursor', win: t('tools.bTotal'), w: c.total, overLabel: 'tools.rowOver' });
   }
   const ag = state.agQuota;
   if (ag?.ok) {
@@ -230,23 +266,19 @@ export function toolLines(state) {
         rows.push({
           key: `ag-${b.key}`,
           label: `Antigravity · ${g.name ?? b.label}`,
-          short: g.name ? `AG · ${g.name}` : 'Antigravity',
+          // "Antigravity", không phải "AG". Câu này đứng lẻ trong ô quản gia và trong
+          // tab Việc của popover — hai chỗ KHÔNG có tiêu đề công cụ nào ở trên để suy ra
+          // chữ tắt là gì. Mà tên nhóm đi kèm lại là "Gemini Models", tức là "AG · Gemini
+          // Models" mời người đọc hiểu AG là một thứ gì đó của Google. Chín ký tự đổi lấy
+          // việc câu không cần chú giải là một món hời.
+          short: g.name ? `Antigravity · ${g.name}` : 'Antigravity',
+          win: g.name ?? b.label,
           w: b,
         });
       }
     }
   }
-  return rows
-    .map((r) => ({ ...r, verdict: verdictOf(r.w), tone: toneOf(r.w) }))
-    // `ok` và `mute` bị loại, phần còn lại được nói — kể cả `cheer`. Một nguồn ngoài đang
-    // cạn sớm cũng là chuyện đáng biết: nó đổi câu trả lời cho "phiên tới chạy ở đâu".
-    .filter((r) => r.tone !== 'ok' && r.tone !== 'mute')
-    .map((r) => ({
-      key: r.key,
-      tone: r.tone,
-      text: t('butler.toolLine', { name: r.short, used: pctText(r.w.used), line: forecastText(r.w) }),
-      tip: forecastTip(r),
-    }));
+  return rows.map((r) => ({ ...r, verdict: verdictOf(r.w), tone: toneOf(r.w) }));
 }
 
 /**
@@ -270,11 +302,11 @@ const WORK_SLIDES = 3;
  * `works` và `burn` KHÔNG bao giờ tranh nhau chỗ nữa, nên hàm này không còn phép so nào
  * giữa hai loại việc — đó chính là điều nó vừa thôi làm.
  */
-export function briefing(state) {
+export function briefing(state, { greet: withGreet = true } = {}) {
   const rows = windowsOf(state.quota);
   const binding = bindingOf(state.quota);
   return {
-    works: pickLeads(state),
+    works: pickLeads(state, withGreet),
     burn: burnLead(state),
     quota: { rows, binding, tone: binding?.tone ?? 'mute' },
     tools: toolLines(state),
@@ -299,7 +331,7 @@ export function briefing(state) {
  * slide xếp cùng hàng: câu của chúng mở bằng "Không có gì chặn sếp", nói cạnh một quyết
  * định đang treo thì thành nói dối. Có việc chặn thì chúng im.
  */
-function pickLeads(state) {
+function pickLeads(state, withGreet) {
   const s = state.stats;
   const out = [];
 
@@ -440,6 +472,11 @@ function pickLeads(state) {
   // Lời chào đứng ở slide ĐẦU và chỉ ở đó. Nó chào một lần lúc sếp tới, không phải một
   // phần của câu "có 2 quyết định chờ sếp" — bấm sang slide hai mà bị chào lại lần nữa
   // thì lời chào thành tiếng ồn, và nó còn ăn mất chỗ của chữ đang phải nói việc.
+  //
+  // Popover thanh menu tắt hẳn nó (`greet: false`): ở đó câu bị kẹp còn hai dòng, mà
+  // "Chào buổi tối, sếp." chiếm gần trọn dòng đầu — lời chào là nghi thức của một trang
+  // sếp MỞ RA, không phải của một ô sếp LIẾC QUA.
+  if (!withGreet) return out.slice(0, WORK_SLIDES);
   const g = greet();
   return out.slice(0, WORK_SLIDES).map((x, i) => (i === 0 ? { ...x, text: `${g}. ${x.text}` } : x));
 }

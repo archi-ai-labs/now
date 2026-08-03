@@ -3,8 +3,8 @@ import { t } from '../lib/i18n.js';
 import { card, series, ranked, hbars, stackedRows, legend, skinSwitch, tableTwin } from '../lib/chart.js';
 import { reportBtn } from '../lib/report.js';
 import { dataAt, empty, planChip, srcLabel, tok, ulabel, usd } from './shared.js';
-import { ago, clock, JUST_NOW_MS } from '../lib/dom.js';
-import { barColor, cardText, forecastTip, pctText, quotaBar, quotaLegend, resetLabel, spentText, windowsOf } from '../lib/quota.js';
+import { ago, clock } from '../lib/dom.js';
+import { barColor, cardText, degradedKey, forecastTip, quotaBar, quotaLegend, readAtText, resetLabel, spentText, usedText, windowsOf } from '../lib/quota.js';
 import { flatTip } from '../lib/tip.js';
 import { surfaceName } from '../lib/surface.js';
 import { getTab, tabBar, tabPanel } from '../lib/tabs.js';
@@ -130,7 +130,7 @@ const total = (r) => r.inTok + r.cw5 + r.cw1 + r.cr + r.out;
  * `≈$248` đứng ngay sau con số phần trăm, và cùng con số đó cũng có một hàng trong tooltip.
  * Đó là vi phạm luật "mỗi con số một chỗ" bên trên — vi phạm CÓ CHỦ Ý, do người dùng chọn.
  * Lý do nó đáng: phần trăm trả lời "còn bao nhiêu phần hạn mức", tiền trả lời "gói này đang
- * moi ra được bao nhiêu", và câu thứ hai là câu duy nhất so được giữa hai cửa sổ khác độ
+ * khai thác được bao nhiêu", và câu thứ hai là câu duy nhất so được giữa hai cửa sổ khác độ
  * dài. Bắt phải rê chuột mới thấy thì nó thành số của người đi soát, không phải số của
  * người liếc một cái rồi quyết chạy phiên tới ở đâu.
  *
@@ -148,7 +148,7 @@ function quotaCard(entry) {
       <span class="q-reset">${resetLabel(w)}</span>
     </div>
     <div class="q-num">
-      <b class="q-val" style="color:${barColor(w)}">${pctText(w.used)}</b>
+      <b class="q-val" style="color:${barColor(w)}">${usedText(w)}</b>
       <span class="q-unit">${t('quota.usedUnit')}</span>
       ${spent ? html`<span class="q-spent">${spent}</span>` : ''}
     </div>
@@ -156,15 +156,6 @@ function quotaCard(entry) {
     ${say ? html`<div class="q-fc ${tone}"><span class="q-say">${say}</span></div>` : ''}
   </div>`;
 }
-
-/** Vì sao số bị cũ, nói theo đúng tầng đã tụt xuống — xem `collect/quota.js`. */
-const DEGRADED_NOTE = {
-  'no-auth': 'quota.noAuth',
-  'token-expired': 'quota.tokenExpired',
-  http: 'quota.httpFail',
-  timeout: 'quota.offline',
-  network: 'quota.offline',
-};
 
 /**
  * Khối hạn mức. Đứng đầu màn vì nó trả lời câu gấp nhất — "tôi sắp bị chặn chưa" —
@@ -181,7 +172,7 @@ function quotaPanel(q, plan) {
     const why = q?.reason === 'missing' ? 'quota.missing' : q?.reason === 'empty' ? 'quota.warming' : 'quota.broken';
     return html`<section class="q-panel">
       <div class="q-head">${srcLabel('Claude', t('quota.titleTail'), chip)}</div>
-      <p class="q-note">${t(DEGRADED_NOTE[q?.degraded] ?? why)}</p>
+      <p class="q-note">${t(degradedKey(q, why) ?? why)}</p>
     </section>`;
   }
 
@@ -197,14 +188,12 @@ function quotaPanel(q, plan) {
   return html`<section class="q-panel">
     <div class="q-head">
       ${srcLabel('Claude', t('quota.titleTail'), chip)}
-      <span class="q-age ${q.stale ? 'stale' : ''}"
-        >${t(q.ageMs < JUST_NOW_MS ? 'quota.atFresh' : 'quota.at', { time: clock(q.at), age: ago(q.ageMs) })}</span
-      >
+      <span class="q-age ${q.stale ? 'stale' : ''}">${readAtText(q)}</span>
     </div>
     <div class="q-grid">${rows.map(quotaCard)}</div>
     ${dead
       ? html`<p class="q-note">${t('quota.allExpired')}</p>`
-      : html`${q.degraded ? html`<p class="q-note">${t(DEGRADED_NOTE[q.degraded] ?? 'quota.offline')}</p>` : ''}
+      : html`${q.degraded ? html`<p class="q-note">${t(degradedKey(q))}</p>` : ''}
           ${q.conservative ? html`<p class="q-note">${t('quota.conservative')}</p>` : ''}
           ${marked
             ? html`<details class="q-help" data-k="q:legend">

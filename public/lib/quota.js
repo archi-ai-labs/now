@@ -28,7 +28,7 @@
  *    nhau và cả ba đều được viết ra, thay vì để trống cho người xem tự suy.
  */
 
-import { html, raw, ago, clock } from './dom.js';
+import { html, raw, ago, clock, JUST_NOW_MS } from './dom.js';
 import { locale, t } from './i18n.js';
 import { flatTip, tipOf } from './tip.js';
 
@@ -174,6 +174,44 @@ export const barColor = (w) => TONE_COLOR[toneOf(w)] ?? TONE_COLOR.mute;
 export const pctText = (v) => `${v >= 10 ? Math.round(v) : Math.round(v * 10) / 10}%`;
 
 /**
+ * Con số DẪN của một cửa sổ đang chạy — hoặc một dấu gạch khi không có con số nào.
+ *
+ * Cửa sổ đã qua mốc reset thì `used` không còn nói về cửa sổ đang mang cái nhãn ấy: nó là
+ * số cuối của một chu kỳ ĐÃ ĐÓNG, còn chu kỳ đang chạy thì chưa ai đọc. In nó ra dưới
+ * nhãn "5 giờ" là mời người đọc hiểu ngược, mà đây lại là con số to nhất khối.
+ *
+ * Gặp thật 3/8: bản đọc kẹt ở 17:08 vì token hết hạn, tới 23:20 vẫn còn nguyên `used: 6`
+ * — trong 6,2 giờ ấy đã trôi qua **hơn một** cửa sổ 5 giờ trọn vẹn, nên 6% không phải số
+ * của chu kỳ trước mà của một chu kỳ nào đó xa hơn nữa. Không có cách nào đọc ra điều đó
+ * từ chữ "6%", nên chỗ này phải là dấu gạch.
+ *
+ * KHÔNG dùng ở màn Nhìn lại: ở đó mỗi hàng CỐ Ý nói về một chu kỳ đã đóng, và số cuối
+ * của nó chính là nội dung của hàng.
+ */
+export const usedText = (w) => (w?.expired || w?.used == null ? '—' : pctText(w.used));
+
+/**
+ * Vì sao số bị cũ, nói theo đúng tầng đã tụt xuống — xem `collect/quota.js`. Ở đây chứ
+ * không ở `views/usage.js` (chỗ nó ra đời) vì popover cũng phải nói được câu này: một
+ * bản đọc kẹt 6 giờ mà cửa sổ nhỏ nhất chỉ dài 5 giờ thì mọi con số trên màn đều hỏng,
+ * và đó đúng là lúc màn hình không được im lặng.
+ */
+const DEGRADED = {
+  'no-auth': 'quota.noAuth',
+  'token-expired': 'quota.tokenExpired',
+  http: 'quota.httpFail',
+  timeout: 'quota.offline',
+  network: 'quota.offline',
+};
+export const degradedKey = (q, fallback = 'quota.offline') => (q?.degraded ? (DEGRADED[q.degraded] ?? fallback) : null);
+
+/** "đọc lúc 17:08 · 6 giờ trước" — tuổi của chính BẢN ĐỌC, không phải tuổi lượt quét. */
+export function readAtText(q) {
+  if (q?.at == null) return '';
+  return t(q.ageMs < JUST_NOW_MS ? 'quota.atFresh' : 'quota.at', { time: clock(q.at), age: ago(q.ageMs) });
+}
+
+/**
  * Nhịp tiêu, nói theo đơn vị hợp với cửa sổ: %/giờ cho khung 5 giờ, %/ngày cho khung
  * tuần. Khung tuần mà nói %/giờ thì ra "0,2%" — đúng số, nhưng không ai ước lượng
  * được gì từ nó.
@@ -287,6 +325,30 @@ export function cardText(w) {
   const idle = idleMsOf(w);
   if (!idle) return '';
   return f.exhaustInMs < 60_000 ? t('qf.outNow', { stuck: ago(idle) }) : t('qf.idleTail', { stuck: ago(idle) });
+}
+
+/**
+ * Câu của mấy DÒNG VĂN XUÔI về nguồn ngoài (Cursor, Antigravity) — bản rút thứ hai của
+ * `forecastText`, anh em với `cardText`.
+ *
+ * Khác `cardText` ở chỗ khác hẳn: thẻ có cái thanh đứng ngay trên câu, nên câu chỉ được
+ * nói phần thanh không vẽ. Dòng văn xuôi thì KHÔNG có thanh nào cả — nó là toàn bộ thứ
+ * người đọc nhận được, nên nó phải tự đủ.
+ *
+ * Cái nó cắt là con số DỰ PHÓNG ở băng bỏ phí. `forecastText` in cả hai vế — "dự phóng
+ * tuần này 69% — bỏ phí 31%" — và đúng ở chỗ nó dùng: cạnh một cái thanh, 69% là mốc mũi
+ * tên đang chỉ, còn 31% là mảng đuôi. Đứng một mình trong câu thì hai vế ấy là một sự
+ * thật nói hai lần (69 + 31 = 100), mà vế đáng nói là vế mất tiền.
+ *
+ * Chân trời "tuần này" ở lại (CLAUDE.md mục 2): 31% là số ngoại suy, mà một số ngoại suy
+ * không mang cửa sổ của nó thì người đọc phải tự ghép — ở đây không có nhãn nào cạnh bên
+ * để ghép vào.
+ */
+export function proseText(w) {
+  const f = w?.forecast;
+  const v = verdictOf(w);
+  if (!f?.known || (v !== 'slack' && v !== 'cold')) return forecastText(w);
+  return t('qf.slackShort', { period: periodText(w), w: pctText(100 - f.projected) });
 }
 
 /**
@@ -421,7 +483,7 @@ export function quotaStrip(rows) {
       >
         <div class="qs-top">
           <span class="qs-k" title="${r.label}">${r.short}</span>
-          <b class="qs-v" style="color:${barColor(r.w)}">${pctText(r.w.used)}</b>
+          <b class="qs-v" style="color:${barColor(r.w)}">${usedText(r.w)}</b>
         </div>
         ${quotaBar(r.w)}
         <!-- Mốc reset ra CHỮ TRÊN MÀN, không chỉ nằm trong tooltip: câu hỏi "còn bao lâu
@@ -490,6 +552,17 @@ const dodge = (from, to, at) => {
  * mảng nào, còn số nằm trong mảng thì phép ghép ấy khỏi phải làm. Dải quản gia hẹp
  * 214px nên vẫn dùng bản không nhãn — ở đó chữ sẽ chồng lên nhau.
  *
+ * `est` chọn chỗ đứng cho nhãn dự phóng — `mid` giữa mảng gạch (mặc định, web dùng),
+ * `end` sát mép phải mảng gạch, `below` một dòng dưới thanh căn phải, `tail` mép phải cả
+ * rãnh. Chỉ `mid` và `end` giữ được luật "số nằm trong đúng mảng nó nói về"; hai bản kia
+ * đổi luật ấy lấy chỗ, nên đang để bàn chỉnh popover chọn chứ chưa chốt.
+ *
+ * `pace: false` bỏ vạch mốc đều và dòng chú thích của nó. Chỉ popover thanh menu dùng:
+ * ở đó mỗi cửa sổ chỉ được chừng 40px, mà vạch mốc đều muốn có nghĩa thì phải kéo theo
+ * dòng chữ "mốc đều 55%" ở dưới — 15px cho một mốc tham chiếu, trong khi thứ nó dùng để
+ * so (đã tiêu, dự phóng) đều đã có nhãn nằm ngay trong thân thanh. Trên web thì còn chỗ,
+ * nên ở đó vạch vẫn đứng.
+ *
  * **Mảng đặc không mang nhãn**, dù nó là mảng quan trọng nhất: con số của nó đã là con
  * số to nhất thẻ, ngay phía trên. In lại lần nữa vào trong mảng thì cùng một trị xuất
  * hiện hai lần cách nhau 8px — và hai chỗ cùng nói một câu thì không chỗ nào được đọc.
@@ -498,20 +571,48 @@ const dodge = (from, to, at) => {
  * không phải một ngưỡng phần trăm viết ở đây: ràng buộc thật là PIXEL, mà cùng một
  * "20% bề rộng" ra 40px ở thẻ hẹp và 90px ở màn rộng.
  */
-export function quotaBar(w, { tall = false, labels = false } = {}) {
-  const used = Math.max(0, Math.min(100, w.used));
-  const f = w.forecast;
+export function quotaBar(w, { tall = false, labels = false, pace = true, est = 'mid' } = {}) {
+  // Cửa sổ đã qua mốc reset → rãnh TRỐNG, và không một mảng nào được vẽ. Cùng lý do với
+  // `usedText`: `used` khi ấy là số cuối của một chu kỳ đã đóng, nên vẽ nó dưới nhãn của
+  // cửa sổ đang chạy là khẳng định một điều không ai đo. Rãnh trống đọc ra đúng thứ đang
+  // có — chưa biết gì — và nó khớp với dấu gạch `usedText` in ở ngay trên.
+  //
+  // Bỏ luôn `forecast` chứ không chỉ bỏ `used`: `collect/quota.js` đã trả `known: false`
+  // cho ca này rồi, nhưng cái thanh không được phụ thuộc vào việc tầng thu thập nhớ làm
+  // thế. Một dự phóng cho một cửa sổ đã đóng thì không có nghĩa nào cả, bất kể ai tính ra.
+  const rolled = Boolean(w.expired);
+  const used = rolled ? 0 : Math.max(0, Math.min(100, w.used));
+  const f = rolled ? null : w.forecast;
   const projected = f?.known ? Math.min(100, f.projected) : used;
   const ghost = Math.max(0, projected - used);
-  const waste = Math.max(0, 100 - projected);
-  const at = w.expired || w.elapsedFrac == null ? null : w.elapsedFrac * 100;
+  // KHÔNG có dự phóng thì KHÔNG có mảng bỏ phí. Bỏ phí là một lời tiên đoán — "cứ nhịp
+  // này thì tới lúc reset còn ngần này chưa tiêu" — nên nó chỉ tồn tại khi có nhịp để
+  // suy. Bản trước để `projected` rơi về `used`, và phép trừ `100 - used` vẫn ra một con
+  // số trông hợp lý ở mọi ca, nên cái thanh khẳng định thay cho một phép tính chưa từng
+  // chạy. Ba ca gặp thật, cả ba đều nói ngược:
+  //   `early`   cửa sổ vừa mở, 8,9% → "bỏ phí 91%" nằm ngay cạnh chính câu
+  //             "cửa sổ vừa mở, chưa đủ để đọc nhịp". Thanh cãi lại câu bên cạnh nó.
+  //   `rolled`  cửa sổ đã sang chu kỳ mới → 6% là số CUỐI của cửa sổ trước, còn cửa sổ
+  //             đang chạy thì chưa ai đọc. Vẽ 94% bỏ phí cho nó là bịa.
+  //   `unknown` không có mốc reset → không biết còn bao lâu, mà "bỏ phí" đo đúng cái đó.
+  // Bỏ mảng này đi thì thanh về đúng thứ nó thật sự biết: mỗi mảng đặc, sắc câm (`mute`
+  // theo `verdictOf`), và câu dưới thanh nói vì sao chưa đoán được.
+  const waste = f?.known ? Math.max(0, 100 - projected) : 0;
+  // `at` là mốc đều. Tắt nó là tắt một lượt cả ba thứ bám vào nó — vạch dọc, dòng chú
+  // thích dưới thanh, và phép nép nhãn `dodge` (không còn vạch thì không còn gì để né).
+  const at = !pace || w.expired || w.elapsedFrac == null ? null : w.elapsedFrac * 100;
   // Đụng trần TRƯỚC mốc reset — điều kiện để nhãn mảng gạch nói "bao giờ cạn" thay vì
   // "tới mức nào". Đòi luôn `exhaustInMs` chứ không chỉ `projected > 100`: hạ cánh đúng
   // 100,0 thì mốc cạn trùng mốc reset, `collect/quota.js` trả `null`, và không có gì để đếm.
   const hits = f?.known && f.projected > 100 && f.exhaustInMs != null;
 
+  // Nhãn dự phóng: cùng một chuỗi, bốn chỗ đứng. Chỗ đứng là chuyện bố cục nên nó nằm ở
+  // đây; còn NÓI GÌ thì vẫn chỉ một nguồn, khỏi lệch giữa các bản.
+  const estText = ghost > 0 && labels ? (hits ? t('qf.hitsIn', { in: ago(f.exhaustInMs) }) : `→${pctText(f.projected)}`) : '';
+  const inGhost = estText && (est === 'mid' || est === 'end');
+
   return html`<span
-    class="qbar ${tall ? 'tall' : ''} ${labels ? 'lab' : ''} ${waste > 0 ? 'wasting' : ''}"
+    class="qbar est-${est} ${tall ? 'tall' : ''} ${labels && (at != null || (estText && est === 'below')) ? 'lab' : ''} ${waste > 0 ? 'wasting' : ''}"
     style="--c:${barColor(w)}"
   >
     <span class="qb-track">
@@ -534,10 +635,8 @@ export function quotaBar(w, { tall = false, labels = false } = {}) {
                  cũng không phải thứ sẽ xảy ra — cái sẽ xảy ra là dừng ở 100. Nên ở đó
                  nhãn đổi sang câu hỏi còn lại duy nhất: BAO GIỜ đụng tường.
                  Trị thô 104% vẫn còn nguyên ở tooltip và bảng số, kèm chữ "quá trần". -->
-            ${labels
-              ? html`<b class="${dodge(used, projected, at)}"
-                  >${hits ? t('qf.hitsIn', { in: ago(f.exhaustInMs) }) : `→${pctText(f.projected)}`}</b
-                >`
+            ${inGhost
+              ? html`<b class="${est === 'end' ? 'r' : dodge(used, projected, at)}">${estText}</b>`
               : ''}</i
           >`
         : ''}
@@ -555,6 +654,10 @@ export function quotaBar(w, { tall = false, labels = false } = {}) {
               : ''}</i
           >`
         : ''}
+      <!-- Bản đuôi thanh: nhãn rời khỏi mảng gạch, neo vào mép phải của RÃNH. Nó không
+           còn nằm trong mảng nó nói về nữa, nên phải trả giá bằng chỗ của nhãn bỏ phí —
+           xem khối est-tail trong styles.css. -->
+      ${estText && est === 'tail' ? html`<b class="qb-tail">${estText}</b>` : ''}
     </span>
     ${at == null ? '' : html`<i class="qb-pace" style="left:${at.toFixed(2)}%"></i>`}
     ${at == null || !labels
@@ -562,6 +665,7 @@ export function quotaBar(w, { tall = false, labels = false } = {}) {
       : html`<span class="qb-mark ${at < EDGE ? 'l' : at > 100 - EDGE ? 'r' : ''}" style="left:${at.toFixed(2)}%"
           >${t('qf.avgMark', { p: pctText(at) })}</span
         >`}
+    ${estText && est === 'below' ? html`<span class="qb-est">${estText}</span>` : ''}
   </span>`;
 }
 

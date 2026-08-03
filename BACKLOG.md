@@ -581,6 +581,43 @@ chưa chắc là tiền BỊ TÍNH — June cộng ra ≈ $236 trên gói $20 �
 **Ước lượng:** 2 ngày (~120–180k token output cho phiên làm). **Chặn bởi:** không gì —
 tracker đã chạy trước; khối C tự mở ~17/8 theo tuổi sổ, không chặn việc dựng màn.
 
+**✅ Đã làm (30/7, một phiên)** — cả hai vòng gộp một: server
+([src/lib/cycles.js](src/lib/cycles.js) + [src/collect/lookback.js](src/collect/lookback.js)
++ `PLANS` trong config), client ([public/views/lookback.js](public/views/lookback.js) +
+nav 8 + ~70 khoá `lookback.*` × VI/EN + khối CSS `lb-*`). Test **334/334**
+(13 test toán tiền mới trong [test/cycles.test.js](test/cycles.test.js), 6 test gấp trục
+client trong [test/lookback.test.js](test/lookback.test.js) — gồm ca "hôm nay là đầu vào
+ẩn" của B17). Nghiệm thu trên app thật: VI/EN × hai nền, console 0 lỗi, đối chiếu từng
+khối với mock.
+
+Số đo SAU: `state.lookback` **1.193 byte** (hứa "vài KB" — không nuôi `B14`); dữ liệu
+ngày cho khối B/C gấp phía CLIENT từ series đã có sẵn trong payload, server không chở
+bản thứ hai; ba sổ chu kỳ đọc qua memo của tracker — **0 lượt I/O thêm** mỗi lượt quét.
+
+Bốn điều chỉnh so với spec, nói cho đúng:
+
+- **Rủi ro 1 (tiền Cursor) GỠ HẲN bằng số đo:** cents của sổ sự kiện cộng trong đúng
+  chu kỳ billing = `planUsage.totalSpend` khớp **0,0%** ($68,07 = $68,07). Tháng 6
+  ≈ $236 không phải "giá trị API quy đổi" — là tháng bonus nhà cung cấp bù lớn
+  (`bonusSpend` nằm ngay trong payload). Tiền quá khứ Cursor được phép vẽ.
+- **Rủi ro 3 (AG theo ngày) ra nhánh CÓ:** `gen_metadata` mang timestamp từng lượt
+  (`agTurns.series` đã gấp sẵn theo ngày) → khối B có dải AG thật — đo được đỉnh
+  28/7: 1.631 lượt agent/ngày.
+- **Sổ AG có rác phải gọi tên:** hai túi 5 giờ của AG (`3p-5h`, `gemini-5h`) có mốc
+  reset TRƯỢT theo lượt đọc — mỗi 5 phút đẻ một "chu kỳ" giả một mẫu, 328 bản ghi sau
+  hai ngày. Không phải chu kỳ (không có ranh để đóng) nên mọi phép gấp của màn chỉ nhận
+  kind `-weekly`; sổ vẫn ghi chúng, vô hại vì `trimCycles` có trần.
+- **Kiến trúc lệch spec một điểm, có chủ ý:** `collect/lookback.js` KHÔNG đọc lại 5 sổ
+  từ đĩa như đặc tả — ba sổ chu kỳ lấy qua memo tracker (`trackQuota`/`makeTracker` trả
+  kèm Map), hai sổ ngày thì client tự gấp từ payload. Cùng dữ liệu, bớt I/O, bớt hàng đúp.
+
+Tuần Gemini 100% cứu trước reset 29/7 thành chu kỳ mang tiền đầu tiên trên màn: bỏ phí
+$0 trên $4,60. Cửa sổ 7 ngày đầu tiên của Claude tự đóng 31/7 01:00 — dãy cột tiền đầy
+dần từ đó, đúng câu đã in trên thẻ. Cổng khối C mở ~18/8 (sổ non nhất mở 28/7 21:19).
+
+Còn nợ một thứ NGOÀI phạm vi: hai test butler đỏ khi chạy sau 22h (lời chào đọc đồng hồ
+thật) — flake có sẵn, không dính B19, đã tách thành việc riêng.
+
 ---
 
 ## Còn lại làm gì
@@ -591,9 +628,11 @@ tracker đã chạy trước; khối C tự mở ~17/8 theo tuổi sổ, không 
 phần lớn `B10` (bản redesign đã làm rồi).
 
 **Cập nhật 2026-07-28 (tối)** — thêm **`B19`** (Nhóm 4): phần thi công màn "Nhìn lại" sau
-khi đề xuất được duyệt và tracker sổ chu kỳ đã lên ngay trong tối. Nó đứng TRƯỚC bốn mục
-dưới: việc duy nhất trong hàng đã có spec + mock làm hợp đồng, và sổ nó cần thì đang dày
-lên mỗi lượt quét. Bốn mục cũ giữ nguyên thứ tự:
+khi đề xuất được duyệt và tracker sổ chu kỳ đã lên ngay trong tối.
+
+**Cập nhật 2026-07-30 (khuya)** — **`B19` xong trong một phiên**, nghiệm thu trên app
+thật; số đo và bốn điều chỉnh nằm trong khối ✅ của mục. Hàng đợi trở lại đúng bốn mục
+cũ, giữ nguyên thứ tự:
 
 1. **`B13` — `run()` trả kèm lý do.** Rẻ, và nó là điều kiện để chẩn đoán mọi thứ khác.
    Lên đầu bảng sau khi `B16` xong — chính lúc dựng service mới thấy rõ cái giá của nó:

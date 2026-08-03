@@ -57,7 +57,7 @@ export function reportBtn(view) {
 }
 
 /** Khối "cách đọc" của từng màn. Màn không có mặt ở đây thì báo cáo không có khối này. */
-const HOWTO = { usage: 'report.howUsage', stats: 'report.howStats' };
+const HOWTO = { usage: 'report.howUsage', stats: 'report.howStats', lookback: 'report.howLookback' };
 
 const clean = (el) => (el?.textContent ?? '').replace(/\s+/g, ' ').trim();
 

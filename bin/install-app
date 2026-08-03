@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# Dựng app trên Dock từ nguồn trong app/ và cài vào ~/Applications.
+#
+# Chạy lại được bao nhiêu lần cũng được: bundle dựng ở thư mục tạm rồi mới thay chỗ cũ,
+# nên một lần dựng hỏng không để lại cái app nửa vời trên Dock.
+#
+#   ./bin/install-app                      # → ~/Applications/NOW Dashboard.app
+#   APP_NAME="NOW ⌘" ./bin/install-app     # đổi nhãn dưới icon
+#   NOW_WEBAPP=~/Applications/NOW.app ./bin/install-app
+#
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+APP_NAME="${APP_NAME:-NOW Dashboard}"
+DEST_DIR="${APP_DEST:-$HOME/Applications}"
+DEST="$DEST_DIR/$APP_NAME.app"
+WEBAPP="${NOW_WEBAPP:-$HOME/Applications/NOW.app}"
+PORT="${NOW_PORT:-4400}"
+ID="dev.hoanluu.now-dash.launcher"
+
+# Chốt chặn khỏi tự bắn vào chân: DEST trùng tên với một app KHÁC (rất dễ xảy ra — web
+# app Safari cũng nằm ở ~/Applications và cũng tên NOW) thì dừng, đừng đè. Bundle của
+# Safari không tạo lại được bằng script, mất là phải vào Safari thêm lại tay.
+if [[ -d "$DEST" ]]; then
+  have="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$DEST/Contents/Info.plist" 2>/dev/null || true)"
+  if [[ "$have" != "$ID" ]]; then
+    echo "Đã có app khác ở $DEST (id: ${have:-không đọc được}) — không đè." >&2
+    echo "Đặt tên khác: APP_NAME=\"…\" $0" >&2
+    exit 1
+  fi
+fi
+
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+BUNDLE="$TMP/$APP_NAME.app"
+mkdir -p "$BUNDLE/Contents/MacOS" "$BUNDLE/Contents/Resources"
+
+# ── Info.plist ──────────────────────────────────────────────────────────────
+sed "s|__APP_NAME__|$APP_NAME|g" "$ROOT/app/Info.plist" >"$BUNDLE/Contents/Info.plist"
+
+# ── Thân app ────────────────────────────────────────────────────────────────
+# Đường dẫn ghim TUYỆT ĐỐI vào lúc dựng, đúng như launchd/dev.hoanluu.now-dash.plist:
+# repo dời chỗ thì dựng lại, chứ không có $HOME nào để mà giãn khi LaunchServices gọi.
+#
+# Tên `main.swift` là bắt buộc, không phải sở thích: Swift chỉ cho viết mã ở mức ngoài
+# cùng (mấy dòng `app.run()` cuối file) trong đúng một file mang tên ấy.
+sed -e "s|__ROOT__|$ROOT|g" -e "s|__WEBAPP__|$WEBAPP|g" -e "s|__PORT__|$PORT|g" \
+  "$ROOT/app/NowMenuBar.swift" >"$TMP/main.swift"
+
+# Năm mã màu bóc từ styles.css. Trượt một cái là dừng ở đây, không dựng tiếp.
+python3 "$ROOT/app/make-tones.py" "$ROOT/public/styles.css" >"$TMP/Tones.swift"
+
+echo "Đang biên dịch…"
+swiftc -O -whole-module-optimization \
+  -target "$(uname -m)-apple-macosx13.0" \
+  -o "$BUNDLE/Contents/MacOS/now-dash-menu" \
+  "$TMP/main.swift" "$TMP/Tones.swift"
+
+# ── Icon ────────────────────────────────────────────────────────────────────
+# Cùng một nguồn với icon của web app (design/icon.svg → public/icon-1024.png), để hai
+# icon trên Dock không phải hai đời khác nhau. Thiếu icon thì app vẫn chạy, chỉ mang
+# icon trắng mặc định — nên chỉ cảnh báo, không chết.
+if [[ -f "$ROOT/public/icon-1024.png" ]]; then
+  ICONSET="$TMP/icon.iconset"
+  mkdir -p "$ICONSET"
+  for s in 16 32 128 256 512; do
+    sips -z "$s" "$s" "$ROOT/public/icon-1024.png" --out "$ICONSET/icon_${s}x${s}.png" >/dev/null
+    sips -z "$((s * 2))" "$((s * 2))" "$ROOT/public/icon-1024.png" \
+      --out "$ICONSET/icon_${s}x${s}@2x.png" >/dev/null
+  done
+  iconutil -c icns "$ICONSET" -o "$BUNDLE/Contents/Resources/icon.icns"
+else
+  echo "Không thấy public/icon-1024.png — app sẽ mang icon mặc định." >&2
+fi
+
+# ── Thay chỗ cũ ─────────────────────────────────────────────────────────────
+mkdir -p "$DEST_DIR"
+rm -rf "$DEST"
+mv "$BUNDLE" "$DEST"
+
+# Không có bước này thì Finder và Spotlight có thể còn giữ icon/tên của lần dựng trước
+# hàng giờ liền, và người dùng tưởng script không chạy.
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
+  -f "$DEST" 2>/dev/null || true
+
+echo "Đã cài: $DEST"
+[[ -d "$WEBAPP" ]] || echo "Chưa thấy web app ở $WEBAPP — app sẽ mở bằng trình duyệt mặc định. Xem README.md §Chạy như app riêng trên Dock." >&2

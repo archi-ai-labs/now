@@ -273,5 +273,8 @@ export async function trackQuota(q, { now = Date.now(), file = QUOTA_LOG } = {})
       },
     );
   }
-  return { ...cyclesOf(memo, now), path: file, error: writeError };
+  // `ledger` là chính cái Map — cho `collectLookback` gấp tiền theo chu kỳ mà không phải
+  // đọc lại đĩa. `state.js` PHẢI tách nó ra trước khi cho phần còn lại vào state: Map đi
+  // qua JSON.stringify thành `{}` — payload không phồng nhưng dữ liệu câm lặng biến mất.
+  return { ...cyclesOf(memo, now), path: file, error: writeError, ledger: memo };
 }

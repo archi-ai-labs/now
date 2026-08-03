@@ -7,6 +7,11 @@ import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { PORT, SESSIONS_DIR, TASKS_DIR } from './src/config.js';
 import { buildState } from './src/state.js';
+// Server import một module của TRÌNH DUYỆT, cố ý. Thang bỏ phí bốn bậc
+// (`verdictOf`) đã bị sửa lưng ba phiên liền mới chốt được; mục trên thanh menu mà
+// tự chấm bậc bằng bản Swift của riêng nó là mời đúng cái lỗi ấy quay lại ở chỗ khó
+// thấy hơn. `quota.js` chạy được dưới Node vì phần chấm bậc không đụng DOM.
+import { bindingOf, wasteOf, usedText } from './public/lib/quota.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(ROOT, 'public');
@@ -30,6 +35,9 @@ let cache = null;
 let building = null;
 const clients = new Set();
 
+/** Quá tuổi này thì bản trong tay coi như cũ, phải dựng lượt mới. */
+const STALE_MS = 1500;
+
 /**
  * Gộp mọi yêu cầu dựng trạng thái đang chạy — nhiều sự kiện fs không được phép spawn
  * nhiều lượt git.
@@ -38,10 +46,10 @@ const clients = new Set();
  * kể cả khi đã đóng hết tab. Chỉ hạn mức đọc tới cờ này — nó là thứ duy nhất gọi ra
  * ngoài, và gọi cho không ai đọc thì vừa phí vừa ăn rate limit vô ích.
  */
-function getState({ force = false, watched = clients.size > 0 } = {}) {
+function getState({ force = false, watched = clients.size > 0, badge = false } = {}) {
   if (building) return building;
-  if (!force && cache && Date.now() - cache.generatedAt < 1500) return Promise.resolve(cache);
-  building = buildState({ watched })
+  if (!force && cache && Date.now() - cache.generatedAt < STALE_MS) return Promise.resolve(cache);
+  building = buildState({ watched, badge })
     .then((s) => {
       cache = s;
       return s;
@@ -50,6 +58,37 @@ function getState({ force = false, watched = clients.size > 0 } = {}) {
       building = null;
     });
   return building;
+}
+
+/**
+ * Bản đang có trong tay, TRẢ NGAY, không chờ lượt dựng nào. `null` khi chưa từng dựng.
+ *
+ * Có cửa này vì `getState` đo đúng một thứ — bản trong tay còn dùng được không — rồi
+ * dùng câu trả lời ấy cho cả hai việc: có dựng lại không, VÀ có bắt người hỏi chờ không.
+ * Hai việc đó không đi cùng nhau.
+ *
+ * Popover trên thanh menu là chỗ lộ ra rõ nhất. Nó mở dăm bảy lần một ngày, cách nhau
+ * hàng phút, nên lượt hỏi của nó gần như LUÔN trượt cache 1,5 giây — mà một lượt
+ * `buildState` là 325–1614 ms (đo 6 lần, 3/8). Suốt quãng ấy trong popover chỉ có đúng
+ * chữ "đang đọc…", lần nào cũng vậy, vì trang tải lại mỗi lần mở.
+ *
+ * Nên tách ra: đưa bản cũ lên màn hình trước, dựng bản mới phía sau. Bản cũ nhiều nhất
+ * là 30 giây tuổi (nhịp badge của app Swift) — với board và phiên thì đó là cùng một
+ * tin, còn hạn mức thì lượt dựng nền sẽ đè lên sau vài trăm mili giây. Người hỏi biết
+ * mình đang cầm bản cũ qua header `x-now-building`, và hỏi lại bằng `?wait=1` để lấy
+ * bản mới ngay khi nó xong.
+ *
+ * Lượt dựng nền có `broadcast`: nó đã tốn công quét rồi, tab đang mở không có lý do gì
+ * phải đợi thêm một nhịp nữa mới thấy.
+ */
+function peekState({ watched = clients.size > 0 } = {}) {
+  if (!cache) return null;
+  if (!building && Date.now() - cache.generatedAt >= STALE_MS) {
+    getState({ force: true, watched })
+      .then(broadcast)
+      .catch((err) => console.error('[now-dash] dựng nền lỗi:', err.message));
+  }
+  return cache;
 }
 
 function broadcast(state) {
@@ -113,9 +152,13 @@ async function installWatchers(state) {
 
 // ── HTTP ─────────────────────────────────────────────────────────────────────
 
-function json(res, code, body) {
+function json(res, code, body, headers = {}) {
   const text = JSON.stringify(body);
-  res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'content-length': Buffer.byteLength(text) });
+  res.writeHead(code, {
+    'content-type': 'application/json; charset=utf-8',
+    'content-length': Buffer.byteLength(text),
+    ...headers,
+  });
   res.end(text);
 }
 
@@ -206,6 +249,56 @@ async function openPath(res, target, app) {
   return json(res, 200, { ok: true, opened: target, app: bundle });
 }
 
+// ── Hai mục trên thanh menu ──────────────────────────────────────────────────
+
+// Ký hiệu dẫn đứng trước số, và nó KHÔNG trang trí: theme của máy này là daltonized,
+// nên bậc bỏ phí không được để màu làm kênh phân biệt duy nhất. Hình đi theo nghĩa —
+// mũi nhọn xuống là tiêu quá ít so với cửa sổ, tròn đầy là đúng nhịp, mũi nhọn lên là
+// nhịp đòi nhiều hơn cả cửa sổ có.
+const BADGE_MARK = { cold: '▽', slack: '◇', full: '●', over: '▲', unknown: '·', rolled: '·' };
+
+/**
+ * Chữ cho hai mục trên thanh menu, tính xong xuôi ở phía server.
+ *
+ * Thanh menu rộng chừng mười ký tự trước khi thành nhiễu, nên ba kênh chia nhau bốn
+ * con số: chữ mang phần ĐÃ TIÊU của hai cửa sổ, còn màu và ký hiệu mang phần BỎ PHÍ
+ * của cửa sổ ràng buộc. Đúng luật 1 và luật 2 của `public/lib/quota.js` — số dẫn là đã
+ * tiêu, màu đo bỏ phí.
+ */
+function badgeOf(s) {
+  const q = s?.quota;
+  const bind = q?.ok ? bindingOf(q) : null;
+  const verdict = bind?.verdict ?? 'unknown';
+  const awake = s?.stats?.awake ?? 0;
+  const hot = s?.stats?.hotDecisions ?? 0;
+
+  return {
+    ok: true,
+    at: Date.now(),
+    quota: {
+      // Hạn mức đọc trượt thì để dấu gạch, đừng để "0%·0%" — số không có thật mà trông
+      // y hệt số thật là cách nhanh nhất để mất lòng tin vào cả hai mục. `usedText` áp
+      // đúng luật ấy cho từng cửa sổ một: cửa sổ đã qua mốc reset cũng là số không có
+      // thật, và nó trượt LẺ — hôm 3/8 khung 5 giờ kẹt ở "6%" suốt sáu tiếng trong khi
+      // khung tuần bên cạnh vẫn tươi, nên cả huy hiệu trông vẫn bình thường.
+      //
+      // Dấu ngăn là "·" chứ không phải "-": dấu gạch nối đứng cạnh dấu gạch ngang của
+      // `usedText` ra "—-37%", một cụm không đọc được thành gì.
+      text: q?.ok ? `${usedText(q.fiveHour)}·${usedText(q.sevenDay)}` : '—',
+      tone: bind?.tone ?? 'mute',
+      verdict,
+      mark: BADGE_MARK[verdict] ?? '·',
+      waste: bind ? Math.round(wasteOf(bind.w)) : null,
+      binding: bind?.short ?? null,
+      stale: q?.stale ?? true,
+    },
+    // Không có mục thứ hai trên thanh menu nữa (bản trước có, và hai mục cùng mở một
+    // popover thì chỉ là hai cái nút giống hệt nhau). Hai con số này vẫn đi kèm để
+    // tooltip và popover khỏi phải hỏi thêm một lượt /api/state.
+    work: { awake, hot },
+  };
+}
+
 async function handle(req, res) {
   const url = new URL(req.url, 'http://localhost');
 
@@ -219,9 +312,40 @@ async function handle(req, res) {
   if (url.pathname === '/api/state') {
     try {
       // Có người hỏi thẳng là có người đang xem, kể cả khi chưa mở kênh SSE nào.
-      return json(res, 200, await getState({ force: url.searchParams.has('force'), watched: true }));
+      const force = url.searchParams.has('force');
+      // Mặc định là ĐỪNG BẮT CHỜ: trả bản trong tay, dựng bản mới phía sau (xem
+      // `peekState`). Hai tham số để chọn kiểu chờ khác:
+      //   `?wait=1`   chờ lượt đang dựng — lượt hỏi thứ hai của popover đi cửa này.
+      //   `?force=1`  vứt bản trong tay, dựng lượt mới rồi mới trả — nút "làm mới".
+      // Chưa từng dựng lượt nào thì `peekState` trả `null` và ai hỏi cũng phải chờ,
+      // đúng như vậy: lúc ấy không có gì để đưa lên màn hình cả.
+      if (!force && !url.searchParams.has('wait')) {
+        const snap = peekState({ watched: true });
+        if (snap) return json(res, 200, snap, building ? { 'x-now-building': '1' } : {});
+      }
+      return json(res, 200, await getState({ force, watched: true }));
     } catch (err) {
       return json(res, 500, { error: err.message });
+    }
+  }
+
+  // Nguồn duy nhất cho hai mục trên thanh menu. Chữ và bậc màu đều tính XONG ở đây,
+  // app Swift chỉ vẽ lại — xem khối import của `verdictOf` ở đầu file.
+  //
+  // `badge: true` chứ không phải `watched: false` trơn. Mục trên thanh menu IN RA con số
+  // hạn mức Claude, nên nó là một người đọc thật: để nó đi cửa "không ai xem" thì lượt gọi
+  // ra endpoint ngủ luôn, và con số nó in ra đứng yên tại lần cuối có tab trình duyệt mở.
+  // Đo hôm 3/8: chu kỳ 5 giờ chạy được 103 phút mà sổ chỉ ghi 5 mẫu — mười phút cuối, đúng
+  // quãng có tab. Cái chốt ấy sinh ra khi thanh menu chưa tồn tại và bề mặt duy nhất là
+  // trình duyệt; nay tiền đề "không tab thì không ai đọc" không còn đúng nữa.
+  //
+  // Đổi lại: app chạy suốt ngày thì trần là 720 lượt gọi/ngày (TTL 2 phút). Muốn thưa hơn
+  // thì nới `QUOTA_TTL_MS` — không phải đóng cửa này, vì đóng lại là quay về số chết.
+  if (url.pathname === '/api/badge') {
+    try {
+      return json(res, 200, badgeOf(await getState({ watched: false, badge: true })));
+    } catch (err) {
+      return json(res, 500, { ok: false, error: err.message });
     }
   }
 

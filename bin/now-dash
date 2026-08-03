@@ -5,7 +5,15 @@
 # sinh ra là CON của terminal (hoặc của phiên Claude đang gọi lệnh này), nên nó chết theo
 # cái cửa sổ đã đẻ ra nó. Giờ chỉ có MỘT nơi được phép dựng server: LaunchAgent
 # dev.hoanluu.now-dash — nó treo thẳng dưới launchd, không dưới ai khác.
+#
+# `--no-open` chỉ dựng server rồi thoát, không mở gì cả. Đó là chế độ dành cho
+# `app/launcher.sh` (thân của app trên Dock): nó phải mở WEB APP chứ không phải tab
+# trình duyệt mặc định, nhưng phần dựng server thì phải dùng lại đúng bản này — hai
+# bản của cùng một logic là hai bản sẽ trôi khỏi nhau.
 set -euo pipefail
+
+OPEN=1
+[[ "${1:-}" == "--no-open" ]] && OPEN=0
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PORT="${NOW_PORT:-4400}"
@@ -24,9 +32,15 @@ else
     # dừng). Cái nào cũng có thể "thất bại" vì lý do vô hại nên nuốt lỗi rồi đo bằng ping.
     launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null || true
     launchctl kickstart "gui/$(id -u)/${LABEL}" 2>/dev/null || true
-  else
+  elif (( OPEN )); then
     echo "Chưa cài LaunchAgent — xem docs/RUNNING.md. Tạm chạy ở tiền cảnh (Ctrl-C để dừng):"
     exec "${ROOT}/bin/now-dash-service"
+  else
+    # Người gọi là app trên Dock, không phải terminal: không có ai để mà Ctrl-C, nên
+    # chạy tiền cảnh ở đây nghĩa là treo im lặng mãi mãi. Báo lỗi để launcher hiện hộp
+    # thoại kèm cách chữa.
+    echo "Chưa cài LaunchAgent — chạy ./bin/install-app hoặc xem README.md" >&2
+    exit 78 # EX_CONFIG
   fi
 
   # Lượt quét đầu mất 4–6 giây; cổng mở trước khi quét xong nên ping ăn sớm hơn thế.
@@ -36,5 +50,7 @@ else
   done
   alive || { echo "Không lên được. Log: ~/.now-dashboard/service.err.log" >&2; exit 1; }
 fi
+
+(( OPEN )) || exit 0
 
 open "$URL" 2>/dev/null || echo "Mở thủ công: ${URL}"

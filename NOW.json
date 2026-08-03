@@ -1,106 +1,90 @@
 {
-  "$comment": "Vẫn chưa git init — updatedAtCommit giữ sentinel 0000000, đo drift theo commit vô nghĩa cho tới khi chốt d-git. Bản này dựng từ mtime + transcript 8 phiên ngày 27/7 + đo sống 14:38–14:42 (ps/lsof server, curl /api/state cold+warm, npm test, sổ ~/.now-dashboard). Hai quyết định d-cursor và d-contrast chốt trong ngày nên rời bảng — outcome nằm ở recentlyDone. Mục 'sáu repo còn hoạt động chưa có board' rớt khỏi upNext vì trần 5 mục — xem lại bằng /now all. Hạn mức sống lúc cập nhật: Claude 5h đã tiêu 27%, 7d 59% (reset 31/7 00:59 giờ VN); Antigravity Gemini weekly còn 57%.",
+  "$comment": "Dựng lại vì drift: NOW cũ mốc 29/7, focus B19 khi ấy CHƯA file nào tồn tại — nay cả ba file B19 lẫn 2 test đã có (untracked từ 30/7) và BACKLOG có khối ✅ B19 (30/7 khuya). Từ đó phát sinh surface MỚI hôm nay 3/8: app thanh menu macOS. Nguồn: git log/status (vẫn 1 commit 2a46a30, working tree phình lớn chưa commit), mtime toàn repo (app/NowMenuBar.swift 19:33, README 23:31 — sửa tới khuya nay), grep server.js (/api/badge + badgeOf sống), ls ~/Applications (NOW Dashboard.app dựng 20:39 hôm nay = app ĐÃ cài), npm test (337/337, +flake butler sau-22h vừa vá), curl :4400 (200) + launchctl (dev.hoanluu.now-dash sống), git diff BACKLOG (chỉ có khối B19, CHƯA mục nào cho menubar), README diff (mô tả install-app + tune bằng mắt + linh vật). Không có phiên nào đang cầm việc.",
   "schemaVersion": 1,
   "project": "now_dashboard",
-  "branch": "(chưa init git)",
-  "updatedAt": "2026-07-27",
-  "updatedAtCommit": "0000000",
-  "updatedBy": "claude /now update",
+  "branch": "main",
+  "updatedAt": "2026-08-03",
+  "updatedAtCommit": "2a46a30c70aa38b678b2d232d89858b7678a4bf9",
+  "updatedBy": "claude /now (auto-update vì drift)",
   "focus": {
-    "title": "Chốt hạng màn Token — tên gói thật của ba công cụ + quản gia thành slide, khép nợ nghiệm thu EN × hai nền",
-    "context": "Hôm qua dựng máy, hôm nay (27/7) là vòng NGƯỜI ĐỌC THẬT: bạn đọc màn Token và sửa lưng qua 4 phiên liên tiếp — gộp màn Công cụ vào Token + chia tab hạn mức, gọn mục Claude, quản gia 2 ô + tích hợp Cursor/AG, fix UI + cảnh báo token — tức nghiệm thu bản VI đã diễn ra bằng hành động thay vì một buổi đọc. Hai quyết định treo từ 23–26/7 chốt xong trong ngày: d-cursor (nhận cả Cursor lẫn Antigravity — 4 collector + 3 sổ mới đang ghi thật) và d-contrast (dời màu #dc2626→#d31f1f và accent tối, tokens + styles đã dựng lại 13:22). Mạch cuối đang chạy dở trong phiên 'Kiểm tra gói subscription…': (1) tên gói thật — Keychain của Claude khai max_5x trong khi gói thật là Max 20x nên trường đó bị loại, phải lấy nguồn khác; Antigravity CÓ tên gói qua một RPC khác nên khỏi neo hằng số, kèm rule bạn đã cho (thấp hơn Pro → Plus, cao hơn → Ultra); Cursor đúng sẵn; (2) ô 'việc đáng làm' của quản gia nâng thành 3 slide xoay vòng bấm next như trang tin. Phiên dừng lúc 14:38 ở câu 'Bắt đầu từ phần backend'. Xong khi: màn Token hiện đúng tên gói ba công cụ, quản gia xoay được 3 việc, và bạn đọc hiểu cả EN × hai nền không phải hỏi lại.",
+    "title": "App trên thanh menu macOS — badge liếc-là-thấy + popover dùng lại NGUYÊN quotaBar/CSS của dashboard",
+    "context": "Focus trước (B19 — màn \"Nhìn lại\", phím 8) đã khép 30/7 khuya: xong cả server (src/lib/cycles.js + src/collect/lookback.js) lẫn client (public/views/lookback.js), nghiệm thu trên app thật VI/EN × hai nền, state.lookback chỉ 1.193 byte; ba rủi ro phỏng vấn đóng bằng số đo (tiền Cursor khớp planUsage 0,0%, AG có dải ngày thật, sổ AG 5h là rác trượt chỉ nhận -weekly). Hôm nay 3/8 dựng một SURFACE MỚI — app trên thanh menu macOS, cả ngày tới tận khuya: (1) server thêm /api/badge (badgeOf, nhịp 30s), (2) app Swift native app/NowMenuBar.swift (404 dòng, AppKit+WebKit) dựng qua bin/install-app → ĐÃ CÀI ~/Applications/NOW Dashboard.app (build 20:39), (3) popover là chính trang menubar.html — KHÔNG phải màn thứ 8, không nav/router/SSE — dùng lại nguyên quotaBar và CSS dashboard (public/menubar.js + public/lib/menubar-view.js 462 dòng, có linh vật phaseOf/shadeOf theo giờ), (4) demo public/menubar-demo.*, (5) +489 dòng CSS mb-*, +426 i18n VI/EN, README ghi trọn cách cài + canh chữ bằng mắt (NOW_SNAP/NOW_PROBE). Đã vá lỗi sống-từ-ngày-đầu: popover hỏi chiều cao trong didFinish lúc trang còn await fetch → nay trang tự đẩy size qua webkit.messageHandlers. npm test 337/337 (đã vá luôn flake 2 test butler đỏ sau 22h). CHƯA commit dòng nào, và CHƯA có mục nào trong BACKLOG cho surface này.",
     "refs": [
-      { "label": "quản gia 2 ô — nơi slide sẽ vào", "ref": "public/lib/butler.js" },
-      { "label": "màn Token (phím 6) + tabs hạn mức", "ref": "public/views/usage.js" },
-      { "label": "nguồn tên gói AG qua RPC + sổ ag-quota", "ref": "src/collect/agquota.js" }
+      { "label": "App Swift — nguồn, ranh giới 'không biết luật hạn mức nào'", "ref": "app/NowMenuBar.swift" },
+      { "label": "Script dựng + cài .app (chốt chặn không đè NOW.app)", "ref": "bin/install-app" },
+      { "label": "Popover — dùng lại quotaBar + linh vật phaseOf/shadeOf", "ref": "public/lib/menubar-view.js" }
     ],
-    "nextAction": "Mở lại phiên 'Kiểm tra gói subscription của Claude, Cursor và Antigravity' xem backend tên-gói + slide quản gia chạy tới đâu (dòng cuối 14:38: 'Bắt đầu từ phần backend'); phiên báo xong thì mở http://127.0.0.1:3000 — vẫn KHÔNG phải 4400 — bấm 6, kiểm ba tên gói (Claude phải ra Max 20x, không phải max_5x của Keychain) và bấm next xoay đủ 3 slide quản gia",
+    "nextAction": "Nghiệm thu app đã cài trên dữ liệu thật: mở popover từ ~/Applications/NOW Dashboard.app xem badge 30s + quotaBar, VI/EN × sáng/tối, console 0 lỗi — menubar-view.js là public/lib nên CLAUDE.md mục 4 BUỘC xem thật, đừng dừng ở npm test 337 xanh",
     "laterSteps": [
-      "Trả nốt nợ nghiệm thu EN × hai nền (nợ từ hai board trước): bấm l sang tiếng Anh, t đổi nền, đọc lại thẻ hiệu suất + thẻ hạn mức trên dữ liệu thật — phần VI coi như đã nghiệm thu bằng cả ngày hôm nay bạn đọc thật và sửa lưng",
-      "Kiểm điều phiên kia hứa ghi lại có nằm trong docs thật không: quyết định neo gói AG (Pro; thấp hơn→Plus, cao hơn→Ultra) + tradeoff bỏ trường Keychain max_5x — bạn dặn 'lưu lại quyết định và tradeoff', không được chỉ nằm trong transcript"
+      "Ghi surface 'App thanh menu' vào BACKLOG.md — grep B2x/menu/badge đang RỖNG, chưa có mục nào cho nó; viết một khối ✅ có số đo như cách B19 được ghi 30/7",
+      "Commit khối việc lớn đang treo: repo mới đúng 1 commit initial (2a46a30) mà cả B19 (cycles.js/lookback.js/views/lookback.js + 2 test, untracked từ 30/7) LẪN toàn bộ app thanh menu hôm nay (app/, bin/install-app, public/menubar*.js) đều chưa vào commit nào",
+      "Dọn nợ git hygiene còn treo từ 29/7: NOW.json/NOW.md vẫn hiện `M` (đang bị track) dù đã thêm .gitignore + git rm --cached — bản vá đó chưa commit, và chính .gitignore còn ở trạng thái untracked (??)"
     ],
     "resume": {
-      "workingState": "Không phải git repo (chưa init, không worktree) — khối chưa-version đã 15.955 dòng (5.151 src + 10.804 public), phình 50% chỉ trong hôm nay, xem d-git · server ĐÃ THAY THẾ HỆ: pid cũ 22352 chết, pid mới 30572 chạy từ ~10:26 — vẫn là con của helper Claude.app, tức dashboard vẫn ký sinh một phiên Claude; nghe 127.0.0.1:3000, cổng 4400 vẫn chết nên app trên Dock vẫn hỏng · /api/state 200: cold 4,5s (lượt đầu chạy collector mạng Cursor/AG), warm 0,58s rồi 0,012s cache, payload 318KB — tăng tiếp từ 279KB, xem B14 · npm test 288/288 xanh (229 → 288 trong ngày); test/i18n.test.js đã gác parity + trùng khoá thay cho chạy tay · hook PostToolUse node --check đã cài (.claude/settings.json) và chứng minh chặn thật ca backtick-trong-comment-HTML · ~/.now-dashboard thêm 3 sổ mới cursor-usage, cursor-events, ag-quota — ghi lần cuối 14:37–14:40, dòng dữ liệu Cursor/AG đang sống · hạn mức sống 14:41: Claude 5h đã tiêu 27%, 7 ngày 59% (reset 31/7 00:59 giờ VN), AG Gemini weekly còn 57%",
-      "howToContinue": "mở lại phiên \"Kiểm tra gói subscription của Claude, Cursor và Antigravity\" — trong panel: search vài từ của tên đó; trong terminal: claude --resume 6939a9b6-d1c7-49cf-8bc6-aeeab8165fb9 — rồi nói: làm tiếp đi"
+      "workingState": "git: nhánh main, ĐÚNG 1 commit (2a46a30 initial squash), KHÔNG worktree phụ. Working tree phình lớn & chưa commit: ~13 file M + ~12 file untracked — gồm TRỌN B19 (cycles.js, lookback.js, views/lookback.js + 2 test, untracked từ 30/7) và TRỌN app thanh menu hôm nay (app/NowMenuBar.swift, app/Info.plist, app/make-tones.py, bin/install-app, public/menubar.html/js, public/lib/menubar-view.js, public/menubar-demo.*). NOW.json/NOW.md vẫn bị track (hiện M) — vá .gitignore từ 29/7 chưa commit · server qua launchd (dev.hoanluu.now-dash, pid 37645) sống, :4400 trả 200 · app ĐÃ cài: ~/Applications/NOW Dashboard.app (build 20:39 hôm nay) · npm test 337/337 xanh (314 lúc mốc 29/7 → 334 sau B19 → 337, thêm test menubar + vá flake butler sau-22h)",
+      "howToContinue": "Không có phiên nào đang cầm việc — mở phiên mới, nói: xem lại app thanh menu đã cài, chạy nghiệm thu popover VI/EN × sáng/tối trên dữ liệu thật, rồi bàn có commit khối B19+menubar và ghi BACKLOG không"
     },
     "confidence": "inferred"
   },
   "sideTracks": [],
   "decisionsNeeded": [
     {
-      "id": "d-git",
-      "title": "now_dashboard có vào git không",
-      "heat": "soon",
-      "blocks": "chưa chặn tay bạn, nhưng khối không-có-đường-lùi phình 10.620 → 15.955 dòng trong MỘT ngày; hook node --check mới cài chỉ đỡ lỗi cú pháp, không đỡ được ca sửa-sai-muốn-lùi-bản",
-      "question": "git init (kèm .gitignore cho NOW.json/NOW.md), hay để local không version? Treo từ 23/7, đã một lần nâng nhiệt; nếu vẫn hoãn thì ít nhất chốt một cách sao lưu khác.",
-      "since": "2026-07-23"
-    },
-    {
       "id": "d-push",
-      "title": "Đẩy dist/ lên project mà không mất thẻ prototype",
+      "title": "Đẩy dist/ lên project claude.ai mà không mất thẻ prototype",
       "heat": "soon",
-      "blocks": "project trên claude.ai giờ cũ hơn repo thêm một bậc: thiếu luôn bộ màu mới sau d-contrast (tokens dựng lại 13:22 hôm nay) — vòng design sau sẽ gấp ngược từ bản sai màu",
-      "question": "dist/screens/overview.html là mock tĩnh 9,5KB, thẻ cùng tên trên project là prototype tương tác 56KB. Đẩy dist/ nhưng bỏ qua đúng file đó, hay đẩy cả và chấp nhận thẻ prototype bị thay bằng mock?",
+      "blocks": "vòng thiết kế đã dịch tiếp (B19 xong 30/7, nay tới surface thanh menu) nên project trên claude.ai càng lệch xa: dist/screens/overview.html còn đứng mốc 26/7 — cũ hơn cả tokens.json 27/7 lẫn mọi việc từ đó",
+      "question": "dist/screens/overview.html là mock tĩnh, thẻ cùng tên trên project là prototype tương tác 56KB. Đẩy dist/ nhưng bỏ qua đúng file đó, hay đẩy cả và chấp nhận thẻ prototype bị thay bằng mock?",
       "ref": "design/README.md",
       "since": "2026-07-23"
     },
     {
-      "id": "d-b6",
-      "title": "B6 dựng lại theo từng dự án — hoãn vô thời hạn?",
+      "id": "d-backlog-now",
+      "title": "BACKLOG.md và NOW.json: giữ tách vai hay gộp/liên kết chặt hơn",
       "heat": "later",
-      "blocks": "chưa chặn gì, nhưng nằm trong hàng đợi thì lần nào đọc cũng phải cân lại",
-      "question": "Số đo vừa ĐỔI CHIỀU so với lúc đặt câu hỏi: quét ấm vẫn nhanh (cache 0,012s) nhưng quét nguội nay 4,5s vì collector mạng Cursor/AG — quay đúng vùng '4–7 giây' từng là lý do sinh ra B6. Gật hoãn, giữ nguyên, hay thu hẹp B6 thành 'chỉ làm mới nguồn chậm theo dự án'?",
+      "blocks": "vẫn chưa chặn gì, nhưng mỗi /now update phải tự đoán ranh giới upNext ↔ BACKLOG.md — và lượt này lộ thêm một khe: surface thanh menu làm cả ngày mà KHÔNG rơi vào BACKLOG lẫn NOW cho tới khi /now đo drift; khuyến nghị 'giữ tách vai, chỉ nâng LIÊN KẾT' đưa ra 29/7 vẫn chưa nghe bạn chốt",
+      "question": "Đồng ý GIỮ tách vai (BACKLOG.md = nguồn sự thật, NOW.json = digest) và chỉ nâng cấp liên kết (vd /now update đọc BACKLOG.md làm nguồn upNext thay vì tự đoán), hay muốn một trong ba nâng cấp đã liệt (đọc BACKLOG.md tự động / trang backlog riêng trên dashboard / chuẩn hoá format cho /now all)?",
       "ref": "BACKLOG.md",
-      "since": "2026-07-23"
+      "since": "2026-07-29"
     }
   ],
   "upNext": [
     {
-      "title": "Nhặt task đã spawn task_33a66d84 (từ /reflect): nâng modules.test.js gọi thật hàm render từng view — bịt đúng lỗ '288 test xanh mà #view rỗng' đã thành luật CLAUDE.md mục 4 nhưng chưa có test nào bắt",
+      "title": "task_33a66d84 (từ /reflect): modules.test.js vẫn chỉ import, chưa gọi hàm render thật của từng view — lỗ '288 test xanh mà #view rỗng' (CLAUDE.md mục 4) nay càng đáng vì có THÊM hai surface render-lúc-chạy chưa ai bắt bằng test: views/lookback.js và menubar-view.js",
       "ref": "test/modules.test.js"
     },
     {
-      "title": "Vòng 3 backlog còn hai mục, kiểm lại 27/7 vẫn chưa làm: B15 — nạp lần đầu vẫn là trang trống 'đang nối…', không skeleton; B13 — run() trong src/lib/sh.js vẫn nuốt lý do lỗi (file không đổi từ 23/7), 'không phải repo' vẫn trông y hệt 'git timeout'",
+      "title": "B13 — run() trong src/lib/sh.js vẫn nuốt lý do lỗi (không đổi từ 23/7); BACKLOG xếp đầu hàng vì là điều kiện chẩn đoán mọi lỗi khác — vừa dựng service/app native lại thấy cái giá của hỏng-im-lặng",
       "ref": "BACKLOG.md"
     },
     {
-      "title": "B14 xét lại ưu tiên: payload /api/state nay 318KB — mốc lúc quyết định hạ ưu tiên là 119,5KB, đã gấp 2,7 lần — vẫn mỗi 30 giây mỗi tab",
+      "title": "B14 — payload /api/state 322,6KB (mốc hạ ưu tiên 119,5KB, gấp 2,7 lần); ~11% là phiên/hội thoại serialize hai lần, bỏ hàng đúp bằng id là bước rẻ nhất. Đã kiểm: state.lookback của B19 chỉ 1.193 byte nên KHÔNG nuôi thêm B14",
       "ref": "BACKLOG.md"
     },
     {
-      "title": "Gợi ý TẮT phiên đã xong ở màn Phiên — views/sessions.js không đổi, vẫn chỉ gợi ý claude --resume, chưa có đường dọn phiên hoàn thành",
-      "ref": "public/views/sessions.js"
-    },
-    {
-      "title": "Cho now-dash tự lên khi đăng nhập (launchd) + ghim cổng — ca 'ký sinh phiên Claude' đã ứng nghiệm NGAY HÔM NAY: pid 22352 chết kéo dashboard chết theo, pid 30572 lên thay nhưng vẫn là con helper Claude.app; autoPort vẫn cấp 3000 ≠ 4400 nên app trên Dock vẫn hỏng",
-      "ref": "bin/now-dash"
+      "title": "B18 — giãn nhịp quét khi vắng người xem: 1,6% một core, chỉ đáng nếu chạy 24/7 quanh năm; B17 đã cắt ~230ms mỗi lượt nên bớt cấp bách. B6 (dựng lại theo dự án) vẫn hoãn vô thời hạn — chi phí nặng là quét NGUỘI, không phải cái tốn mỗi-30-giây",
+      "ref": "BACKLOG.md"
     }
   ],
   "recentlyDone": [
     {
-      "date": "2026-07-27",
-      "title": "Chốt d-cursor 'nhận cả hai': Cursor + Antigravity thành nguồn dữ liệu thật — 4 collector mới (cursor GetCurrentPeriodUsage với Bearer từ state.vscdb, cursorevents, agquota, agturns) + 3 sổ mới trong ~/.now-dashboard đang ghi; phiên thăm dò 'Giải thích đơn giản khái niệm chi phí token' hoàn thành vai trò, rời board",
-      "ref": "src/collect/cursor.js"
+      "date": "2026-08-03",
+      "title": "Dựng SURFACE MỚI — app trên thanh menu macOS: /api/badge (server, badgeOf 30s) + app Swift native app/NowMenuBar.swift dựng qua bin/install-app → ĐÃ CÀI ~/Applications/NOW Dashboard.app (20:39) + popover menubar.html dùng lại nguyên quotaBar/CSS dashboard (public/menubar*.js, lib/menubar-view.js có linh vật phaseOf/shadeOf); +489 CSS mb-*, +426 i18n VI/EN, README ghi trọn cách cài. Vá lỗi sống-từ-ngày-đầu (popover hỏi chiều cao lúc trang chưa fetch → nay đẩy size qua webkit.messageHandlers) + vá flake 2 test butler đỏ sau 22h. Test 334→337. CHƯA commit, CHƯA vào BACKLOG",
+      "ref": "app/NowMenuBar.swift"
     },
     {
-      "date": "2026-07-27",
-      "title": "Đại tu màn Token theo phản hồi đọc thật: gộp màn Công cụ vào Token, hạn mức chia tab (lib/tabs.js), quản gia 2 ô cố định (lib/butler.js), chart cột 2 trục (lib/chart.js), gọn mục Claude, cảnh báo token viết lại — bốn phiên sửa lưng liên tiếp trong một ngày",
-      "ref": "public/views/usage.js"
+      "date": "2026-07-30",
+      "title": "B19 (màn \"Nhìn lại\", phím 8) XONG trong một phiên, nghiệm thu trên app thật VI/EN × hai nền — cả server (cycles.js + lookback.js, state.lookback 1.193 byte) lẫn client. Ba rủi ro phỏng vấn đóng bằng số đo: tiền Cursor khớp planUsage 0,0% ($68,07=$68,07), AG có dải ngày thật (đỉnh 28/7: 1.631 lượt), sổ AG 5h là rác trượt chỉ nhận -weekly. Test 314→334",
+      "ref": "BACKLOG.md"
     },
     {
-      "date": "2026-07-27",
-      "title": "Chốt d-contrast bằng dời màu: #dc2626 → #d31f1f (+ dịch accent nền tối) đạt ≥4,5:1 tuyệt đối cả hai ca lệch, rebuild tokens 13:22 + styles.css; test 229 → 288 xanh, test/i18n.test.js gác parity + trùng khoá (trả nợ laterStep từ board trước)",
-      "ref": "design/tokens.json"
+      "date": "2026-07-29",
+      "title": "git init + push lên GitHub (archimonde12/now_dashboard, 116 file, 1 commit) — chốt d-git. Lỡ cuốn NOW.json/NOW.md vào commit (thiếu .gitignore); vá .gitignore + git rm --cached nhưng bản vá tới nay VẪN chưa commit",
+      "ref": ".gitignore"
     },
     {
-      "date": "2026-07-27",
-      "title": "/reflect ra hàng rào: CLAUDE.md 4 bất biến (thang bỏ phí, luật chữ, bẫy backtick, 'npm test xanh ≠ trang chạy') + hook PostToolUse node --check chặn thật ca backtick + 4 memory mới; README hết ba câu nói sai (Bảy màn, hai nền, phím 7)",
-      "ref": "CLAUDE.md"
-    },
-    {
-      "date": "2026-07-26",
-      "title": "Màn Token dựng xong phần máy: views/usage.js 1.028 dòng + bảy collector server (quota API platform.claude.com, usage giá theo model, quotalog đỉnh MAX, efficiency, hosts, editors, procs, antigravity/pb.js), server.js tách src/, i18n 325 → 557 khoá mỗi bên",
-      "ref": "src/state.js"
+      "date": "2026-07-28",
+      "title": "Đề xuất màn \"Nhìn lại\" (phím 8) duyệt tối 28/7 kèm 12 quyết định phỏng vấn + mock hợp đồng; tracker ag-cycles/cursor-cycles dựng ngay đêm đó, kịp trước reset AG 08:04 sáng 29/7. B16 (hết ký sinh phiên Claude — launchd + ghim cổng 4400) + B17 (memo TTL) + B10/B15 (câu 'đang quét lần đầu' phân 3 pha) xong và kiểm sống",
+      "ref": "docs/PROPOSAL-nhin-lai.md"
     }
   ]
 }

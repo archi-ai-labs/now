@@ -60,8 +60,12 @@ export function cursorCycleWindows(cu) {
 export function makeTracker(file) {
   let memo = null;
   const track = async (windows, at) => {
-    if (!windows.length || typeof at !== 'number') return { path: file, size: memo?.size ?? 0 };
+    // Sổ được nạp CẢ KHI lượt này không mang cửa sổ nào (app đóng, nguồn hỏng): từ 30/7
+    // `collectLookback` đọc lịch sử qua chính memo này, mà lịch sử trên đĩa thì không
+    // phụ thuộc việc hôm nay nguồn có sống hay không — AG tắt cả ngày vẫn phải thấy
+    // các tuần đã ghi.
     if (memo == null) memo = await readCycles(file);
+    if (!windows.length || typeof at !== 'number') return { path: file, size: memo.size, cycles: memo };
     const next = bumpWindows(memo, at, windows);
     if (next !== memo) {
       memo = next;
@@ -72,7 +76,9 @@ export function makeTracker(file) {
         (err) => console.error(`cycletrack: ghi ${file} hỏng — ${err.message}`),
       );
     }
-    return { path: file, size: memo.size };
+    // `cycles` là chính cái Map trong memo — đường đọc của `collectLookback`. Cùng cảnh
+    // báo với `trackQuota`: không được để nó lọt vào state, JSON hoá Map ra `{}`.
+    return { path: file, size: memo.size, cycles: memo };
   };
   // Chỉ test dùng: sổ là trạng thái toàn tiến trình, mà test thì phải độc lập nhau.
   track._reset = () => {

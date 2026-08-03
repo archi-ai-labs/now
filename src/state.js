@@ -10,6 +10,7 @@ import { collectCursor } from './collect/cursor.js';
 import { collectCursorEvents } from './collect/cursorevents.js';
 import { trackQuota } from './collect/quotalog.js';
 import { trackAgCycles, trackCursorCycles } from './collect/cycletrack.js';
+import { collectLookback } from './collect/lookback.js';
 import { collectAntigravity } from './collect/antigravity.js';
 import { collectAgTurns } from './collect/agturns.js';
 import { collectAgQuota } from './collect/agquota.js';
@@ -66,11 +67,17 @@ function ageFromSince(since) {
 }
 
 /**
- * `watched` = có người đang thực sự nhìn dashboard.
+ * `watched` = có người đang thực sự nhìn dashboard. `badge` = mục trên thanh menu đang hỏi.
  *
- * Chỉ hai nguồn hạn mức quan tâm tới cờ này — Claude và Cursor — và chỉ vì chúng là
- * hai nguồn duy nhất phải GỌI RA NGOÀI. Mọi thứ khác đọc đĩa nên quét không ai xem
- * cũng chẳng phiền tới ai.
+ * Chỉ ba nguồn hạn mức quan tâm tới hai cờ này — Claude, Cursor, Antigravity — và chỉ vì
+ * chúng là những nguồn duy nhất phải GỌI RA NGOÀI. Mọi thứ khác đọc đĩa nên quét không ai
+ * xem cũng chẳng phiền tới ai.
+ *
+ * Hai cờ chứ không phải một, vì hai bề mặt cho xem hai lượng thông tin khác nhau. Mục trên
+ * thanh menu in ĐÚNG hai con số của Claude (xem `badgeOf` trong `server.js`) — nó là một
+ * người đọc thật, nên nó phải giữ được lượt gọi Claude sống; nhưng nó không in gì của
+ * Cursor hay Antigravity, nên đánh thức hai nguồn kia theo nó là trả tiền cho thứ không
+ * hiện lên đâu cả. Popover thì bày cả ba, và popover hỏi `/api/state` với `watched`.
  */
 /**
  * Cửa sổ hạn mức Claude, phẳng hoá thành đầu vào của `collectUsage`.
@@ -110,13 +117,13 @@ function withSpend(quota, spentIn) {
   };
 }
 
-export async function buildState({ watched = true } = {}) {
+export async function buildState({ watched = true, badge = false } = {}) {
   const t0 = Date.now();
   const [{ boards, repos }, claudeLive, editors, quota, cursor, cursorEvents] = await Promise.all([
     scanRoots(),
     collectSessions(),
     collectEditors().catch(() => ({})),
-    collectQuota({ watched }).catch((err) => ({ ok: false, reason: 'broken', error: err.message })),
+    collectQuota({ watched: watched || badge }).catch((err) => ({ ok: false, reason: 'broken', error: err.message })),
     collectCursor({ watched }).catch((err) => ({ ok: false, reason: 'broken', error: err.message })),
     // Trả về ngay cái sổ đang có rồi tự làm mới ở NỀN — lượt kéo nguội mất ~10 giây và
     // không được phép nằm trong đường đi của một lượt quét (xem `collect/cursorevents.js`).
@@ -128,10 +135,19 @@ export async function buildState({ watched = true } = {}) {
   // duy nhất trong dashboard không dựng lại được sau (endpoint chỉ có trạng thái hiện
   // tại, không có lịch sử — xem `collect/quotalog.js`). Bỏ qua nó một lượt là mất một
   // mảnh chu kỳ vĩnh viễn, nên nó không được đứng sau bất cứ thứ gì có thể ném.
-  const quotaCycles = await trackQuota(quota).catch((err) => ({ kinds: [], cycles: [], error: err.message }));
-  // Sổ chu kỳ Cursor cùng luật, cùng chỗ đứng — chưa màn nào đọc nó, nhưng sổ phải ghi
-  // từ lượt quét đầu (xem collect/cycletrack.js, sổ mở cho màn "Nhìn lại").
-  await trackCursorCycles(cursor).catch((err) => console.error(`cycletrack cursor: ${err.message}`));
+  // `ledger` (Map sổ thô) TÁCH RA trước khi phần còn lại vào state: Map qua JSON thành
+  // `{}` — không phồng payload nhưng cũng không mang gì. Nó chỉ sống server-side, làm
+  // đầu vào cho `collectLookback` ở cuối hàm.
+  const { ledger: claudeLedger, ...quotaCycles } = await trackQuota(quota).catch((err) => ({
+    kinds: [],
+    cycles: [],
+    error: err.message,
+  }));
+  // Sổ chu kỳ Cursor cùng luật, cùng chỗ đứng — màn "Nhìn lại" đọc nó qua `cycles`.
+  const cursorLedger = await trackCursorCycles(cursor).catch((err) => {
+    console.error(`cycletrack cursor: ${err.message}`);
+    return null;
+  });
 
   // Sổ app chủ phải được chốt TRƯỚC khi quét token: bảng "nơi mở Claude" tra vào nó,
   // và một phiên vừa tắt giữa hai lượt quét thì lượt này là cơ hội cuối để ghi lại.
@@ -160,7 +176,19 @@ export async function buildState({ watched = true } = {}) {
 
   // Sổ chu kỳ AG chốt NGAY sau lượt đọc của nó, trước mọi thứ có thể ném — gắt hơn cả
   // hai sổ trên: ảnh chụp AG bị ghi đè mỗi lượt, đây là chỗ DUY NHẤT giữ được đỉnh tuần.
-  await trackAgCycles(agQuota).catch((err) => console.error(`cycletrack ag: ${err.message}`));
+  const agLedger = await trackAgCycles(agQuota).catch((err) => {
+    console.error(`cycletrack ag: ${err.message}`);
+    return null;
+  });
+
+  // Màn "Nhìn lại": gấp ba sổ chu kỳ thành tiền + cổng 3 tuần. Thuần lắp ráp từ ba Map
+  // đang nằm trong bộ nhớ — không I/O; hỏng thì mất mỗi màn đó, không được kéo lượt quét.
+  let lookback;
+  try {
+    lookback = collectLookback({ claude: claudeLedger, cursor: cursorLedger?.cycles, ag: agLedger?.cycles });
+  } catch (err) {
+    lookback = { ok: false, error: err.message };
+  }
 
   // Bậc gói đứng sau cả hai vì nó ĂN kết quả của chúng: Cursor suy ra từ `planCents`,
   // Antigravity lấy từ khối `plan` mà lượt RPC vừa rồi đã moi sẵn. Chỉ Claude là đọc đĩa
@@ -512,6 +540,7 @@ export async function buildState({ watched = true } = {}) {
     usage,
     quota: withSpend(quota, usage.spentIn),
     quotaCycles,
+    lookback,
     cursor,
     cursorEvents,
     surfaces,

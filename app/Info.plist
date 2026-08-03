@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Bản gốc Info.plist của app trên Dock. `bin/install-app` chép sang ~/Applications và
+  thay __APP_NAME__ lúc dựng. Sửa ở đây trước, rồi mới dựng lại — giống launchd/.
+
+  App này KHÔNG chứa trình duyệt nào và không biết luật hạn mức nào: hai mục trên thanh
+  menu lấy chữ và bậc màu từ /api/badge, popover là chính trang menubar.html của
+  dashboard. Xem app/NowMenuBar.swift.
+-->
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key>
+  <string>__APP_NAME__</string>
+  <key>CFBundleDisplayName</key>
+  <string>__APP_NAME__</string>
+
+  <key>CFBundleIdentifier</key>
+  <string>dev.hoanluu.now-dash.launcher</string>
+
+  <!-- Tên file trong Contents/MacOS/. Sai một chữ ở đây thì Finder báo "ứng dụng bị hỏng"
+       và không nói thêm gì nữa. -->
+  <key>CFBundleExecutable</key>
+  <string>now-dash-menu</string>
+
+  <key>CFBundleIconFile</key>
+  <string>icon</string>
+
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundleShortVersionString</key>
+  <string>1.0</string>
+  <key>CFBundleVersion</key>
+  <string>1</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>13.0</string>
+
+  <!-- Không hiện trên Dock, không vào ⌘Tab: chỗ đứng của app này là thanh menu. Để nó
+       lên Dock thì có hai icon cùng tên cùng hình cho hai vai khác nhau, và cái đang
+       chạy thường trú lại là cái trông giống nút bấm nhất. Hộp thoại và menu vẫn hiện
+       bình thường — LSUIElement chỉ giấu icon Dock, không giấu giao diện. -->
+  <key>LSUIElement</key>
+  <true/>
+</dict>
+</plist>

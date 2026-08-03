@@ -1,7 +1,7 @@
 import { html, raw, ago, clock, JUST_NOW_MS } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 import { card, dualColumns, hbars, ranked, series, stackedRows, legend, tableTwin } from '../lib/chart.js';
-import { barColor, forecastText, forecastTip, pctText, quotaBar, resetLabel, toneOf } from '../lib/quota.js';
+import { barColor, forecastText, forecastTip, pctText, quotaBar, resetLabel, toneOf, usedText } from '../lib/quota.js';
 import { flatTip } from '../lib/tip.js';
 import { dataAt, empty, planChip, srcLabel, tok, ulabel, usd } from './shared.js';
 
@@ -121,7 +121,7 @@ function miniRow(entry) {
   return html`<div class="qm-row" tabindex="0" data-tip="${tip}" data-tip-tone="${tone}" aria-label="${flatTip(tip)}">
     <span class="qm-lbl" title="${label}">${label}</span>
     ${quotaBar(w)}
-    <b class="qm-val" style="color:${barColor(w)}">${pctText(w.used)}</b>
+    <b class="qm-val" style="color:${barColor(w)}">${usedText(w)}</b>
     ${when || say
       ? html`<span class="qm-sub"
           >${when ? html`<span class="qm-when">${when}</span>` : ''}${when && say ? ' · ' : ''}${say
