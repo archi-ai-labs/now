@@ -1,9 +1,9 @@
 # Khối hạn mức — vì sao đọc ngược so với thanh tiến trình quen thuộc
 
-*🇻🇳 Tiếng Việt · 🇬🇧 [English](QUOTA.en.md)*
+*🇻🇳 Tiếng Việt · 🇬🇧 [English](QUOTA.md)*
 
 Quyết định thiết kế đằng sau [`public/lib/quota.js`](../public/lib/quota.js) và các thẻ
-hạn mức ở màn Token. Bản đồ file chung xem [ARCHITECTURE.md](ARCHITECTURE.md).
+hạn mức ở màn Token. Bản đồ file chung xem [ARCHITECTURE.vi.md](ARCHITECTURE.vi.md).
 
 Thanh hạn mức KHÔNG đọc theo lối "đầy là nguy". Gói thuê bao đã trả tiền rồi, còn
 hạn mức thì reset theo cửa sổ và **không cộng dồn** — phần chưa dùng lúc reset là mất

@@ -1,10 +1,10 @@
 # The quota block — why it reads backwards from a familiar progress bar
 
-*🇬🇧 English · 🇻🇳 [Tiếng Việt](QUOTA.md)*
+*🇬🇧 English · 🇻🇳 [Tiếng Việt](QUOTA.vi.md)*
 
 The design decisions behind [`public/lib/quota.js`](../public/lib/quota.js) and the
 quota cards on the Token screen. For the shared file map see
-[ARCHITECTURE.en.md](ARCHITECTURE.en.md).
+[ARCHITECTURE.md](ARCHITECTURE.md).
 
 The quota bar does NOT read the familiar "full = danger" way. The subscription is
 already paid for, and quota resets per window and **does not roll over** — whatever's

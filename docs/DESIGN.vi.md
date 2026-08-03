@@ -1,9 +1,9 @@
 # Triết lý thiết kế — NOW dashboard
 
-*🇻🇳 Tiếng Việt · 🇬🇧 [English](DESIGN.en.md)*
+*🇻🇳 Tiếng Việt · 🇬🇧 [English](DESIGN.md)*
 
 Vì sao dashboard trông và đọc như hiện tại. Bản đồ file + nguồn dữ liệu xem
-[ARCHITECTURE.md](ARCHITECTURE.md); khối hạn mức xem riêng [QUOTA.md](QUOTA.md).
+[ARCHITECTURE.vi.md](ARCHITECTURE.vi.md); khối hạn mức xem riêng [QUOTA.vi.md](QUOTA.vi.md).
 
 ## Ngôn ngữ thiết kế
 
@@ -52,7 +52,7 @@ Hai ô **cố định**, mỗi ô một loại việc ([`public/lib/butler.js`](
    đưa": câu trên đã bị cắt cho vừa dòng, nên nút chép ra **bản đầy đủ** theo đúng định
    dạng `/now update` render trong NOW.md — `{who} — {what} · từ {since}`.
 2. **Hạn mức token** — nói mọi lượt, kể cả ngày đẹp trời, và nhắc chăm hơn khi đang bỏ phí.
-   Chi tiết cách tính/vẽ → [QUOTA.md](QUOTA.md).
+   Chi tiết cách tính/vẽ → [QUOTA.vi.md](QUOTA.vi.md).
 
 Trước đây chỉ có một chỗ nói nên hai loại này phải tranh nhau. Chúng không so được với
 nhau: một quyết định treo ba ngày và một cửa sổ sắp bỏ phí 82% không nằm trên cùng một
@@ -71,7 +71,7 @@ Hai nền, và **nền sáng là mặc định** (`app.js`) — phím `t` đổi
 Mọi con số phải có thật — một thanh XP bịa ra thì tuần sau nhìn là biết vô nghĩa và cả
 HUD mất tin cậy theo. Đây chính là lý do XP, hạng `D→S`, và dấu ưu tiên `!!` `!` `~` `✓`
 đã bị **bỏ** ở quyết định `chốt d-game` (2026-07-23, lý do đầy đủ nằm ở cuối
-[design/README.md](../design/README.md), mục `d-game`): XP cũ cộng ba trọng số bịa lên
+[design/README.vi.md](../design/README.vi.md), mục `d-game`): XP cũ cộng ba trọng số bịa lên
 một con số đã là sàn chứ không phải tổng (`recentlyDone` chỉ giữ 5 mục mỗi dự án), rồi
 quy hết ra một hạng chữ cái.
 
@@ -92,7 +92,7 @@ nhầm là chắc chắn.
 
 ## Bảy màn — chi tiết
 
-Bảng nhanh 7 màn xem [README.md](../README.md). Chi tiết ba tab của màn Token:
+Bảng nhanh 7 màn xem [README.vi.md](../README.vi.md). Chi tiết ba tab của màn Token:
 
 Tab Cursor có ba mục. **Theo thời gian** dựng từ `GetFilteredUsageEvents` — 5.279 lượt gọi
 trải 148 ngày, mỗi lượt có mốc thời gian, tiền đã tính và `kind` (nên đếm được cả lượt lỗi

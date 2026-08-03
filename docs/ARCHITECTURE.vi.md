@@ -1,9 +1,9 @@
 # Kiến trúc — NOW dashboard
 
-*🇻🇳 Tiếng Việt · 🇬🇧 [English](ARCHITECTURE.en.md)*
+*🇻🇳 Tiếng Việt · 🇬🇧 [English](ARCHITECTURE.md)*
 
 Bản đồ file, nguồn dữ liệu, và bốn cạm bẫy đã từng sập. Vì sao thiết kế trông thế này xem
-[DESIGN.md](DESIGN.md); khối hạn mức xem riêng [QUOTA.md](QUOTA.md).
+[DESIGN.vi.md](DESIGN.vi.md); khối hạn mức xem riêng [QUOTA.vi.md](QUOTA.vi.md).
 
 ## Nó đọc gì
 
@@ -61,7 +61,7 @@ vào `~/.claude` hay vào thư mục dự án.
 
 ## Ba bề mặt làm việc
 
-![Ba bề mặt làm việc gộp vào một dashboard](assets/surfaces.svg)
+![Ba bề mặt làm việc gộp vào một dashboard](assets/surfaces.vi.svg)
 
 Máy này chạy ba thứ cùng lúc, và chúng **không cùng loại** — sở chỉ huy phải đo mỗi
 thứ bằng đúng đơn vị của nó:
@@ -78,7 +78,7 @@ khoá cứng ở `server.js`, không nhận tên tự do từ client.
 ## Ba chỗ dễ làm sai
 
 Khối hạn mức có cạm bẫy riêng của nó (thang màu hai chiều, cách trừ "cạn trước reset") —
-xem [QUOTA.md](QUOTA.md). Ba chỗ dưới đây là về phiên và host.
+xem [QUOTA.vi.md](QUOTA.vi.md). Ba chỗ dưới đây là về phiên và host.
 
 **1. Phiên sống hay đã chết.** `~/.claude/sessions/` không tự dọn. Kiểm tra bằng
 `kill -0 <pid>` sẽ báo sống cho cả những file mà PID đã được hệ điều hành cấp lại cho

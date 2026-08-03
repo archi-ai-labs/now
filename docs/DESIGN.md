@@ -1,10 +1,10 @@
 # Design philosophy — NOW dashboard
 
-*🇬🇧 English · 🇻🇳 [Tiếng Việt](DESIGN.md)*
+*🇬🇧 English · 🇻🇳 [Tiếng Việt](DESIGN.vi.md)*
 
 Why the dashboard looks and reads the way it does. File map + data sources are in
-[ARCHITECTURE.en.md](ARCHITECTURE.en.md); the quota block gets its own doc,
-[QUOTA.en.md](QUOTA.en.md).
+[ARCHITECTURE.md](ARCHITECTURE.md); the quota block gets its own doc,
+[QUOTA.md](QUOTA.md).
 
 ## Design language
 
@@ -65,7 +65,7 @@ Two **fixed** slots, one per kind of concern
    the copy button outputs the **full version**, in the exact format `/now update` renders
    into NOW.md — `{who} — {what} · since {since}`.
 2. **Token quota** — speaks every single time, even on a good day, and speaks more
-   insistently the more it's being wasted. Full breakdown → [QUOTA.en.md](QUOTA.en.md).
+   insistently the more it's being wasted. Full breakdown → [QUOTA.md](QUOTA.md).
 
 There used to be only one place to say anything, so these two kinds of concern had to
 compete for it. They're not comparable to begin with: a decision pending three days and
@@ -109,7 +109,7 @@ project's S is "on fire") is a guaranteed misread.
 
 ## Seven screens — in detail
 
-The quick 7-screen table is in [README.en.md](../README.en.md). Details on the Token
+The quick 7-screen table is in [README.md](../README.md). Details on the Token
 screen's three tabs:
 
 The Cursor tab has three sections. **Over time** is built from

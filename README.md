@@ -1,13 +1,13 @@
 # NOW dashboard — command center
 
-*🇬🇧 English · 🇻🇳 [Tiếng Việt](README.md)*
+*🇬🇧 English · 🇻🇳 [Tiếng Việt](README.vi.md)*
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-4f46e5)](LICENSE)
 [![Node](https://img.shields.io/badge/node-18.10%2B-4f46e5)](package.json)
 [![Dependencies](https://img.shields.io/badge/dependencies-zero-4f46e5)](package.json)
-[![Docs](https://img.shields.io/badge/docs-VI%20%7C%20EN-4f46e5)](docs/README.en.md)
+[![Docs](https://img.shields.io/badge/docs-VI%20%7C%20EN-4f46e5)](docs/README.md)
 
-![NOW dashboard](docs/assets/banner.en.svg)
+![NOW dashboard](docs/assets/banner.svg)
 
 One page that answers: **where every one of my projects stands, and out of two dozen open
 Claude sessions, which one is holding which piece of work.**
@@ -109,6 +109,8 @@ CLAUDE
 | bottom line | **spent** in the 5-hour · 7-day window (rule 1 — the lead number is never what's left). A window past its reset mark reads `—`, not the closed cycle's final tally |
 | tooltip | which window is binding, and how much projected waste |
 | popover | two things worth doing (named, clickable), three quota windows on the color scale, and a Cursor/Antigravity line whenever they have something to say |
+
+<img src="docs/assets/screenshot-menubar-work.png" alt="Menu bar popover, Work tab" width="360"> <img src="docs/assets/screenshot-menubar-tokens.png" alt="Menu bar popover, Tokens tab" width="360">
 
 The popover follows the butler's two fixed slots — work first, quota second — because
 those two do not compare. It does **not restate the bar in prose**: where the bar has
@@ -393,19 +395,28 @@ off the Dock and deleting it from `~/Applications` by hand.
 | `6` | ◈ **Token** | Three paid monthly tools: what's about to hit a wall, where tokens go, where money goes |
 | `7` | ⌬ **Health** | Where the dashboard is currently lying to you |
 
+![The Projects screen — worth-doing card, quota bars, per-project cards](docs/assets/screenshot-projects.png)
+
+*Real project names and decision text blocked out by hand before committing this
+screenshot — this is a live personal dashboard, not a demo build.*
+
+![The Token screen — Claude, Cursor, and Antigravity limits side by side](docs/assets/screenshot-tokens.png)
+
+![The Token screen's daily cost report, drilled into Claude Code](docs/assets/screenshot-report.png)
+
 Per-tab details (Cursor/Antigravity), keybindings, and day-to-day usage →
-[docs/DESIGN.en.md](docs/DESIGN.en.md).
+[docs/DESIGN.md](docs/DESIGN.md).
 
 ## Docs
 
 | Question | See |
 |---|---|
-| Why the design/charts look the way they do | [docs/DESIGN.en.md](docs/DESIGN.en.md) |
-| Architecture, data sources, file map, pitfalls | [docs/ARCHITECTURE.en.md](docs/ARCHITECTURE.en.md) |
-| How the quota block is computed/drawn | [docs/QUOTA.en.md](docs/QUOTA.en.md) |
-| Changing the UI through Claude Design | [design/README.en.md](design/README.en.md) |
+| Why the design/charts look the way they do | [docs/DESIGN.md](docs/DESIGN.md) |
+| Architecture, data sources, file map, pitfalls | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| How the quota block is computed/drawn | [docs/QUOTA.md](docs/QUOTA.md) |
+| Changing the UI through Claude Design | [design/README.md](design/README.md) |
 | What's in progress / decisions pending | [NOW.md](NOW.md) *(Vietnamese only)* |
 | Open technical work (backlog) | [BACKLOG.md](BACKLOG.md) *(Vietnamese only)* |
 
 Configuring the port/scan roots (`NOW_PORT`, `NOW_ROOTS`) and health thresholds →
-[docs/ARCHITECTURE.en.md#configuring](docs/ARCHITECTURE.en.md).
+[docs/ARCHITECTURE.md#configuring](docs/ARCHITECTURE.md).

@@ -1,6 +1,6 @@
 # Upgrading the design through Claude Design
 
-*🇬🇧 English · 🇻🇳 [Tiếng Việt](README.md)*
+*🇬🇧 English · 🇻🇳 [Tiếng Việt](README.vi.md)*
 
 The workflow for changing the NOW dashboard's look without hand-editing
 `public/styles.css` blind.

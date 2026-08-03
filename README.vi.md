@@ -1,13 +1,13 @@
 # NOW dashboard — sở chỉ huy
 
-*🇻🇳 Tiếng Việt · 🇬🇧 [English](README.en.md)*
+*🇻🇳 Tiếng Việt · 🇬🇧 [English](README.md)*
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-4f46e5)](LICENSE)
 [![Node](https://img.shields.io/badge/node-18.10%2B-4f46e5)](package.json)
 [![Dependencies](https://img.shields.io/badge/dependencies-zero-4f46e5)](package.json)
-[![Docs](https://img.shields.io/badge/docs-VI%20%7C%20EN-4f46e5)](docs/README.md)
+[![Docs](https://img.shields.io/badge/docs-VI%20%7C%20EN-4f46e5)](docs/README.vi.md)
 
-![NOW dashboard](docs/assets/banner.svg)
+![NOW dashboard](docs/assets/banner.vi.svg)
 
 Một trang duy nhất trả lời: **mọi dự án của tôi đang ở đâu, và trong hai chục phiên Claude
 đang mở, phiên nào đang cầm việc gì.**
@@ -105,6 +105,8 @@ CLAUDE
 | dòng dưới | **đã tiêu** khung 5 giờ · khung 7 ngày (luật 1 — số dẫn không bao giờ là phần còn lại). Cửa sổ nào đã qua mốc reset thì chỗ của nó là `—`, không phải số cuối của chu kỳ cũ |
 | tooltip | cửa sổ nào đang ràng buộc, bỏ phí dự phóng bao nhiêu |
 | popover | hai việc đáng làm (có tên việc, bấm được), ba cửa sổ hạn mức có thang màu, và câu của Cursor/Antigravity khi chúng có chuyện |
+
+<img src="docs/assets/screenshot-menubar-work.png" alt="Popover thanh menu, tab Việc" width="360"> <img src="docs/assets/screenshot-menubar-tokens.png" alt="Popover thanh menu, tab Token" width="360">
 
 Popover xếp theo đúng hai ô của quản gia — việc đáng làm trước, hạn mức sau — vì hai
 loại đó không so được với nhau. Nó **không lặp lại thanh bằng chữ**: thanh đã có nhãn
@@ -374,19 +376,28 @@ ra khỏi Dock rồi xoá tay ở `~/Applications`.
 | `6` | ◈ **Token** | Ba công cụ trả tiền hằng tháng: sắp bị chặn ở đâu, token đi đâu, tiền đi đâu |
 | `7` | ⌬ **Sức khoẻ** | Chỗ nào đang khiến dashboard nói dối |
 
+![Màn Dự án — thẻ việc đáng làm, thanh hạn mức, thẻ từng dự án](docs/assets/screenshot-projects.png)
+
+*Tên dự án và nội dung quyết định đã che tay trước khi commit ảnh này — đây là dashboard
+cá nhân đang chạy thật, không phải bản demo.*
+
+![Màn Token — hạn mức Claude, Cursor, Antigravity nằm cạnh nhau](docs/assets/screenshot-tokens.png)
+
+![Báo cáo tiêu theo ngày của màn Token, đào sâu vào Claude Code](docs/assets/screenshot-report.png)
+
 Chi tiết từng tab (Cursor/Antigravity), phím tắt, và cách dùng hàng ngày →
-[docs/DESIGN.md](docs/DESIGN.md).
+[docs/DESIGN.vi.md](docs/DESIGN.vi.md).
 
 ## Tài liệu
 
 | Câu hỏi | Xem |
 |---|---|
-| Vì sao thiết kế/chart trông thế này | [docs/DESIGN.md](docs/DESIGN.md) |
-| Kiến trúc, nguồn dữ liệu, bản đồ file, cạm bẫy | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| Khối hạn mức tính/vẽ thế nào | [docs/QUOTA.md](docs/QUOTA.md) |
-| Đổi giao diện qua Claude Design | [design/README.md](design/README.md) |
+| Vì sao thiết kế/chart trông thế này | [docs/DESIGN.vi.md](docs/DESIGN.vi.md) |
+| Kiến trúc, nguồn dữ liệu, bản đồ file, cạm bẫy | [docs/ARCHITECTURE.vi.md](docs/ARCHITECTURE.vi.md) |
+| Khối hạn mức tính/vẽ thế nào | [docs/QUOTA.vi.md](docs/QUOTA.vi.md) |
+| Đổi giao diện qua Claude Design | [design/README.vi.md](design/README.vi.md) |
 | Việc đang làm / quyết định đang treo | [NOW.md](NOW.md) |
 | Việc kỹ thuật còn tồn (backlog) | [BACKLOG.md](BACKLOG.md) |
 
 Chỉnh cổng/đường quét (`NOW_PORT`, `NOW_ROOTS`) và ngưỡng sức khoẻ →
-[docs/ARCHITECTURE.md#chỉnh](docs/ARCHITECTURE.md).
+[docs/ARCHITECTURE.vi.md#chỉnh](docs/ARCHITECTURE.vi.md).

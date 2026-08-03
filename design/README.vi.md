@@ -1,6 +1,6 @@
 # Nâng cấp thiết kế qua Claude Design
 
-*🇻🇳 Tiếng Việt · 🇬🇧 [English](README.en.md)*
+*🇻🇳 Tiếng Việt · 🇬🇧 [English](README.md)*
 
 Quy trình để đổi giao diện NOW dashboard mà không phải sửa mò trong `public/styles.css`.
 

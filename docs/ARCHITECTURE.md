@@ -1,10 +1,10 @@
 # Architecture — NOW dashboard
 
-*🇬🇧 English · 🇻🇳 [Tiếng Việt](ARCHITECTURE.md)*
+*🇬🇧 English · 🇻🇳 [Tiếng Việt](ARCHITECTURE.vi.md)*
 
 File map, data sources, and four pitfalls that have already bitten. For why the design
-looks the way it does, see [DESIGN.en.md](DESIGN.en.md); for the quota block specifically,
-see [QUOTA.en.md](QUOTA.en.md).
+looks the way it does, see [DESIGN.md](DESIGN.md); for the quota block specifically,
+see [QUOTA.md](QUOTA.md).
 
 ## What it reads
 
@@ -68,7 +68,7 @@ to `~/.claude` or into any project directory.
 
 ## Three surfaces
 
-![Three work surfaces feeding one dashboard](assets/surfaces.en.svg)
+![Three work surfaces feeding one dashboard](assets/surfaces.svg)
 
 This machine runs three things at once, and they are **not the same kind of thing** —
 the command center has to measure each one in its own unit:
@@ -85,7 +85,7 @@ apps is hard-coded in `server.js`, not taken as a free-form name from the client
 ## Three easy mistakes
 
 The quota block has its own pitfalls (the two-way color scale, how "ran out before
-reset" is handled) — see [QUOTA.en.md](QUOTA.en.md). The three below are about sessions
+reset" is handled) — see [QUOTA.md](QUOTA.md). The three below are about sessions
 and hosts.
 
 **1. Live vs. dead session.** `~/.claude/sessions/` doesn't clean itself up. Checking
