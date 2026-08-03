@@ -20,11 +20,22 @@ Claude sessions, which one is holding which piece of work.**
 Install once, and it comes up with the machine:
 
 ```bash
-cp launchd/dev.hoanluu.now-dash.plist ~/Library/LaunchAgents/
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.hoanluu.now-dash.plist
+./bin/install-app
 ```
 
-Edit the paths in the plist if the repo does not live at `~/Projects/local/now_dashboard`.
+Builds the menu-bar app (see [§On the menu bar](#on-the-menu-bar)) **and** drops a
+LaunchAgent into `~/Library/LaunchAgents/` with paths already matched to wherever you
+cloned the repo — no manual editing. Safe to rerun any number of times, including after
+moving the repo.
+
+Don't want the menu-bar icon and just need the background server (fewer requirements:
+no Xcode Command Line Tools needed), install the LaunchAgent by hand instead:
+
+```bash
+sed -e "s|__ROOT__|$(pwd)|g" -e "s|__HOME__|$HOME|g" \
+  launchd/dev.hoanluu.now-dash.plist > ~/Library/LaunchAgents/dev.hoanluu.now-dash.plist
+```
+
 After that, all you need is:
 
 ```bash
@@ -304,8 +315,71 @@ dimensions to Swift.
 | [`bin/install-app`](bin/install-app) | generates `Tones.swift`, compiles with `swiftc`, cuts the `.icns` from `public/icon-1024.png`. Re-runnable; refuses to overwrite if something else is sitting there |
 
 Needs Xcode Command Line Tools (`swiftc`) and macOS 13+. The repo path is baked into the
-bundle as an absolute path at build time — same reason as the launchd plist. **Move the
-repo, re-run `./bin/install-app`.**
+bundle as an absolute path at build time, and into the LaunchAgent in the same run
+(see [§Getting started](#getting-started)) — same reason: launchd/LaunchServices don't
+expand `~`/`$HOME`. **Move the repo, re-run `./bin/install-app`.**
+
+### Install, uninstall, and common problems
+
+A short runbook — enough to self-serve without reading the code.
+
+**Install / reinstall:**
+
+```bash
+./bin/install-app
+```
+
+Idempotent, safe to rerun any number of times (after moving the repo, switching
+machines, or changing `NOW_PORT`) — cleanly overwrites both the app **and** the
+LaunchAgent every time.
+
+⚠️ **If the service is currently running, this command `bootout`s it** to force a
+reload of the new paths — the dashboard goes down for a few seconds and comes back the
+next time you open the app or call `./bin/now-dash`. No data is lost: everything is
+logged under `~/.now-dashboard/`, which reinstalling never touches. To bring it back up
+**immediately** instead of waiting:
+
+```bash
+launchctl kickstart -k gui/$(id -u)/dev.hoanluu.now-dash
+```
+
+**Requirements:** macOS 13+, Xcode Command Line Tools (`xcode-select --install` if
+`swiftc` is missing), Node ≥ 18.10. Missing `swiftc` → the script stops right at the
+compile step, **before** installing the LaunchAgent. Only want the background server,
+no menu-bar icon → use the manual `sed` command in [§Getting started](#getting-started)
+instead, which needs no `swiftc`.
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| App/web app opens to just "can't reach the server" | LaunchAgent not installed, or the service is down | `./bin/now-dash` — self-`bootstrap`s/`kickstart`s if it finds the plist. No plist yet → run `./bin/install-app` first |
+| `install-app` says *"Something else is already at … — not overwriting"* | Name collision with a DIFFERENT app in `~/Applications` (e.g. the Safari web app can also be named "NOW") — the script deliberately refuses to overwrite a foreign app, see [bin/install-app](bin/install-app) | Rename: `APP_NAME="NOW Dashboard 2" ./bin/install-app`, or manually delete the old app once you're sure it's stale |
+| Moved the repo elsewhere, app/service still call the old path | `__ROOT__` is baked in absolute at install time, doesn't reflow when the repo moves | Re-run `./bin/install-app` **from the new location** of the repo |
+| Changed `NOW_PORT` but the service still uses the old port | The port is baked into the plist at render time, not re-read at runtime | `NOW_PORT=xxxx ./bin/install-app` then `launchctl kickstart -k gui/$(id -u)/dev.hoanluu.now-dash` |
+| No logs anywhere despite a clear error | The service's logs live under `~/.now-dashboard/`, not the terminal (launchd has no stdout) | `tail -f ~/.now-dashboard/service.err.log` |
+
+**Uninstall — in this exact order:**
+
+```bash
+# 1. Stop and unregister from launchd FIRST — doing this after step 3 leaves a still-
+#    running service repeatedly looking for bin/now-dash-service at a path that no
+#    longer exists, spamming service.err.log.
+launchctl bootout gui/$(id -u)/dev.hoanluu.now-dash 2>/dev/null || true
+
+# 2. Remove the LaunchAgent definition and the app (adjust the name if you ever
+#    installed with a custom APP_NAME)
+rm -f ~/Library/LaunchAgents/dev.hoanluu.now-dash.plist
+rm -rf ~/Applications/"NOW Dashboard.app"
+
+# 3. (optional) Remove data/logs — quota cycle ledgers, Cursor/Antigravity caches.
+#    NOT RECOVERABLE past this point — only do this if you're sure you won't need the history.
+rm -rf ~/.now-dashboard
+```
+
+Removing the repo itself (`rm -rf` the `git clone` directory) should happen **last**,
+after step 1, for the same reason given there. The web app added via Safari
+(§[Running as its own Dock app](#running-as-its-own-dock-app), usually named `NOW.app`)
+is a different bundle — the three steps above don't touch it; remove it by dragging it
+off the Dock and deleting it from `~/Applications` by hand.
 
 ## Seven screens
 

@@ -20,11 +20,21 @@ Một trang duy nhất trả lời: **mọi dự án của tôi đang ở đâu,
 Cài một lần, để nó tự lên cùng máy:
 
 ```bash
-cp launchd/dev.hoanluu.now-dash.plist ~/Library/LaunchAgents/
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.hoanluu.now-dash.plist
+./bin/install-app
 ```
 
-Sửa đường dẫn trong plist nếu repo không nằm ở `~/Projects/local/now_dashboard`.
+Dựng luôn app trên thanh menu (xem [§Trên thanh menu](#trên-thanh-menu)) **và** đặt
+LaunchAgent vào `~/Library/LaunchAgents/`, đường dẫn đã tự khớp với chỗ bạn `git clone`
+về — không cần sửa tay. Chạy lại bao nhiêu lần cũng được, kể cả sau khi dời repo.
+
+Không muốn icon trên thanh menu, chỉ cần server nền (đòi hỏi ít hơn: không cần Xcode
+Command Line Tools), thì tự cài LaunchAgent bằng tay:
+
+```bash
+sed -e "s|__ROOT__|$(pwd)|g" -e "s|__HOME__|$HOME|g" \
+  launchd/dev.hoanluu.now-dash.plist > ~/Library/LaunchAgents/dev.hoanluu.now-dash.plist
+```
+
 Từ đó trở đi chỉ cần:
 
 ```bash
@@ -292,8 +302,65 @@ cho Swift.
 | [`bin/install-app`](bin/install-app) | sinh `Tones.swift`, biên dịch bằng `swiftc`, cắt `.icns` từ `public/icon-1024.png`. Chạy lại bao nhiêu lần cũng được; từ chối đè nếu chỗ đó đang là app khác |
 
 Cần Xcode Command Line Tools (`swiftc`) và macOS 13+. Đường dẫn repo ghim tuyệt đối vào
-bundle lúc dựng — cùng lý do với plist của launchd. **Dời repo thì chạy lại
-`./bin/install-app`.**
+bundle lúc dựng, và vào LaunchAgent luôn trong cùng lượt chạy (xem
+[§Bắt đầu](#bắt-đầu)) — cùng lý do: launchd/LaunchServices không giãn `~`/`$HOME`.
+**Dời repo thì chạy lại `./bin/install-app`.**
+
+### Cài, gỡ, và sự cố thường gặp
+
+Sổ tay ngắn — đủ để tự xử lý không phải lục code.
+
+**Cài / cài lại:**
+
+```bash
+./bin/install-app
+```
+
+Idempotent, chạy lại bao nhiêu lần cũng an toàn (kể cả sau khi dời repo, đổi máy, hay
+đổi `NOW_PORT`) — ghi đè sạch cả app **và** LaunchAgent mỗi lần.
+
+⚠️ **Nếu service đang chạy sống, lệnh trên sẽ `bootout` nó** để buộc nạp lại đường dẫn
+mới — dashboard tắt vài giây, tự lên lại vào lần kế tiếp bạn mở app hoặc gọi
+`./bin/now-dash`. Không mất dữ liệu: mọi sổ ghi ở `~/.now-dashboard/`, cài lại không đụng
+tới. Muốn nó sống lại **ngay** thay vì chờ:
+
+```bash
+launchctl kickstart -k gui/$(id -u)/dev.hoanluu.now-dash
+```
+
+**Yêu cầu:** macOS 13+, Xcode Command Line Tools (`xcode-select --install` nếu chưa có
+`swiftc`), Node ≥ 18.10. Thiếu `swiftc` → script dừng ngay ở bước biên dịch, **chưa kịp
+cài LaunchAgent**. Chỉ cần server nền, không cần icon thanh menu → dùng lệnh `sed` tay ở
+[§Bắt đầu](#bắt-đầu), không cần `swiftc`.
+
+| Triệu chứng | Nguyên nhân | Sửa |
+|---|---|---|
+| App/web app mở ra chỉ thấy "chưa nối được tới server" | LaunchAgent chưa cài, hoặc service đang down | `./bin/now-dash` — tự `bootstrap`/`kickstart` nếu thấy plist. Chưa có plist → `./bin/install-app` trước |
+| `install-app` báo *"Đã có app khác ở … — không đè"* | Trùng tên với app KHÁC ở `~/Applications` (vd. web app Safari cũng có thể tên "NOW") — script cố tình không đè app lạ, xem [bin/install-app](bin/install-app) | Đổi tên: `APP_NAME="NOW Dashboard 2" ./bin/install-app`, hoặc tự xoá app cũ nếu chắc chắn là bản rác |
+| Dời repo sang chỗ khác, app/service vẫn gọi đường cũ | `__ROOT__` ghim tuyệt đối lúc cài, không tự giãn lại khi repo di chuyển | Chạy lại `./bin/install-app` **ở vị trí mới** của repo |
+| Đổi `NOW_PORT` nhưng service vẫn dùng cổng cũ | Cổng ghim trong plist lúc render, không đọc lại lúc chạy | `NOW_PORT=xxxx ./bin/install-app` rồi `launchctl kickstart -k gui/$(id -u)/dev.hoanluu.now-dash` |
+| Không thấy log gì dù chắc chắn có lỗi | Log của service nằm ở `~/.now-dashboard/`, không phải terminal (launchd không có stdout) | `tail -f ~/.now-dashboard/service.err.log` |
+
+**Gỡ cài đặt — theo đúng thứ tự này:**
+
+```bash
+# 1. Dừng và bỏ đăng ký khỏi launchd TRƯỚC — làm sau bước 3 thì service còn sống sẽ
+#    lặp lại tìm bin/now-dash-service ở đường dẫn vừa bị xoá, spam service.err.log.
+launchctl bootout gui/$(id -u)/dev.hoanluu.now-dash 2>/dev/null || true
+
+# 2. Xoá định nghĩa LaunchAgent và app (đổi tên nếu bạn từng cài với APP_NAME khác)
+rm -f ~/Library/LaunchAgents/dev.hoanluu.now-dash.plist
+rm -rf ~/Applications/"NOW Dashboard.app"
+
+# 3. (tuỳ chọn) Xoá dữ liệu/log — sổ chu kỳ hạn mức, cache Cursor/Antigravity.
+#    KHÔNG PHỤC HỒI ĐƯỢC sau bước này — chỉ chạy nếu chắc chắn không cần tra lại lịch sử.
+rm -rf ~/.now-dashboard
+```
+
+Gỡ chính repo (`rm -rf` thư mục `git clone`) thì làm **sau cùng**, sau bước 1 — cùng lý
+do trong bước 1. Web app thêm qua Safari (§[Chạy như app riêng trên Dock](#chạy-như-app-riêng-trên-dock),
+thường tên `NOW.app`) là bundle khác, ba bước trên không đụng tới — gỡ nó thì kéo icon
+ra khỏi Dock rồi xoá tay ở `~/Applications`.
 
 ## Bảy màn
 

@@ -83,5 +83,19 @@ mv "$BUNDLE" "$DEST"
 /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
   -f "$DEST" 2>/dev/null || true
 
+# ── LaunchAgent (server nền, tự sống lại) ───────────────────────────────────
+# Cùng khuôn __PLACEHOLDER__ như Info.plist ở trên. bin/now-dash tự `bootstrap` file
+# này khi thấy nó có mặt ở đây — nên chỉ cần đặt đúng chỗ, không cần gọi launchctl ở
+# đây. bootout bản cũ (nếu có) để lần start kế tiếp nạp lại đúng đường dẫn mới, phòng
+# khi repo vừa dời chỗ và install-app chạy lại.
+SERVICE_LABEL="dev.hoanluu.now-dash"
+LAUNCH_AGENTS_DIR="$HOME/Library/LaunchAgents"
+PLIST_DEST="$LAUNCH_AGENTS_DIR/$SERVICE_LABEL.plist"
+mkdir -p "$LAUNCH_AGENTS_DIR"
+sed -e "s|__ROOT__|$ROOT|g" -e "s|__HOME__|$HOME|g" \
+  "$ROOT/launchd/$SERVICE_LABEL.plist" >"$PLIST_DEST"
+launchctl bootout "gui/$(id -u)/$SERVICE_LABEL" 2>/dev/null || true
+echo "Đã cài LaunchAgent: $PLIST_DEST"
+
 echo "Đã cài: $DEST"
 [[ -d "$WEBAPP" ]] || echo "Chưa thấy web app ở $WEBAPP — app sẽ mở bằng trình duyệt mặc định. Xem README.md §Chạy như app riêng trên Dock." >&2

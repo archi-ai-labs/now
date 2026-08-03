@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Bản gốc của LaunchAgent. Chép sang ~/Library/LaunchAgents/ rồi `launchctl bootstrap`
-  — xem README.md. Sửa ở đây trước, rồi mới chép, để bản trong repo luôn là bản thật.
+  Bản gốc của LaunchAgent. `bin/install-app` thay __ROOT__/__HOME__ rồi chép sang
+  ~/Library/LaunchAgents/ — không cần chạy tay. Sửa ở đây trước, rồi cài lại, để bản
+  trong repo luôn là bản thật (giống app/Info.plist).
 
   Đường dẫn phải TUYỆT ĐỐI: launchd không có shell, không giãn `~`, không có $HOME
-  trong ProgramArguments. Repo nằm chỗ khác thì sửa cả bốn đường dẫn dưới đây.
+  trong ProgramArguments — nên __ROOT__/__HOME__ chỉ giãn được một lần lúc cài, không
+  giãn lại mỗi lần launchd gọi.
 -->
 <plist version="1.0">
 <dict>
@@ -16,11 +18,11 @@
        số phiên bản, nâng node một lần là plist trỏ vào thư mục đã biến mất. -->
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/hoanluu/Projects/local/now_dashboard/bin/now-dash-service</string>
+    <string>__ROOT__/bin/now-dash-service</string>
   </array>
 
   <key>WorkingDirectory</key>
-  <string>/Users/hoanluu/Projects/local/now_dashboard</string>
+  <string>__ROOT__</string>
 
   <key>RunAtLoad</key>
   <true/>
@@ -50,8 +52,8 @@
 
   <!-- Log để trong thư mục dữ liệu của chính dashboard — chỗ DUY NHẤT nó được phép ghi. -->
   <key>StandardOutPath</key>
-  <string>/Users/hoanluu/.now-dashboard/service.log</string>
+  <string>__HOME__/.now-dashboard/service.log</string>
   <key>StandardErrorPath</key>
-  <string>/Users/hoanluu/.now-dashboard/service.err.log</string>
+  <string>__HOME__/.now-dashboard/service.err.log</string>
 </dict>
 </plist>

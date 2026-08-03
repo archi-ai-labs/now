@@ -33,7 +33,7 @@ else
     launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null || true
     launchctl kickstart "gui/$(id -u)/${LABEL}" 2>/dev/null || true
   elif (( OPEN )); then
-    echo "Chưa cài LaunchAgent — xem docs/RUNNING.md. Tạm chạy ở tiền cảnh (Ctrl-C để dừng):"
+    echo "Chưa cài LaunchAgent — xem README.md §Cài, gỡ, và sự cố thường gặp. Tạm chạy ở tiền cảnh (Ctrl-C để dừng):"
     exec "${ROOT}/bin/now-dash-service"
   else
     # Người gọi là app trên Dock, không phải terminal: không có ai để mà Ctrl-C, nên
