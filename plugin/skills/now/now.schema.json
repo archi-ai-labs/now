@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "now-board.schema.v1",
+  "title": "NOW board — schemaVersion 1",
+  "description": "Contract máy-đọc cho NOW.json của mọi dự án. Dashboard tổng đa dự án validate file này trước khi hiển thị. Nguyên tắc nội dung: mỗi item nằm ở đúng MỘT section theo 'ai cầm bóng' (focus/decisionsNeeded = bạn, waitingOn = người khác, upNext = chưa ai). Đổi cấu trúc = tăng schemaVersion.",
+  "type": "object",
+  "required": ["schemaVersion", "project", "branch", "updatedAt", "updatedAtCommit", "updatedBy", "focus"],
+  "additionalProperties": false,
+  "properties": {
+    "$comment": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "project": { "type": "string", "minLength": 1 },
+    "branch": { "type": "string", "minLength": 1 },
+    "updatedAt": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "updatedAtCommit": { "type": "string", "pattern": "^[0-9a-fA-F]{7,40}$" },
+    "updatedBy": { "type": "string", "minLength": 1 },
+    "focus": {
+      "description": "Một việc chính duy nhất — section được đầu tư nhất: đủ để người quên sạch context vẫn quay lại làm tiếp được. Render bằng nhãn có icon: 📌 Bối cảnh / ▶ Làm ngay / ⏭ Còn lại / 🗂 Hiện trạng repo / 💬 Làm tiếp với Claude. KHÔNG có field 'đã xong' — phần đã xong kể trong context (tránh lẫn với recentlyDone).",
+      "type": "object",
+      "required": ["title", "context", "nextAction", "resume", "confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "context": { "type": "string", "minLength": 1, "description": "1–3 câu: việc này là gì, vì sao làm, ĐÃ xong phần nào, đến đâu rồi" },
+        "refs": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "required": ["label", "ref"],
+            "additionalProperties": false,
+            "properties": {
+              "label": { "type": "string", "minLength": 1 },
+              "ref": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "nextAction": { "type": "string", "minLength": 1 },
+        "laterSteps": { "type": "array", "maxItems": 3, "items": { "type": "string", "minLength": 1 } },
+        "blockedBy": {
+          "description": "Pointer sang decisionsNeeded liên quan trực tiếp việc đang làm — chỉ id + hệ quả ngắn, KHÔNG lặp câu hỏi. Render: hậu tố '⛔ cần chốt …' gắn vào dòng ⏭ Còn lại (bước nó chặn), không đứng riêng. Nếu decision chặn cả bước kế tiếp → nextAction phải LÀ 'chốt <id>'.",
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "required": ["id"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "note": { "type": "string", "description": "Chặn gì / không chặn gì, vd 'không chặn PR, chỉ chặn đóng batch'" }
+            }
+          }
+        },
+        "resume": {
+          "description": "Cách quay lại việc dang dở — trạng thái working tree/nhánh/worktree + câu nói hoặc lệnh để tiếp tục.",
+          "type": "object",
+          "required": ["workingState", "howToContinue"],
+          "additionalProperties": false,
+          "properties": {
+            "workingState": { "type": "string", "minLength": 1 },
+            "howToContinue": { "type": "string", "minLength": 1 }
+          }
+        },
+        "confidence": { "enum": ["confirmed", "inferred"] }
+      }
+    },
+    "sideTracks": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["title"],
+        "additionalProperties": false,
+        "properties": {
+          "title": { "type": "string", "minLength": 1 },
+          "owner": { "type": "string", "description": "Định danh phiên Claude đang cầm mạch này, dạng \"<tên phiên>\" · <uuid đầy đủ 36 ký tự>. Cần CẢ HAI: extension/panel search theo tên, `claude --resume` đòi uuid đầy đủ — id 8 ký tự SessionStart hook in ra thì không quay lại phiên được." }
+        }
+      }
+    },
+    "recentlyDone": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["date", "title"],
+        "additionalProperties": false,
+        "properties": {
+          "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "title": { "type": "string", "minLength": 1 },
+          "ref": { "type": "string" }
+        }
+      }
+    },
+    "decisionsNeeded": {
+      "description": "Chờ CHÍNH BẠN quyết. heat: now = đang khóa focus/blocker (🔥) · soon = có hạn hoặc sắp chặn (⏰) · later = không gấp (🧊). question = câu hỏi cụ thể trả lời được trong 1 câu; id = handle ngắn để nói 'chốt <id>: ...'.",
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["title", "heat", "blocks"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 },
+          "heat": { "enum": ["now", "soon", "later"] },
+          "blocks": { "type": "string", "minLength": 1 },
+          "question": { "type": "string" },
+          "ref": { "type": "string" },
+          "since": { "type": "string" }
+        }
+      }
+    },
+    "waitingOn": {
+      "description": "Chờ NGƯỜI KHÁC — không được chứa việc mà quyết định là của user (đó là decisionsNeeded).",
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["what", "who"],
+        "additionalProperties": false,
+        "properties": {
+          "what": { "type": "string", "minLength": 1 },
+          "who": { "type": "string", "minLength": 1 },
+          "since": { "type": "string" },
+          "ref": { "type": "string" }
+        }
+      }
+    },
+    "upNext": {
+      "description": "Chưa ai cầm — hàng đợi sau focus, mục 1 là việc lấy ra đầu tiên. Không lặp lại việc đã có ở section khác.",
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["title"],
+        "additionalProperties": false,
+        "properties": {
+          "title": { "type": "string", "minLength": 1 },
+          "ref": { "type": "string" }
+        }
+      }
+    }
+  }
+}
