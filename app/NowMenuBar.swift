@@ -352,10 +352,20 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
         m.addItem(.separator())
         m.addItem(withTitle: "Thoát", action: #selector(quit), keyEquivalent: "q")
         for it in m.items where it.action != nil { it.target = self }
-        // Gắn vào chính status item rồi popUp: cách này giữ nút ở trạng thái sáng suốt
-        // thời gian menu mở, giống mọi app khác trên thanh.
-        anchor.performClick(nil)
+        // Nút sáng lên suốt lúc menu mở, giống mọi app khác trên thanh — nhưng bật thẳng
+        // cờ highlight của cell, KHÔNG mượn `performClick`.
+        //
+        // `performClick(nil)` bắn lại action gắn ở nút, mà action ấy chính là `clicked`.
+        // Lúc đó `NSApp.currentEvent?.type` vẫn còn là `.rightMouseUp`, nên `clicked` lại
+        // rẽ vào `showMenu` → `performClick` → `clicked` → … Đệ quy không có đáy: bản
+        // báo lỗi 04/8 đếm được depth 11598 rồi SIGSEGV, tức bấm chuột phải một cái là
+        // app chết ngay. Xem issue #1.
+        //
+        // `popUp` chặn cho tới khi menu đóng, nên dòng tắt highlight ở dưới chạy đúng lúc.
+        let cell = anchor.cell as? NSButtonCell
+        cell?.isHighlighted = true
         m.popUp(positioning: nil, at: NSPoint(x: 0, y: anchor.bounds.height + 4), in: anchor)
+        cell?.isHighlighted = false
     }
 
     private func openDashboard(view: String? = nil) {
