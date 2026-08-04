@@ -1,0 +1,59 @@
+name: validate
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # On a version tag (v1.2.3), fail unless it matches plugin.json's version,
+      # so the tag and the single-source version can never silently drift apart.
+      - name: Check tag matches plugin version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./.claude-plugin/plugin.json').version")"
+          echo "tag: $tag   plugin.json: $pkg"
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::Tag v$tag does not match plugin.json version $pkg — bump plugin.json or retag."
+            exit 1
+          fi
+          echo "OK — tag matches plugin.json ($pkg)"
+
+      # Belt-and-suspenders: a deterministic JSON syntax gate that needs no auth,
+      # so a broken manifest fails even if the CLI step has trouble.
+      - name: Lint manifest (JSON syntax)
+        run: node -e "JSON.parse(require('fs').readFileSync('.claude-plugin/plugin.json','utf8'))"
+
+      # The schema is the plugin's whole contract with every consumer — the board
+      # writer here, and any dashboard reading NOW.json elsewhere. A syntax error
+      # in it does not fail `plugin validate`, because it is data to that command.
+      - name: Lint NOW schema (JSON syntax)
+        run: node -e "JSON.parse(require('fs').readFileSync('skills/now/now.schema.json','utf8'))"
+
+      # SKILL.md tells the skill to resolve the schema from ${CLAUDE_PLUGIN_ROOT}.
+      # If the file is ever moved or renamed, that instruction becomes a dead path
+      # that only fails on a user's machine, at write time, after the board is gone.
+      - name: Schema sits where SKILL.md says it does
+        run: test -f skills/now/now.schema.json
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      # --strict turns warnings into errors. An unrecognized or slightly
+      # misspelled manifest field still loads at runtime and validates with a
+      # warning, which is exactly why it has to fail here: the field you typo is
+      # the field you believe you set.
+      - name: Validate plugin (also checks skill frontmatter)
+        run: claude plugin validate . --strict
