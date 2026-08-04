@@ -208,12 +208,13 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
         quotaItem.button?.toolTip = b.tip
     }
 
-    /// Hỏi hoặc đặt mục "Mở lúc đăng nhập" rồi thoát — bật bằng `NOW_LOGIN=status|on|off`.
+    /// Hỏi hoặc đặt mục đăng nhập rồi thoát — bật bằng `NOW_LOGIN=status|on|off`.
     /// In ra `on` hoặc `off`.
     ///
     /// Có mặt để `bin/install-app` và mắt người kiểm được cùng một đường đi mà nút trên
     /// menu chuột phải dùng — nút ấy không bấm được từ terminal, và một nhánh không ai
-    /// chạy được là nhánh sẽ hỏng lặng lẽ.
+    /// chạy được là nhánh sẽ hỏng lặng lẽ. `bin/now-menu` cũng đi cửa này chứ không tự
+    /// dựng lại plist bằng sed: một việc, một bản.
     private func loginModeIfAsked() {
         guard let raw = ProcessInfo.processInfo.environment["NOW_LOGIN"] else { return }
         var code: Int32 = 0
@@ -398,9 +399,13 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
         m.addItem(withTitle: "Làm mới ngay", action: #selector(refreshNow), keyEquivalent: "")
         m.addItem(.separator())
         m.addItem(withTitle: "Dựng lại server", action: #selector(restartServer), keyEquivalent: "")
-        let login = NSMenuItem(title: "Mở lúc đăng nhập", action: #selector(toggleLogin), keyEquivalent: "")
-        login.state = loginOn ? .on : .off
-        m.addItem(login)
+        // "Hiện trên thanh menu", không còn là "Mở lúc đăng nhập". Đổi tên vì việc nó làm
+        // đã đổi: bản trước ô này chỉ đặt lần đăng nhập SAU, còn "Thoát" chỉ tắt BÂY GIỜ
+        // — hai nửa của một công tắc, không nửa nào tự đứng được. Giờ ô này là công tắc
+        // đủ hai thì, còn "Thoát" giữ đúng nghĩa hẹp: đóng phiên này thôi.
+        let show = NSMenuItem(title: "Hiện trên thanh menu", action: #selector(toggleShow), keyEquivalent: "")
+        show.state = loginOn ? .on : .off
+        m.addItem(show)
         m.addItem(.separator())
         m.addItem(withTitle: "Thoát", action: #selector(quit), keyEquivalent: "q")
         for it in m.items where it.action != nil { it.target = self }
@@ -444,29 +449,71 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
         DispatchQueue.main.asyncAfter(deadline: .now() + 7) { [weak self] in self?.refresh() }
     }
 
-    @objc private func toggleLogin() {
+    @objc private func toggleShow() {
+        guard loginOn else {
+            // Bật, mà icon thì hiển nhiên đang hiện — không hiện thì lấy đâu ra menu để
+            // bấm. Nên ở chiều này chỉ còn thiếu mục đăng nhập, ghi là xong. Gọi
+            // `bin/now-menu on` cho "đối xứng" thì nó pkill mình rồi dựng lại dưới
+            // launchd: icon nháy một cái, đổi thêm được đúng con số PID.
+            do {
+                try setLogin(true)
+            } catch {
+                let a = NSAlert()
+                a.messageText = "Không đổi được mục đăng nhập"
+                a.informativeText = error.localizedDescription
+                a.runModal()
+            }
+            return
+        }
+
+        // Tắt là cửa một chiều TỪ ĐÂY: menu này biến mất cùng cái icon. Phải nói ra
+        // đường về trước khi đóng nó lại, không thì người dùng rơi vào đúng cái bẫy mà
+        // bin/now-menu sinh ra để gỡ — chỉ khác là lần này họ tự bấm.
+        let a = NSAlert()
+        a.messageText = "Tắt icon trên thanh menu?"
+        a.informativeText = """
+            Icon tắt ngay và không mọc lại ở những lần đăng nhập sau.
+
+            Bật lại ở dashboard: màn Sức khoẻ → Icon trên thanh menu. \
+            Hoặc chạy ./bin/now-menu on trong thư mục dự án.
+            """
+        a.addButton(withTitle: "Tắt icon")
+        a.addButton(withTitle: "Huỷ")
+        guard a.runModal() == .alertFirstButtonReturn else { return }
+
+        // Mọi hiểu biết về plist + launchd + tiến trình nằm ở một chỗ, và đây gọi vào
+        // đúng chỗ đó. Dòng cuối của `now-menu off` là `pkill`, tức là nó giết chính
+        // tiến trình này — nên KHÔNG `waitUntilExit`, và output phải đổ vào /dev/null:
+        // ống dẫn về một tiến trình cha đã chết thì lượt ghi tiếp theo ăn SIGPIPE, và
+        // script chết giữa chừng ngay trước khi kịp làm nốt việc.
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "\(ROOT)/bin/now-menu")
+        p.arguments = ["off"]
+        p.standardOutput = FileHandle.nullDevice
+        p.standardError = FileHandle.nullDevice
         do {
-            try setLogin(!loginOn)
+            try p.run()
         } catch {
-            let a = NSAlert()
-            a.messageText = "Không đổi được mục đăng nhập"
-            a.informativeText = error.localizedDescription
-            a.runModal()
+            let e = NSAlert()
+            e.messageText = "Không tắt được icon"
+            e.informativeText = "\(ROOT)/bin/now-menu: \(error.localizedDescription)"
+            e.runModal()
         }
     }
 
-    // ── Mở lúc đăng nhập ─────────────────────────────────────────────────────
+    // ── Mục đăng nhập ────────────────────────────────────────────────────────
     //
     // Một file plist trong ~/Library/LaunchAgents/, cùng khuôn với service — xem
     // launchd/dev.hoanluu.now-dash.menu.plist để biết vì sao không dùng SMAppService.
     //
-    // Ở đây KHÔNG gọi launchctl, cả lúc bật lẫn lúc tắt, và cả hai đều có lý do:
+    // Hai hàm dưới đây CHỈ đụng tới cái file, không gọi launchctl. Đó là ranh giới có
+    // chủ ý, không phải thiếu sót: `bootstrap` gọi từ trong tiến trình này sẽ dựng ngay
+    // một bản THỨ HAI của chính nó — hai icon giống hệt nhau trên thanh — còn `bootout`
+    // thì giết đúng tiến trình đang chạy dòng lệnh ấy.
     //
-    //   · bật  — `bootstrap` sẽ dựng ngay một bản THỨ HAI của chính app đang chạy, hai
-    //            icon giống hệt nhau trên thanh. Cái người dùng vừa bấm là "lần đăng
-    //            nhập SAU thì mở", không phải "mở thêm một cái bây giờ".
-    //   · tắt  — `bootout` giết đúng tiến trình đang chạy dòng lệnh này, nếu nó do
-    //            launchd dựng lên. Tắt mục đăng nhập mà app tự thoát là hỏng.
+    // Phần launchctl nằm ở `bin/now-menu`, nơi nó chạy từ NGOÀI và làm được cả hai việc
+    // theo đúng thứ tự. Ô "Hiện trên thanh menu" gọi sang đó khi tắt; khi bật thì chỉ
+    // cần ghi file, vì icon lúc ấy hiển nhiên đang hiện.
     //
     // Miền gui của launchd chết theo phiên đăng nhập, nên xoá file là đủ: đăng nhập lần
     // sau launchd đọc lại thư mục ấy, không thấy thì không dựng.

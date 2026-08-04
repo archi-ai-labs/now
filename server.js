@@ -225,6 +225,35 @@ const OPENERS = {
   windsurf: 'Windsurf',
 };
 
+/**
+ * Đọc hoặc đặt công tắc icon thanh menu. `on === null` là chỉ hỏi.
+ *
+ * Toàn bộ hiểu biết về launchd, plist và tiến trình nằm trong `bin/now-menu` — ở đây chỉ
+ * dịch một bit thành một trong ba chữ `on`/`off`/`status`. Không có nhánh nào nối chuỗi
+ * từ client vào dòng lệnh, và `execFile` (không phải `exec`) nên cũng không có shell để
+ * mà chen vào.
+ *
+ * Vì sao endpoint này tồn tại, khi menu chuột phải đã có ô bật/tắt: khi icon đã tắt thì
+ * cái menu ấy không còn để mà bấm. Server chạy độc lập với icon, nên đây là bề mặt duy
+ * nhất LUÔN với tới được — không có nó thì "tắt" vẫn là cửa một chiều, chỉ khác là lần
+ * này có nhãn tử tế.
+ */
+function menubar(res, on) {
+  if (process.platform !== 'darwin') {
+    return json(res, 501, { error: 'chỉ có trên macOS' });
+  }
+  const arg = on === null ? 'status' : on ? 'on' : 'off';
+  execFile(path.join(ROOT, 'bin', 'now-menu'), [arg], (err, stdout, stderr) => {
+    // Từ đầu tiên là thứ máy đọc; phần trong ngoặc (nếu có) là lúc hai sự thật lệch
+    // nhau — xem phần `status` trong bin/now-menu.
+    const word = String(stdout).trim().split(/\s+/)[0];
+    if (word !== 'on' && word !== 'off') {
+      return json(res, 500, { error: String(stderr).trim() || err?.message || 'không đọc được trạng thái' });
+    }
+    return json(res, 200, { ok: true, on: word === 'on', note: String(stdout).trim() });
+  });
+}
+
 async function openPath(res, target, app) {
   const state = await getState();
   const known = new Set([
@@ -297,6 +326,33 @@ async function handle(req, res) {
 
   if (url.pathname === '/api/now-md') {
     return serveNowMd(res, url.searchParams.get('project'));
+  }
+
+  if (url.pathname === '/api/menubar') {
+    if (req.method === 'GET') return menubar(res, null);
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', (c) => {
+        body += c;
+        if (body.length > 256) req.destroy();
+      });
+      req.on('end', () => {
+        try {
+          const { on } = JSON.parse(body);
+          // Đúng một bit đi qua đây, và nó được ép về boolean TRƯỚC khi thành đối số.
+          // Cùng lý do đã viết cho `OPENERS` ở trên: `bin/now-menu` là một lời gọi vào
+          // hệ điều hành, nên không chuỗi nào từ trình duyệt được phép trở thành đối số
+          // của nó. Kiểu sai thì từ chối, đừng đoán — `{on:"off"}` mà đoán thành true là
+          // đúng kiểu lỗi không ai phát hiện ra.
+          if (typeof on !== 'boolean') return json(res, 400, { error: 'cần {on: true|false}' });
+          return menubar(res, on);
+        } catch (err) {
+          return json(res, 400, { error: err.message });
+        }
+      });
+      return;
+    }
+    return json(res, 405, { error: 'chỉ GET hoặc POST' });
   }
 
   if (url.pathname === '/api/open' && req.method === 'POST') {

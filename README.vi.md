@@ -369,12 +369,27 @@ Idempotent, chạy lại bao nhiêu lần cũng an toàn (kể cả sau khi dờ
 xong hẳn, dựng lại qua `./bin/now-dash`, rồi thay app thanh menu và mở luôn. Dashboard
 tắt vài giây; không mất dữ liệu, mọi sổ ghi ở `~/.now-dashboard/`, cài lại không đụng tới.
 
-**Mở lúc đăng nhập** là một LaunchAgent thứ hai (`dev.hoanluu.now-dash.menu`), không
-phải login item của macOS. launchd khoá theo label nên cài lại là thay đúng dòng ấy;
-còn `SMAppService` — API Apple khuyên dùng, và app này đã dùng trước đó — khoá theo
-*chữ ký* của bundle, mà `swiftc` thì ký ad-hoc lại sau mỗi lần dựng. Dựng lại hai lần là
-System Settings → Login Items có hai dòng "NOW Dashboard", và dòng mồ côi thì không API
-nào gỡ được, phải bấm tay. Bật một lần rồi thì mọi lần cài lại đều giữ nguyên:
+**Bật tắt icon** có ba đường, cả ba đi qua cùng một công tắc — file plist
+`~/Library/LaunchAgents/dev.hoanluu.now-dash.menu.plist` có mặt hay không:
+
+```bash
+./bin/now-menu on       # hiện ngay, VÀ ở mọi lần đăng nhập sau
+./bin/now-menu off      # tắt hẳn cả hai
+./bin/now-menu status   # in `on` hoặc `off` ở từ đầu tiên
+```
+
+Hai đường kia: chuột phải lên icon → **Hiện trên thanh menu**, và trong dashboard ở màn
+**Sức khoẻ → Icon trên thanh menu**. Chỗ trên dashboard không phải để cho đủ bộ — nó là
+bề mặt duy nhất còn với tới được sau khi icon đã tắt, vì menu chuột phải biến mất cùng
+với chính cái icon. (Còn **Thoát** trong menu thì hẹp hơn: chỉ đóng phiên này, đăng nhập
+lần sau icon vẫn lên.)
+
+Đằng sau công tắc là một LaunchAgent thứ hai (`dev.hoanluu.now-dash.menu`), không phải
+login item của macOS. launchd khoá theo label nên cài lại là thay đúng dòng ấy; còn
+`SMAppService` — API Apple khuyên dùng, và app này đã dùng trước đó — khoá theo *chữ ký*
+của bundle, mà `swiftc` thì ký ad-hoc lại sau mỗi lần dựng. Dựng lại hai lần là System
+Settings → Login Items có hai dòng "NOW Dashboard", và dòng mồ côi thì không API nào gỡ
+được, phải bấm tay. Bật một lần rồi thì mọi lần cài lại đều giữ nguyên:
 
 ```bash
 NOW_LOGIN_ITEM=1 ./bin/install-app   # =0 để tắt lại
@@ -393,7 +408,8 @@ dịch → script dừng **trước** khi đụng vào app lẫn LaunchAgent, v�
 | Đổi `NOW_PORT` nhưng service vẫn dùng cổng cũ | Cổng ghim trong plist lúc render, không đọc lại lúc chạy | `NOW_PORT=xxxx ./bin/install-app` — một lần chạy đổi cả plist lẫn app, từ cùng một biến |
 | `install-app` chết với `xcrun: error: invalid active developer path` | `swiftc` và `xcrun` ở `/usr/bin` chỉ là vỏ; chúng chuyển tiếp sang thư mục mà `xcode-select` đang trỏ tới, mà thư mục đó không còn (Command Line Tools bị gỡ, hoặc chưa từng cài) | Script tự mượn Xcode.app cho lần dựng đó và in ra cách chốt hẳn: `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer`. Không có cái nào → `xcode-select --install` |
 | App đang chạy (`pgrep -f now-dash-menu` thấy) mà thanh menu không có icon | App không hỏng — thanh menu đã đầy và macOS bỏ bớt phần tràn, trên laptop có tai thỏ thì tràn vào đúng chỗ khuất | Thoát bớt một hai icon, hoặc ⌘-kéo xếp lại. Muốn chắc cái nút vẫn vẽ ra: `NOW_SNAP=/tmp/b.png "$HOME/Applications/NOW Dashboard.app/Contents/MacOS/now-dash-menu"` |
-| Đăng nhập lại thì icon không tự lên | "Mở lúc đăng nhập" đang tắt, tức là không có `~/Library/LaunchAgents/dev.hoanluu.now-dash.menu.plist` | `NOW_LOGIN_ITEM=1 ./bin/install-app`, hoặc chuột phải lên icon → Mở lúc đăng nhập. Đọc `on`/`off` từ chính file đó, hoặc từ `NOW_LOGIN=status "$HOME/Applications/NOW Dashboard.app/Contents/MacOS/now-dash-menu"`. File có mà icon vẫn không lên → System Settings → General → Login Items → **Allow in the Background**, chỗ macOS cho tắt một agent sau lưng launchd |
+| Đăng nhập lại thì icon không tự lên | Công tắc đang tắt, tức là không có `~/Library/LaunchAgents/dev.hoanluu.now-dash.menu.plist` | `./bin/now-menu on`. Đọc trạng thái bằng `./bin/now-menu status`. Bật rồi mà icon vẫn không lên → System Settings → General → Login Items → **Allow in the Background**, chỗ macOS cho tắt một agent sau lưng launchd |
+| Lỡ tắt icon rồi, giờ không biết bật lại ở đâu | Menu chuột phải biến mất cùng cái icon, mà `NOW Dashboard.app` thì `LSUIElement` — double-click vào không hiện cửa sổ nào để mà bấm | Mở dashboard (`./bin/now-dash`) → màn **Sức khoẻ → Icon trên thanh menu**. Hoặc `./bin/now-menu on` |
 | Không thấy log gì dù chắc chắn có lỗi | Log của service nằm ở `~/.now-dashboard/`, không phải terminal (launchd không có stdout) | `tail -f ~/.now-dashboard/service.err.log` |
 
 **Gỡ cài đặt — theo đúng thứ tự này:**

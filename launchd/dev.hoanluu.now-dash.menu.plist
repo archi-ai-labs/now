@@ -3,7 +3,8 @@
 <!--
   Mở app thanh menu lúc đăng nhập. Anh em với dev.hoanluu.now-dash.plist bên cạnh, nhưng
   đây là APP chứ không phải server: __MENU_BIN__ được thay lúc dựng, bởi bin/install-app
-  hoặc bởi chính app khi bấm "Mở lúc đăng nhập".
+  hoặc bởi chính app khi bấm "Hiện trên thanh menu". File này có mặt hay không CHÍNH LÀ
+  trạng thái của công tắc ấy — xem bin/now-menu.
 
   Vì sao là LaunchAgent chứ không phải SMAppService — API mà Apple khuyên dùng và app
   này đã từng dùng:
@@ -17,8 +18,8 @@
   launchd thì khoá theo LABEL. Cài lại bao nhiêu lần cũng vẫn đúng một dòng ấy.
 
   KHÔNG có KeepAlive: bấm "Thoát" trên menu của app là thoát thật, tới lần đăng nhập sau
-  mới gặp lại. Có KeepAlive thì nút Thoát biến thành nút "khởi động lại", và người dùng
-  không có cách nào tắt được cái icon.
+  mới gặp lại. Có KeepAlive thì nút Thoát biến thành nút "khởi động lại". Muốn tắt HẲN,
+  cả bây giờ lẫn những lần sau, thì dùng "Hiện trên thanh menu" — nó xoá luôn file này.
 -->
 <plist version="1.0">
 <dict>

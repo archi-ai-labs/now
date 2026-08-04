@@ -384,7 +384,22 @@ through `./bin/now-dash`, then replaces the menu-bar app and opens it. The dashb
 down for a few seconds; no data is lost, since everything is logged under
 `~/.now-dashboard/`, which reinstalling never touches.
 
-**Open at login** is a second LaunchAgent (`dev.hoanluu.now-dash.menu`), not a macOS
+**Switching the icon on and off** has three routes, all going through the same switch —
+whether the plist `~/Library/LaunchAgents/dev.hoanluu.now-dash.menu.plist` exists:
+
+```bash
+./bin/now-menu on       # show it now, AND at every login from here on
+./bin/now-menu off      # turn both off
+./bin/now-menu status   # prints `on` or `off` as the first word
+```
+
+The other two: right-click the icon → **Hiện trên thanh menu**, and in the dashboard
+under **Health → Menu bar icon**. The dashboard one isn't there for symmetry — it is the
+only surface still reachable once the icon is off, because the right-click menu
+disappears along with the icon itself. (**Thoát** in that menu stays narrower: it closes
+this session only, and the icon returns at the next login.)
+
+Behind the switch is a second LaunchAgent (`dev.hoanluu.now-dash.menu`), not a macOS
 login item. launchd keys on the label, so reinstalling replaces that one entry;
 `SMAppService` — the API Apple points you at, and the one this app used first — keys on
 the *code signature*, which `swiftc` re-rolls ad-hoc on every build. Two rebuilds, two
@@ -408,7 +423,8 @@ command to fix it. Only want the background server, no menu-bar icon → use the
 | Changed `NOW_PORT` but the service still uses the old port | The port is baked into the plist at render time, not re-read at runtime | `NOW_PORT=xxxx ./bin/install-app` — one run moves both the plist and the app, from the same variable |
 | `install-app` dies with `xcrun: error: invalid active developer path` | `swiftc` and `xcrun` under `/usr/bin` are only shims; they forward to whatever `xcode-select` points at, and that directory is gone (Command Line Tools uninstalled, or never installed) | The script now borrows Xcode.app for that one build and prints the permanent fix: `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer`. Neither one present → `xcode-select --install` |
 | App runs (`pgrep -f now-dash-menu` finds it) but no icon in the menu bar | Nothing is wrong with the app — the bar is full and macOS drops the overflow, into the notch on laptops that have one | Quit an icon or two, or reorder with ⌘-drag. To confirm the button itself still draws: `NOW_SNAP=/tmp/b.png "$HOME/Applications/NOW Dashboard.app/Contents/MacOS/now-dash-menu"` |
-| Icon doesn't come back after logging in | "Open at login" is off — i.e. `~/Library/LaunchAgents/dev.hoanluu.now-dash.menu.plist` isn't there | `NOW_LOGIN_ITEM=1 ./bin/install-app`, or right-click the icon → Open at login. Reads as `on`/`off` from either the file or `NOW_LOGIN=status "$HOME/Applications/NOW Dashboard.app/Contents/MacOS/now-dash-menu"`. The file being there and the icon still not coming up → System Settings → General → Login Items → **Allow in the Background**, where macOS lets you switch an agent off behind launchd's back |
+| Icon doesn't come back after logging in | The switch is off — i.e. `~/Library/LaunchAgents/dev.hoanluu.now-dash.menu.plist` isn't there | `./bin/now-menu on`. Read the state with `./bin/now-menu status`. On and the icon still not coming up → System Settings → General → Login Items → **Allow in the Background**, where macOS lets you switch an agent off behind launchd's back |
+| Turned the icon off and can't find where to turn it back on | The right-click menu disappears along with the icon, and `NOW Dashboard.app` is `LSUIElement` — double-clicking it opens no window to click in | Open the dashboard (`./bin/now-dash`) → **Health → Menu bar icon**. Or `./bin/now-menu on` |
 | No logs anywhere despite a clear error | The service's logs live under `~/.now-dashboard/`, not the terminal (launchd has no stdout) | `tail -f ~/.now-dashboard/service.err.log` |
 
 **Uninstall — in this exact order:**

@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# Bật/tắt icon trên thanh menu. Công tắc DUY NHẤT cho việc đó.
+#
+# Trước bản này, "icon có hiện không" không phải một trạng thái được lưu ở đâu cả — nó là
+# hệ quả của hai sự thật độc lập, do hai thứ khác nhau viết:
+#
+#   · một file plist trong ~/Library/LaunchAgents/  → nói về lần đăng nhập SAU
+#   · một tiến trình now-dash-menu đang sống        → nói về BÂY GIỜ
+#
+# Menu chuột phải chỉ tắt được cái thứ hai ("Thoát"), ô "Mở lúc đăng nhập" chỉ đặt được
+# cái thứ nhất. Không mục nào bắc cầu, nên bấm Thoát xong thì trong sản phẩm không còn
+# nút nào bật lại được: đường về duy nhất là mở NOW Dashboard.app trong Finder — mà nó
+# LSUIElement, double-click xong màn hình không đổi gì ngoài cái icon lặng lẽ mọc lên.
+# Cửa một chiều. Chỗ này gộp hai sự thật ấy về một lệnh.
+#
+#   ./bin/now-menu on       # hiện icon ngay, VÀ ở mọi lần đăng nhập sau
+#   ./bin/now-menu off      # tắt hẳn, cả bây giờ lẫn lần sau
+#   ./bin/now-menu status   # in `on` hoặc `off` ở từ đầu tiên
+#
+# Việc ghi plist KHÔNG chép lại ở đây: nó đi qua `NOW_LOGIN=on|off <binary>` của chính
+# app (xem `loginModeIfAsked` trong app/NowMenuBar.swift), đúng đường mà bin/install-app
+# đã dùng. Cùng một việc mà có hai bản là hai bản sẽ trôi khỏi nhau.
+set -euo pipefail
+
+LABEL="dev.hoanluu.now-dash.menu"
+PLIST="$HOME/Library/LaunchAgents/${LABEL}.plist"
+DOMAIN="gui/$(id -u)"
+
+# Đường tới binary: plist đang có thì HỎI NÓ, vì đó đúng là thứ launchd sẽ chạy. Dựng
+# lại đường dẫn theo APP_NAME thì lệch ngay khi người dùng cài với tên khác — và
+# bin/install-app có cho phép đúng điều đó.
+menu_bin() {
+  if [[ -f "$PLIST" ]]; then
+    local p
+    p="$(/usr/libexec/PlistBuddy -c 'Print :ProgramArguments:0' "$PLIST" 2>/dev/null || true)"
+    if [[ -n "$p" && -x "$p" ]]; then
+      echo "$p"
+      return
+    fi
+  fi
+  echo "${APP_DEST:-$HOME/Applications}/${APP_NAME:-NOW Dashboard}.app/Contents/MacOS/now-dash-menu"
+}
+
+BIN="$(menu_bin)"
+
+running() { pgrep -f "$BIN" >/dev/null 2>&1; }
+set_on()  { [[ -f "$PLIST" ]]; }
+
+need_bin() {
+  [[ -x "$BIN" ]] && return
+  echo "Chưa thấy app ở $BIN — chạy ./bin/install-app trước." >&2
+  exit 78 # EX_CONFIG
+}
+
+case "${1:-status}" in
+on)
+  need_bin
+  NOW_LOGIN=on "$BIN" >/dev/null
+
+  # Bản đang chạy NGOÀI launchd phải chết trước khi bootstrap. Không có dòng này thì lên
+  # hai icon giống hệt nhau trên thanh, và cái do launchd dựng không tắt được cái kia —
+  # đúng cái bẫy mà launchd/dev.hoanluu.now-dash.menu.plist đã ghi lại lý do.
+  pkill -f "$BIN" 2>/dev/null || true
+
+  # bootstrap cho lần đầu (chưa đăng ký), kickstart cho lần sau (đã đăng ký, đang dừng).
+  # Cái nào cũng "thất bại" được vì lý do vô hại, nên nuốt lỗi rồi đo bằng tiến trình
+  # thật, y như cách bin/now-dash đo server bằng ping thay vì bằng mã lỗi launchctl.
+  launchctl bootstrap "$DOMAIN" "$PLIST" 2>/dev/null ||
+    launchctl kickstart -k "$DOMAIN/$LABEL" 2>/dev/null || true
+
+  for _ in $(seq 1 20); do
+    running && break
+    sleep 0.25
+  done
+  running || {
+    echo "Đã bật mục đăng nhập nhưng launchd chưa dựng được icon." >&2
+    echo "Xem: launchctl print $DOMAIN/$LABEL" >&2
+    exit 1
+  }
+  echo "on"
+  ;;
+
+off)
+  # Thứ tự ở đây có chủ ý: việc BỀN vững trước, việc giết tiến trình sau cùng.
+  #
+  # Lệnh này gọi được từ CHÍNH app trên thanh menu, và khi ấy dòng `pkill` cuối cùng giết
+  # đúng kẻ vừa gọi nó. Mọi thứ phải xong trước dòng đó, không thì cú tắt để lại một
+  # plist mồ côi: icon biến mất bây giờ rồi mọc lại ở lần đăng nhập sau, tức là nút tắt
+  # không tắt được gì cả.
+  if [[ -x "$BIN" ]]; then
+    NOW_LOGIN=off "$BIN" >/dev/null || rm -f "$PLIST"
+  else
+    rm -f "$PLIST"
+  fi
+  launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
+  pkill -f "$BIN" 2>/dev/null || true
+  echo "off"
+  ;;
+
+status)
+  # Từ ĐẦU TIÊN là thứ máy đọc (server.js cắt đúng nó). Phần trong ngoặc chỉ có mặt khi
+  # hai sự thật lệch nhau — và lệch thì đáng nói ra, vì đó là lúc người dùng thấy một
+  # đằng còn lần đăng nhập sau lại ra một nẻo.
+  if set_on; then
+    running && echo "on" || echo "on (chưa chạy)"
+  else
+    running && echo "off (đang chạy)" || echo "off"
+  fi
+  ;;
+
+*)
+  echo "dùng: now-menu on|off|status" >&2
+  exit 2
+  ;;
+esac

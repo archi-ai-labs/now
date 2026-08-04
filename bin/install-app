@@ -169,8 +169,8 @@ NOW_PORT="$PORT" "$ROOT/bin/now-dash" --no-open \
 # không phải bằng một khúc sed thứ hai ở đây: cùng một việc mà có hai bản là hai bản sẽ
 # trôi khỏi nhau, và bản ít người chạy sẽ là bản hỏng.
 case "$WANT_LOGIN" in
-  1) NOW_LOGIN=on "$MENU_BIN" >/dev/null && echo "Mở lúc đăng nhập: bật" ;;
-  0) NOW_LOGIN=off "$MENU_BIN" >/dev/null && echo "Mở lúc đăng nhập: tắt" ;;
+  1) NOW_LOGIN=on "$MENU_BIN" >/dev/null && echo "Icon lúc đăng nhập: bật" ;;
+  0) NOW_LOGIN=off "$MENU_BIN" >/dev/null && echo "Icon lúc đăng nhập: tắt" ;;
 esac
 
 # Hai plist đều chỉ được đọc lúc đăng nhập lần sau hoặc lúc launchd nạp, tức là một lỗi
@@ -198,5 +198,5 @@ done
 open "$DEST" 2>/dev/null || echo "Chưa mở được app — mở tay: open \"$DEST\"" >&2
 
 echo "Đã cài: $DEST"
-[[ "$WANT_LOGIN" == "1" ]] || echo "Muốn icon tự lên sau khi đăng nhập: chuột phải lên icon → Mở lúc đăng nhập (hoặc NOW_LOGIN_ITEM=1 $0)"
+[[ "$WANT_LOGIN" == "1" ]] || echo "Muốn icon tự lên sau khi đăng nhập: ./bin/now-menu on (hoặc chuột phải lên icon → Hiện trên thanh menu)"
 [[ -d "$WEBAPP" ]] || echo "Chưa thấy web app ở $WEBAPP — app sẽ mở bằng trình duyệt mặc định. Xem README.md §Chạy như app riêng trên Dock." >&2

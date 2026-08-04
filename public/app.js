@@ -625,6 +625,39 @@ function render() {
   renderButler(s);
   keepUI(() => mount($('#view'), v.render(s, app.query)));
   if (drawerId) syncDrawer();
+  syncMenubar();
+}
+
+// ── Công tắc icon thanh menu ──────────────────────────────────────────────────
+//
+// Không nằm trong `app.state` vì nó không phải thứ lượt quét thấy được — xem ghi chú ở
+// views/health.js. Cái giá phải trả là nút được vẽ ra trước khi biết mình đang ở trạng
+// thái nào, nên nó ra đời `disabled` với nhãn "đang hỏi…" và chỉ mở khoá khi đã có câu
+// trả lời. Vẽ sẵn "đang hiện" rồi sửa sau thì trong khoảnh khắc đầu nút nói một điều nó
+// chưa biết — và người dùng bấm được vào đúng khoảnh khắc ấy.
+
+/** Trạng thái đã biết, giữ qua các lượt vẽ để nút không nháy về "đang hỏi…" mỗi 30 giây. */
+let menubarOn = null;
+
+function paintMenubar(btn) {
+  btn.disabled = menubarOn === null;
+  btn.textContent = t(menubarOn === null ? 'health.menubarWait' : menubarOn ? 'health.menubarOn' : 'health.menubarOff');
+}
+
+function syncMenubar() {
+  const btn = $('[data-menubar]');
+  if (!btn) return;
+  paintMenubar(btn);
+  if (menubarOn !== null) return; // đã biết rồi thì đừng hỏi lại mỗi lượt vẽ
+  fetch('/api/menubar')
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => {
+      if (!d) return; // 501 trên máy không phải macOS: để nút ở nguyên trạng thái khoá
+      menubarOn = d.on;
+      const now = $('[data-menubar]');
+      if (now) paintMenubar(now);
+    })
+    .catch(() => {});
 }
 
 export function go(view, query) {
@@ -783,6 +816,42 @@ document.addEventListener('click', (e) => {
   if (tb) {
     e.stopPropagation();
     return setTab(tb.dataset.tabGroup, tb.dataset.tab);
+  }
+
+  // Không hỏi lại "bạn có chắc không": nhãn nút đã nói đúng việc sắp xảy ra, và CHÍNH nó
+  // là nút bật lại. Một hành động tự lật lại được bằng cú bấm thứ hai vào cùng chỗ thì
+  // hộp thoại xác nhận chỉ là một cú bấm thừa.
+  const mb = e.target.closest('[data-menubar]');
+  if (mb) {
+    e.stopPropagation();
+    if (menubarOn === null) return;
+    const want = !menubarOn;
+    mb.disabled = true;
+    mb.textContent = t('health.menubarBusy');
+    fetch('/api/menubar', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ on: want }),
+    })
+      .then(async (r) => {
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || r.status);
+        // Tin vào cái server TRẢ VỀ, không phải cái vừa xin. `bin/now-menu on` ghi được
+        // mục đăng nhập rồi vẫn có thể không dựng nổi tiến trình, và khi ấy nó báo lỗi
+        // chứ không báo `on` — nút phải kể lại đúng chuyện đó.
+        menubarOn = d.on;
+      })
+      .catch((err) => {
+        mb.textContent = t('health.menubarErr', { msg: err.message });
+        // Bỏ trạng thái đã biết: lượt vẽ sau sẽ hỏi lại từ đầu thay vì tin vào một giá
+        // trị mà ta không còn chắc.
+        menubarOn = null;
+      })
+      .finally(() => {
+        const now = $('[data-menubar]');
+        if (now && menubarOn !== null) paintMenubar(now);
+      });
+    return;
   }
 
   const open = e.target.closest('[data-open]');

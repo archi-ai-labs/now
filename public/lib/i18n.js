@@ -581,6 +581,18 @@ const DICT = {
     'health.thStaleMean': 'Đừng tin — chạy /now update trước khi đọc.',
     'health.footPre': 'Tôi chỉ <b>đọc</b> — không bao giờ tự ghi vào NOW.json. Nguồn sự thật vẫn là',
     'health.footEnd': 'chạy trong chính dự án đó.',
+    // Công tắc icon thanh menu. Chữ phải nói rõ nó tác động tới CẢ hai thì — bây giờ và
+    // mọi lần đăng nhập sau — vì đó đúng là chỗ bản cũ để hở: "Thoát" chỉ tắt bây giờ,
+    // "Mở lúc đăng nhập" chỉ đặt lần sau, và không nút nào làm cả hai.
+    'health.menubar': 'Icon trên thanh menu',
+    'health.menubarDesc':
+      'Bật thì icon hiện ngay và ở mọi lần đăng nhập sau; tắt là tắt hẳn cả hai. Đây là chỗ bật lại được sau khi đã tắt — menu chuột phải của icon thì biến mất cùng với chính nó.',
+    'health.menubarWait': 'đang hỏi…',
+    'health.menubarOn': 'đang hiện — bấm để tắt',
+    'health.menubarOff': 'đang tắt — bấm để hiện',
+    'health.menubarBusy': 'đang đổi…',
+    'health.menubarErr': (o) => `không đổi được: ${o.msg}`,
+
     // Mục tích hợp NOW bằng prompt chat — cho bề mặt KHÔNG có skill /now (Cursor,
     // Antigravity). Prompt phải tự đứng được: người nhận nó là một agent chưa từng
     // nghe về dashboard này.
@@ -1988,6 +2000,14 @@ const DICT = {
     'health.thStaleMean': "Don't trust it — run /now update before reading.",
     'health.footPre': 'I only <b>read</b> — I never write to NOW.json myself. The source of truth is still',
     'health.footEnd': 'run inside the project itself.',
+    'health.menubar': 'Menu bar icon',
+    'health.menubarDesc':
+      'On shows the icon right away and at every login from now on; off turns both off. This is where you switch it back on once it is gone — the icon’s own right-click menu disappears along with it.',
+    'health.menubarWait': 'asking…',
+    'health.menubarOn': 'showing — click to hide',
+    'health.menubarOff': 'hidden — click to show',
+    'health.menubarBusy': 'switching…',
+    'health.menubarErr': (o) => `could not switch: ${o.msg}`,
     'health.integrate': 'Bring NOW into a project',
     'health.integrateDesc':
       'Paste this prompt into the chat of whatever agent is working in the repo (Cursor, Antigravity, or any other agent) — it creates NOW.json + NOW.md to schema, and the dashboard picks the board up on the next sweep. Inside Claude Code you don’t need it: just say /now update.',
