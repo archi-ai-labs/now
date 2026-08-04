@@ -592,7 +592,7 @@ const DICT = {
     'health.integrateShow': 'xem nội dung prompt',
     'health.nowPrompt': `Tích hợp NOW board vào repo này để dashboard NOW theo dõi được:
 
-1. Đọc schema ở ~/.claude/skills/now/now.schema.json (JSON Schema draft-07, schemaVersion: 1). Không có file đó thì dừng lại hỏi tôi, đừng tự chế schema.
+1. Đọc schema (JSON Schema draft-07, schemaVersion: 1). Tìm nó bằng lệnh: ls ~/.claude/plugins/cache/*/now-board/*/skills/now/now.schema.json ~/.claude/skills/now/now.schema.json — có nhiều kết quả thì lấy bản phiên bản cao nhất. Không thấy file nào thì dừng lại hỏi tôi, đừng tự chế schema.
 2. Tạo NOW.json ở gốc repo đúng schema. Nội dung suy từ git log, git status và tài liệu trong repo: focus (title, context, nextAction dưới 30 phút, laterSteps, resume.workingState, resume.howToContinue, confidence), decisionsNeeded (id, title, heat: now/soon/later, question, blocks, since), waitingOn, upNext, recentlyDone. Mục nào phải đoán thì đánh confidence "inferred"; không rõ thì hỏi tôi, đừng bịa.
 3. Render NOW.md từ NOW.json — bản cho người đọc, cùng nội dung, cập nhật cùng lượt.
 4. Thêm NOW.json và NOW.md vào .gitignore — trạng thái local mỗi máy, không bao giờ commit.
@@ -1996,7 +1996,7 @@ const DICT = {
     'health.integrateShow': 'read the prompt',
     'health.nowPrompt': `Set up a NOW board in this repo so the NOW dashboard can track it:
 
-1. Read the schema at ~/.claude/skills/now/now.schema.json (JSON Schema draft-07, schemaVersion: 1). If that file is missing, stop and ask me — do not invent a schema.
+1. Read the schema (JSON Schema draft-07, schemaVersion: 1). Find it with: ls ~/.claude/plugins/cache/*/now-board/*/skills/now/now.schema.json ~/.claude/skills/now/now.schema.json — if several match, take the highest version. If nothing matches, stop and ask me — do not invent a schema.
 2. Create NOW.json at the repo root, valid against the schema. Derive content from git log, git status and the repo's docs: focus (title, context, nextAction under 30 minutes, laterSteps, resume.workingState, resume.howToContinue, confidence), decisionsNeeded (id, title, heat: now/soon/later, question, blocks, since), waitingOn, upNext, recentlyDone. Mark anything you had to infer with confidence "inferred"; when unsure, ask me — never make things up.
 3. Render NOW.md from NOW.json — the human-readable view, same content, updated in the same pass.
 4. Add NOW.json and NOW.md to .gitignore — per-machine local state, never committed.

@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -21,7 +22,65 @@ export const TRANSCRIPTS_DIR = path.join(CLAUDE_DIR, 'projects');
  */
 export const CCD_SESSIONS_DIR = path.join(HOME, 'Library', 'Application Support', 'Claude', 'claude-code-sessions');
 export const TASKS_DIR = path.join(CLAUDE_DIR, 'tasks');
-export const NOW_SCHEMA = path.join(CLAUDE_DIR, 'skills', 'now', 'now.schema.json');
+
+/**
+ * Đường cũ tới `now.schema.json`, hồi skill `now` còn là skill cá nhân chép tay.
+ * Giữ lại làm lưới đỡ cho máy chưa chuyển sang plugin — xem `findNowSchema()`.
+ */
+export const NOW_SCHEMA_LEGACY = path.join(CLAUDE_DIR, 'skills', 'now', 'now.schema.json');
+
+const PLUGIN_CACHE = path.join(CLAUDE_DIR, 'plugins', 'cache');
+
+/** So hai chuỗi phiên bản theo SỐ, không theo chữ: "0.10.0" phải lớn hơn "0.9.0". */
+function newerVersion(a, b) {
+  const pa = a.split('.').map(Number);
+  const pb = b.split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d) return d > 0;
+  }
+  return false;
+}
+
+/**
+ * Tìm `now.schema.json` — hợp đồng của `NOW.json`, do skill `now` sở hữu chứ không
+ * phải dashboard. Trả về đường dẫn, hoặc `null` khi máy chưa cài skill.
+ *
+ * KHÔNG hardcode được nữa. Skill nay đóng gói thành plugin `now-board@archi-ai-labs`,
+ * mà plugin thì được CHÉP vào `~/.claude/plugins/cache/<marketplace>/<plugin>/<VERSION>/`
+ * — số phiên bản nằm ngay giữa đường dẫn, nên nó đổi sau mỗi lần plugin lên đời. Dò
+ * theo cây thư mục là cách duy nhất không phải sửa hằng số theo từng bản phát hành.
+ *
+ * Lấy bản mới nhất khi có nhiều version cùng nằm đó: cache giữ lại bản cũ (đo trên máy
+ * này: trim-kit còn đủ 0.1.0 → 0.5.0), nên "cái đầu tiên đọc được" sẽ là một bản cũ tuỳ ý.
+ *
+ * Đọc đồng bộ và chỉ chạy lúc gọi, không lúc import: đây là đường dùng cho test, không
+ * nằm trên vòng quét 30 giây.
+ */
+export function findNowSchema() {
+  const rel = path.join('skills', 'now', 'now.schema.json');
+  let best = null;
+
+  for (const market of readDirs(PLUGIN_CACHE)) {
+    const pluginDir = path.join(PLUGIN_CACHE, market, 'now-board');
+    for (const version of readDirs(pluginDir)) {
+      const file = path.join(pluginDir, version, rel);
+      if (!fs.existsSync(file)) continue;
+      if (!best || newerVersion(version, best.version)) best = { version, file };
+    }
+  }
+  if (best) return best.file;
+
+  return fs.existsSync(NOW_SCHEMA_LEGACY) ? NOW_SCHEMA_LEGACY : null;
+}
+
+function readDirs(dir) {
+  try {
+    return fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
+  } catch {
+    return [];
+  }
+}
 
 /**
  * Nơi dashboard tự cất dữ liệu của mình. KHÔNG ghi vào `~/.claude` — thư mục đó

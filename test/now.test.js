@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { validateNow, healthOf, daysSince } from '../src/collect/now.js';
-import { NOW_SCHEMA, HEALTH } from '../src/config.js';
+import { findNowSchema, HEALTH } from '../src/config.js';
 
 /**
  * `validateNow` cố ý chép tay luật của `now.schema.json` để giữ zero-dep. Cái giá là
@@ -11,11 +11,12 @@ import { NOW_SCHEMA, HEALTH } from '../src/config.js';
  */
 
 test('danh sách field bắt buộc phải khớp now.schema.json thật', async (t) => {
+  const file = findNowSchema();
   let schema;
   try {
-    schema = JSON.parse(await fs.readFile(NOW_SCHEMA, 'utf8'));
+    schema = JSON.parse(await fs.readFile(file, 'utf8'));
   } catch {
-    t.skip('máy này chưa cài skill `now` — bỏ qua, không phải lỗi của dashboard');
+    t.skip('máy này chưa cài plugin `now-board` — bỏ qua, không phải lỗi của dashboard');
     return;
   }
 
