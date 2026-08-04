@@ -323,9 +323,18 @@ button { font: inherit; color: inherit; background: none; border: none; margin: 
 .pulse.off .dot { background: var(--bad); }
 .pulse.scanning .dot { background: var(--accent); animation: beat 0.7s ease-out infinite; }
 
+/* `display: flex` ở trên thắng `[hidden]` của trình duyệt, nên nút ẩn vẫn hiện ra — cùng
+   cái bẫy đã phải vá cho .offline, .butler, .drawer-nav, .tip, .help. Nút thanh menu ra
+   đời ẩn và chỉ hiện khi đã biết mình đang bật hay tắt; thiếu dòng này thì trên máy không
+   phải macOS nó nằm chình ình ở thanh trên, bấm vào chỉ ra lỗi 501. */
+.pulse[hidden] { display: none; }
+
 /* Nút lật nền. Cùng khuôn với `.pulse` để hai nút cạnh nhau không thành hai kiểu
    nút khác nhau — chỉ thay chấm trạng thái bằng ký hiệu ◐. */
 .tgl .ti { font: 13px var(--mono); line-height: 1; color: var(--accent); }
+/* Tắt thì ký hiệu mờ đi. Cùng lối với `.pulse.off .dot`: trạng thái nằm ở KÝ HIỆU chứ
+   không ở chữ, vì màn hẹp giấu chữ đi (xem `.tgl > span:not(.ti)` ở cuối file). */
+.tgl.off .ti { color: var(--faint); }
 @keyframes beat { 0% { transform: scale(2); opacity: 0.3; } 100% { transform: scale(1); opacity: 1; } }
 
 /* Mất kết nối: dữ liệu cũ trông y hệt dữ liệu mới, nên phải nói thẳng ra. */

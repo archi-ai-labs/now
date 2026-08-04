@@ -186,22 +186,5 @@ export function renderHealth(s, q) {
       <div style="font:12px/1.7 var(--sans);color:var(--faint);margin-top:10px">
         ${raw(t('health.footPre'))} ${copyCode('/now update')} ${t('health.footEnd')}
       </div>
-    </section>
-
-    <!-- Công tắc icon thanh menu. Ở ĐÂY chứ không phải chỉ trong menu chuột phải của
-         chính cái icon, vì menu ấy là thứ biến mất cùng với nó: tắt xong thì không còn
-         gì để bấm, và đường về duy nhất là mở NOW Dashboard.app trong Finder — một app
-         LSUIElement, double-click vào không hiện cửa sổ nào. Dashboard chạy độc lập với
-         icon nên đây là bề mặt LUÔN với tới được.
-
-         Trạng thái không đi qua /api/state: đó là sổ ghi những gì lượt quét THẤY, còn đây
-         là một công tắc. Nhét vào state thì mọi người đọc — test, SSE, popover — đều phải
-         mang một trường chỉ có nghĩa trên macOS. app.js hỏi /api/menubar rồi vá thẳng vào
-         nút này sau mỗi lượt vẽ.
-         (Không backtick trong khối comment này — xem cảnh báo ở mục Tích hợp bên trên.) -->
-    <section class="sec" style="margin-top:24px">
-      <div class="sec-h">${ulabel(t('health.menubar'))}</div>
-      <div style="font:12px/1.7 var(--sans);color:var(--faint);margin-bottom:10px">${t('health.menubarDesc')}</div>
-      <button type="button" class="btn" data-menubar disabled>${t('health.menubarWait')}</button>
     </section>`;
 }

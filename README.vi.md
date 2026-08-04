@@ -378,11 +378,12 @@ tắt vài giây; không mất dữ liệu, mọi sổ ghi ở `~/.now-dashboard
 ./bin/now-menu status   # in `on` hoặc `off` ở từ đầu tiên
 ```
 
-Hai đường kia: chuột phải lên icon → **Hiện trên thanh menu**, và trong dashboard ở màn
-**Sức khoẻ → Icon trên thanh menu**. Chỗ trên dashboard không phải để cho đủ bộ — nó là
-bề mặt duy nhất còn với tới được sau khi icon đã tắt, vì menu chuột phải biến mất cùng
-với chính cái icon. (Còn **Thoát** trong menu thì hẹp hơn: chỉ đóng phiên này, đăng nhập
-lần sau icon vẫn lên.)
+Hai đường kia: chuột phải lên icon → **Hiện trên thanh menu**, và trong dashboard là nút
+**▤ thanh menu** ở thanh trên cùng, cạnh nút nền và ngôn ngữ — thấy ở mọi màn. Nút ấy
+không phải để cho đủ bộ: nó là bề mặt duy nhất còn với tới được sau khi icon đã tắt, vì
+menu chuột phải biến mất cùng với chính cái icon, nên nó phải là thứ nhìn là thấy chứ
+không phải thứ phải biết mà tìm. Ngoài macOS thì nút tự ẩn. (Còn **Thoát** trong menu thì
+hẹp hơn: chỉ đóng phiên này, đăng nhập lần sau icon vẫn lên.)
 
 Đằng sau công tắc là một LaunchAgent thứ hai (`dev.hoanluu.now-dash.menu`), không phải
 login item của macOS. launchd khoá theo label nên cài lại là thay đúng dòng ấy; còn
@@ -409,7 +410,7 @@ dịch → script dừng **trước** khi đụng vào app lẫn LaunchAgent, v�
 | `install-app` chết với `xcrun: error: invalid active developer path` | `swiftc` và `xcrun` ở `/usr/bin` chỉ là vỏ; chúng chuyển tiếp sang thư mục mà `xcode-select` đang trỏ tới, mà thư mục đó không còn (Command Line Tools bị gỡ, hoặc chưa từng cài) | Script tự mượn Xcode.app cho lần dựng đó và in ra cách chốt hẳn: `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer`. Không có cái nào → `xcode-select --install` |
 | App đang chạy (`pgrep -f now-dash-menu` thấy) mà thanh menu không có icon | App không hỏng — thanh menu đã đầy và macOS bỏ bớt phần tràn, trên laptop có tai thỏ thì tràn vào đúng chỗ khuất | Thoát bớt một hai icon, hoặc ⌘-kéo xếp lại. Muốn chắc cái nút vẫn vẽ ra: `NOW_SNAP=/tmp/b.png "$HOME/Applications/NOW Dashboard.app/Contents/MacOS/now-dash-menu"` |
 | Đăng nhập lại thì icon không tự lên | Công tắc đang tắt, tức là không có `~/Library/LaunchAgents/dev.hoanluu.now-dash.menu.plist` | `./bin/now-menu on`. Đọc trạng thái bằng `./bin/now-menu status`. Bật rồi mà icon vẫn không lên → System Settings → General → Login Items → **Allow in the Background**, chỗ macOS cho tắt một agent sau lưng launchd |
-| Lỡ tắt icon rồi, giờ không biết bật lại ở đâu | Menu chuột phải biến mất cùng cái icon, mà `NOW Dashboard.app` thì `LSUIElement` — double-click vào không hiện cửa sổ nào để mà bấm | Mở dashboard (`./bin/now-dash`) → màn **Sức khoẻ → Icon trên thanh menu**. Hoặc `./bin/now-menu on` |
+| Lỡ tắt icon rồi, giờ không biết bật lại ở đâu | Menu chuột phải biến mất cùng cái icon, mà `NOW Dashboard.app` thì `LSUIElement` — double-click vào không hiện cửa sổ nào để mà bấm | Mở dashboard (`./bin/now-dash`) → nút **▤ thanh menu** ở thanh trên cùng. Hoặc `./bin/now-menu on` |
 | Không thấy log gì dù chắc chắn có lỗi | Log của service nằm ở `~/.now-dashboard/`, không phải terminal (launchd không có stdout) | `tail -f ~/.now-dashboard/service.err.log` |
 
 **Gỡ cài đặt — theo đúng thứ tự này:**

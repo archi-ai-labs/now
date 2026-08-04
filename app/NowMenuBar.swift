@@ -474,7 +474,7 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
         a.informativeText = """
             Icon tắt ngay và không mọc lại ở những lần đăng nhập sau.
 
-            Bật lại ở dashboard: màn Sức khoẻ → Icon trên thanh menu. \
+            Bật lại ở dashboard: nút "▤ thanh menu" trên thanh trên cùng. \
             Hoặc chạy ./bin/now-menu on trong thư mục dự án.
             """
         a.addButton(withTitle: "Tắt icon")

@@ -81,6 +81,16 @@
       </div>
       <button class="pulse tgl" id="theme" title="Nền sáng / tối (t)"><span class="ti">◐</span><span id="theme-t">tối</span></button>
       <button class="pulse tgl" id="lang" title="Ngôn ngữ (l)"><span class="ti" id="lang-flag" aria-hidden="true">🇻🇳</span><span id="lang-t">VI</span></button>
+      <!-- Công tắc icon thanh menu macOS. Cùng họ với hai nút trên: không đổi nội dung
+           trang nào cả, nó đổi cách NOW hiện diện với người dùng — y như nền và ngôn ngữ.
+           Ở ĐÂY chứ không nằm trong màn Sức khoẻ, vì lý do tồn tại của nó là làm chỗ bật
+           lại SAU KHI icon đã tắt: lúc ấy menu chuột phải không còn, nên đường về phải là
+           thứ nhìn thấy ngay ở mọi màn, không phải thứ phải biết mà tìm.
+
+           `hidden` từ đầu và chỉ hiện khi `/api/menubar` trả lời — endpoint đó trả 501
+           ngoài macOS. Vẽ trước rồi giấu sau thì trên Linux nút loé lên một nhịp ở chỗ
+           dễ thấy nhất của trang rồi biến mất. -->
+      <button class="pulse tgl" id="menubar" hidden><span class="ti">▤</span><span id="menubar-t">thanh menu</span></button>
       <!-- Nút phong cách chart KHÔNG ở đây. Thanh này chỉ chứa thứ đổi cả trang — nền,
            ngôn ngữ, quét lại. Phong cách chart chỉ đổi hình của chart, nên nó đứng ngay
            trên đầu chart (xem `skinSwitch()` trong `lib/chart.js`). -->
