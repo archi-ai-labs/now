@@ -2,14 +2,14 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "now-board",
   "displayName": "NOW Board",
-  "version": "0.1.0",
-  "description": "A 30-second board per repo — what you were doing and the next action, what is waiting on your decision, what is waiting on someone else, and what is queued — written to a gitignored NOW.json/NOW.md so returning to a project after a context switch does not start with re-reading the diff. Also lists stray worktrees and scans every project at once.",
+  "version": "0.2.0",
+  "description": "A 30-second board per repo — what you were doing and the next action, what is waiting on your decision, what is waiting on someone else, and what is queued — written to a gitignored NOW.json/NOW.md so returning to a project after a context switch does not start with re-reading the diff. Also lists stray worktrees and scans every project at once. Ships a second, macOS-only skill that installs the NOW dashboard, which reads every board you have written into one page.",
   "author": {
     "name": "archi-ai-labs",
     "url": "https://github.com/archi-ai-labs"
   },
-  "homepage": "https://github.com/archi-ai-labs/now-board",
-  "repository": "https://github.com/archi-ai-labs/now-board",
+  "homepage": "https://github.com/archi-ai-labs/now",
+  "repository": "https://github.com/archi-ai-labs/now",
   "license": "MIT",
-  "keywords": ["context-switch", "status", "handoff", "worktree", "resume"]
+  "keywords": ["context-switch", "status", "handoff", "worktree", "resume", "dashboard"]
 }

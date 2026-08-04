@@ -1,11 +1,29 @@
-name: validate
+name: plugin-validate
 
+# Runs only when the plugin moves. This repo now carries two things, and a CSS
+# change in the dashboard has nothing to say about the plugin manifest — a green
+# check that carries no information is a green check people stop reading.
 on:
   push:
     branches: [main]
-    tags: ["v*"]
+    paths:
+      - "plugin/**"
+      - ".github/workflows/plugin-validate.yml"
+    tags: ["now-board--v*"]
   pull_request:
+    paths:
+      - "plugin/**"
+      - ".github/workflows/plugin-validate.yml"
   workflow_dispatch:
+
+defaults:
+  run:
+    # The plugin lives in a subdirectory now; the marketplace points at it with a
+    # `git-subdir` source. Every step below was written when the plugin was a whole
+    # repo, so they read paths relative to the plugin root. Setting the working
+    # directory once keeps them verbatim, instead of sprinkling `plugin/` through
+    # each one and missing a spot.
+    working-directory: plugin
 
 jobs:
   validate:
@@ -17,16 +35,20 @@ jobs:
         with:
           node-version: "20"
 
-      # On a version tag (v1.2.3), fail unless it matches plugin.json's version,
-      # so the tag and the single-source version can never silently drift apart.
+      # On a version tag, fail unless it matches plugin.json's version, so the tag
+      # and the single-source version can never silently drift apart.
+      #
+      # The tag is `now-board--v0.1.0`, not a bare `v0.1.0`: this repo also carries
+      # the dashboard, so a plain `v*` tag would not say which of the two it marks.
+      # This is also the shape `claude plugin tag` produces.
       - name: Check tag matches plugin version
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/now-board--v')
         run: |
-          tag="${GITHUB_REF_NAME#v}"
+          tag="${GITHUB_REF_NAME#now-board--v}"
           pkg="$(node -p "require('./.claude-plugin/plugin.json').version")"
           echo "tag: $tag   plugin.json: $pkg"
           if [ "$tag" != "$pkg" ]; then
-            echo "::error::Tag v$tag does not match plugin.json version $pkg — bump plugin.json or retag."
+            echo "::error::Tag now-board--v$tag does not match plugin.json version $pkg — bump plugin.json or retag."
             exit 1
           fi
           echo "OK — tag matches plugin.json ($pkg)"
@@ -37,8 +59,9 @@ jobs:
         run: node -e "JSON.parse(require('fs').readFileSync('.claude-plugin/plugin.json','utf8'))"
 
       # The schema is the plugin's whole contract with every consumer — the board
-      # writer here, and any dashboard reading NOW.json elsewhere. A syntax error
-      # in it does not fail `plugin validate`, because it is data to that command.
+      # writer here, and the dashboard one directory up that reads NOW.json. A
+      # syntax error in it does not fail `plugin validate`, because it is data to
+      # that command.
       - name: Lint NOW schema (JSON syntax)
         run: node -e "JSON.parse(require('fs').readFileSync('skills/now/now.schema.json','utf8'))"
 
