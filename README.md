@@ -1,21 +1,62 @@
-# NOW dashboard — command center
+# NOW — a board per repo, and one page that reads every board
 
 *🇬🇧 English · 🇻🇳 [Tiếng Việt](README.vi.md)*
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-4f46e5)](LICENSE)
 [![Node](https://img.shields.io/badge/node-18.10%2B-4f46e5)](package.json)
 [![Dependencies](https://img.shields.io/badge/dependencies-zero-4f46e5)](package.json)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-8A63D2)](plugin/README.md)
 [![Docs](https://img.shields.io/badge/docs-VI%20%7C%20EN-4f46e5)](docs/README.md)
 
 ![NOW dashboard](docs/assets/banner.svg)
 
-One page that answers: **where every one of my projects stands, and out of two dozen open
-Claude sessions, which one is holding which piece of work.**
+Coming back to a repo you left two weeks ago costs twenty minutes before you touch
+anything: read the log, open the last branch, try to remember which of three
+half-finished things was the one that mattered. The expensive part is not the reading —
+it is that nothing on disk says which thread was the live one, so you reconstruct it
+every time from evidence that was never meant to carry that.
 
-`/now` gives you one project. `/now all` gives you a static table. This gives you the
-**live** big picture, updating itself as boards or sessions change.
+This repo holds both halves of the answer.
 
-## Getting started
+| | What it is | What it does |
+|---|---|---|
+| [**`plugin/`**](plugin/README.md) — the `/now` skill | A Claude Code plugin. Any OS | **Writes** one board per repo: what you were doing and the next action, what waits on your decision, what waits on someone else, what is queued |
+| **everything else** — the dashboard | A local Node server plus a macOS menu-bar app | **Reads** every board you have written into one live page, alongside your open Claude sessions and what three paid tools are burning through |
+
+`/now` gives you one project. `/now all` gives you a static table. The dashboard gives
+you the **live** big picture, updating itself as boards or sessions change.
+
+Either half stands alone. The plugin needs nothing from the dashboard, and the dashboard
+still shows sessions and spend in a repo that has never written a board. They are in one
+repo because the interesting part is what the second one does with what the first one
+writes — and because two repos with near-identical names left nowhere to point at.
+
+## The plugin — `/now`
+
+One command, and `/now` works in every project:
+
+```bash
+curl -fsSL https://archi-ai-labs.github.io/agent-marketplace/install.sh | bash -s -- --plugins now-board
+```
+
+No terminal, or on Windows — from inside a Claude Code session instead:
+
+```
+/plugin marketplace add archi-ai-labs/agent-marketplace
+/plugin install now-board@archi-ai-labs
+```
+
+Then, in any repo: `/now` to read the board, `/now update` to rewrite it, `/now all` to
+sweep every project under `~/Projects`. The board lands in a gitignored `NOW.json` (the
+machine-readable source) plus a rendered `NOW.md`.
+
+The plugin ships a second skill, `/now-dash`, that installs the dashboard below — macOS
+only, and it only ever runs when you call it by name.
+
+**Scope picker, uninstall, the schema `NOW.json` follows, and what the installer writes
+to your settings → [plugin/README.md](plugin/README.md).**
+
+## The dashboard
 
 Install once, and it comes up with the machine:
 
@@ -23,7 +64,7 @@ Install once, and it comes up with the machine:
 ./bin/install-app
 ```
 
-Builds the menu-bar app (see [§On the menu bar](#on-the-menu-bar)) **and** drops a
+Builds the menu-bar app (see [§In the menu bar](#in-the-menu-bar)) **and** drops a
 LaunchAgent into `~/Library/LaunchAgents/` with paths already matched to wherever you
 cloned the repo — no manual editing — then starts both, so the icon is up before the
 command returns. Safe to rerun any number of times, including after moving the repo.
@@ -86,7 +127,7 @@ the `<head>` of [`public/index.html`](public/index.html):
 | `<meta name="theme-color">` | the window title-bar color. `applyTheme()` updates it on the `t` key press — hard-coding it means half the time there's a bright strip sitting on top of the dark HUD |
 
 The server has to actually be running, otherwise the app opens to a "cannot reach the
-server" screen — the LaunchAgent under [Getting started](#getting-started) handles exactly
+server" screen — the LaunchAgent under [The dashboard](#the-dashboard) handles exactly
 that, including after a reboot.
 
 ### In the menu bar
@@ -322,7 +363,7 @@ dimensions to Swift.
 Needs a working Swift compiler — Command Line Tools or Xcode, whichever `xcode-select`
 points at (the script checks first and says what to do) — and macOS 13+. The repo path is baked into the
 bundle as an absolute path at build time, and into the LaunchAgent in the same run
-(see [§Getting started](#getting-started)) — same reason: launchd/LaunchServices don't
+(see [§The dashboard](#the-dashboard)) — same reason: launchd/LaunchServices don't
 expand `~`/`$HOME`. **Move the repo, re-run `./bin/install-app`.**
 
 ### Install, uninstall, and common problems
@@ -357,7 +398,7 @@ NOW_LOGIN_ITEM=1 ./bin/install-app   # =0 turns it back off
 **Requirements:** macOS 13+, a working Swift compiler, Node ≥ 18.10. No compiler → the
 script stops **before** touching the app or the LaunchAgent, and prints the exact
 command to fix it. Only want the background server, no menu-bar icon → use the manual
-`sed` command in [§Getting started](#getting-started) instead, which needs no `swiftc`.
+`sed` command in [§The dashboard](#the-dashboard) instead, which needs no `swiftc`.
 
 | Symptom | Cause | Fix |
 |---|---|---|
@@ -425,6 +466,7 @@ Per-tab details (Cursor/Antigravity), keybindings, and day-to-day usage →
 
 | Question | See |
 |---|---|
+| The `/now` plugin in full — scopes, schema, uninstall, releasing | [plugin/README.md](plugin/README.md) |
 | Why the design/charts look the way they do | [docs/DESIGN.md](docs/DESIGN.md) |
 | Architecture, data sources, file map, pitfalls | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | How the quota block is computed/drawn | [docs/QUOTA.md](docs/QUOTA.md) |

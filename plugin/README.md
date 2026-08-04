@@ -1,6 +1,6 @@
 # now-board
 
-[![validate](https://github.com/archi-ai-labs/now-board/actions/workflows/validate.yml/badge.svg)](https://github.com/archi-ai-labs/now-board/actions/workflows/validate.yml)
+[![validate](https://github.com/archi-ai-labs/now/actions/workflows/plugin-validate.yml/badge.svg)](https://github.com/archi-ai-labs/now/actions/workflows/plugin-validate.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-8A63D2.svg)](https://docs.claude.com/en/docs/claude-code)
 
@@ -8,6 +8,11 @@
 > doing and the one next action, what is waiting on your decision, what is waiting
 > on someone else — so coming back to a project does not start with re-reading the
 > diff.
+
+*This is the plugin half of [archi-ai-labs/now](https://github.com/archi-ai-labs/now).
+The other half is a dashboard that reads every board this plugin writes into one live
+page — see the [repository README](../README.md), which covers both. Installing the
+plugin does not install the dashboard, and does not need to.*
 
 Coming back to a repo you left two weeks ago costs twenty minutes before you touch
 anything: read the log, open the last branch, try to remember which of three
@@ -237,7 +242,7 @@ field still loads at runtime, which is exactly why it has to fail here — the
 field you typo is the field you believe you set.
 
 That runs automatically on every push and PR via
-[`.github/workflows/validate.yml`](.github/workflows/validate.yml), which also
+[`.github/workflows/plugin-validate.yml`](../.github/workflows/plugin-validate.yml), which also
 parses `now.schema.json` and asserts it is still at the path `SKILL.md` tells the
 skill to resolve. `plugin validate` treats the schema as data and would not catch
 either. The catalog is validated separately, in
@@ -264,25 +269,35 @@ Subscribers pick up the new version on their next `/plugin marketplace update`
 </details>
 
 <details>
-<summary><b>Project layout</b> — a standalone plugin, not a marketplace</summary>
+<summary><b>Project layout</b> — a subdirectory plugin, not a marketplace</summary>
 
-This repo is a **standalone plugin**. The catalog it is distributed through lives
-in [`archi-ai-labs/agent-marketplace`](https://github.com/archi-ai-labs/agent-marketplace)
-— so there is no `marketplace.json` here, only a `plugin.json`, and the plugin
-sits at the repo root rather than under a `plugins/` directory.
+The plugin is a **subdirectory** of a repo that also holds the dashboard. The catalog
+it is distributed through lives in
+[`archi-ai-labs/agent-marketplace`](https://github.com/archi-ai-labs/agent-marketplace)
+— so there is no `marketplace.json` here, only a `plugin.json`. The catalog entry uses
+a `git-subdir` source pointing at `plugin`, and Claude Code sparse-clones just that
+directory: nothing outside it reaches the plugin cache, and its contents land at the
+root of the cached version, exactly as when the plugin was a repo of its own.
 
 ```
-now-board/
-├── .claude-plugin/plugin.json     # the plugin manifest (single source of version)
-├── .github/workflows/validate.yml # CI: manifest, schema, frontmatter
-├── skills/
-│   └── now/
-│       ├── SKILL.md               # hidden, writes
-│       └── now.schema.json        # the NOW.json contract, schemaVersion 1
-├── CHANGELOG.md
-├── LICENSE
-└── README.md
+now/                               # the repository
+├── plugin/                        # ← the plugin; everything the cache gets
+│   ├── .claude-plugin/plugin.json #   the manifest (single source of version)
+│   ├── skills/
+│   │   ├── now/
+│   │   │   ├── SKILL.md           #   hidden, writes the board
+│   │   │   └── now.schema.json    #   the NOW.json contract, schemaVersion 1
+│   │   └── now-dash/SKILL.md      #   installs the dashboard (macOS, call by name)
+│   ├── CHANGELOG.md
+│   ├── LICENSE
+│   └── README.md                  #   this file
+├── .github/workflows/plugin-validate.yml   # CI: manifest, schema, frontmatter
+└── …                              # the dashboard: server.js, src/, public/, app/, bin/
 ```
+
+Release tags are `now-board--v<version>`, not a bare `v<version>` — the repo carries two
+things, so a plain version tag would not say which one it marks. `claude plugin tag`
+produces that shape, and CI fails a tag whose version disagrees with `plugin.json`.
 
 `now.schema.json` sits **inside the skill directory**, not in a top-level
 `schema/`. An installed plugin is copied whole into `~/.claude/plugins/cache`, and

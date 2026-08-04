@@ -1,21 +1,61 @@
-# NOW dashboard — sở chỉ huy
+# NOW — mỗi repo một bảng, và một trang đọc hết mọi bảng
 
 *🇻🇳 Tiếng Việt · 🇬🇧 [English](README.md)*
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-4f46e5)](LICENSE)
 [![Node](https://img.shields.io/badge/node-18.10%2B-4f46e5)](package.json)
 [![Dependencies](https://img.shields.io/badge/dependencies-zero-4f46e5)](package.json)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-8A63D2)](plugin/README.md)
 [![Docs](https://img.shields.io/badge/docs-VI%20%7C%20EN-4f46e5)](docs/README.vi.md)
 
 ![NOW dashboard](docs/assets/banner.vi.svg)
 
-Một trang duy nhất trả lời: **mọi dự án của tôi đang ở đâu, và trong hai chục phiên Claude
-đang mở, phiên nào đang cầm việc gì.**
+Quay lại một repo bỏ đó hai tuần là mất hai chục phút trước khi chạm được vào việc: đọc
+log, mở lại nhánh cuối, cố nhớ trong ba thứ đang dở thì thứ nào mới là thứ đáng. Chỗ đắt
+không nằm ở việc đọc — mà ở chỗ trên đĩa không có gì nói mạch nào là mạch còn sống, nên
+lần nào cũng phải dựng lại nó từ những dấu vết vốn không sinh ra để chở điều đó.
 
-`/now` cho bạn một dự án. `/now all` cho bạn một bảng tĩnh. Cái này cho bạn toàn cảnh
-**sống**, tự cập nhật khi board hoặc phiên thay đổi.
+Repo này giữ cả hai nửa của câu trả lời.
 
-## Bắt đầu
+| | Là gì | Làm gì |
+|---|---|---|
+| [**`plugin/`**](plugin/README.md) — skill `/now` | Plugin Claude Code. Hệ nào cũng chạy | **Ghi** mỗi repo một bảng: đang làm gì và việc kế tiếp, gì chờ bạn quyết, gì chờ người khác, gì đang xếp hàng |
+| **phần còn lại** — dashboard | Server Node chạy máy nhà, kèm một mục trên thanh menu macOS | **Đọc** mọi bảng bạn đã ghi vào chung một trang sống, cạnh các phiên Claude đang mở và mức tiêu của ba công cụ trả tiền |
+
+`/now` cho bạn một dự án. `/now all` cho bạn một bảng tĩnh. Dashboard cho bạn toàn cảnh
+**sống**, tự cập nhật khi bảng hoặc phiên thay đổi.
+
+Nửa nào cũng đứng được một mình. Plugin không cần gì ở dashboard, còn dashboard vẫn bày
+được phiên và mức tiêu trong một repo chưa từng ghi bảng nào. Chúng ở chung một repo vì
+phần đáng nói là thứ cái sau làm được với thứ cái trước ghi ra — và vì hai repo tên gần
+giống nhau thì lúc giới thiệu không chỉ được vào đâu.
+
+## Plugin — `/now`
+
+Một lệnh, và `/now` dùng được ở mọi dự án:
+
+```bash
+curl -fsSL https://archi-ai-labs.github.io/agent-marketplace/install.sh | bash -s -- --plugins now-board
+```
+
+Không có terminal, hoặc đang trên Windows — gõ thẳng trong một phiên Claude Code:
+
+```
+/plugin marketplace add archi-ai-labs/agent-marketplace
+/plugin install now-board@archi-ai-labs
+```
+
+Sau đó, ở repo bất kỳ: `/now` để xem bảng, `/now update` để ghi lại, `/now all` để quét
+mọi dự án dưới `~/Projects`. Bảng nằm ở `NOW.json` (bản máy đọc, đã gitignore) cộng một
+bản `NOW.md` render ra cho người đọc.
+
+Plugin còn chở skill thứ hai, `/now-dash`, để cài dashboard bên dưới — chỉ chạy trên
+macOS, và chỉ chạy khi bạn gọi đúng tên nó.
+
+**Chọn phạm vi cài, cách gỡ, schema mà `NOW.json` tuân theo, và những gì trình cài ghi
+vào settings → [plugin/README.md](plugin/README.md).**
+
+## Dashboard
 
 Cài một lần, để nó tự lên cùng máy:
 
@@ -85,7 +125,7 @@ trong `<head>` của [`public/index.html`](public/index.html):
 | `<meta name="theme-color">` | màu thanh tiêu đề cửa sổ. `applyTheme()` sửa nó theo phím `t` — để cố định thì nửa số lần dùng có một dải sáng nằm trên HUD tối |
 
 Server phải đang chạy, nếu không app mở ra chỉ thấy dòng "chưa nối được tới server" —
-LaunchAgent ở phần [Bắt đầu](#bắt-đầu) lo đúng việc đó, kể cả sau khi khởi động lại máy.
+LaunchAgent ở phần [Dashboard](#dashboard) lo đúng việc đó, kể cả sau khi khởi động lại máy.
 
 ### Trên thanh menu
 
@@ -310,7 +350,7 @@ cho Swift.
 Cần một bộ biên dịch Swift chạy được — Command Line Tools hoặc Xcode, tuỳ `xcode-select`
 đang trỏ đâu (script kiểm tra trước và nói phải làm gì) — và macOS 13+. Đường dẫn repo ghim tuyệt đối vào
 bundle lúc dựng, và vào LaunchAgent luôn trong cùng lượt chạy (xem
-[§Bắt đầu](#bắt-đầu)) — cùng lý do: launchd/LaunchServices không giãn `~`/`$HOME`.
+[§Dashboard](#dashboard)) — cùng lý do: launchd/LaunchServices không giãn `~`/`$HOME`.
 **Dời repo thì chạy lại `./bin/install-app`.**
 
 ### Cài, gỡ, và sự cố thường gặp
@@ -343,7 +383,7 @@ NOW_LOGIN_ITEM=1 ./bin/install-app   # =0 để tắt lại
 **Yêu cầu:** macOS 13+, một bộ biên dịch Swift chạy được, Node ≥ 18.10. Không có bộ biên
 dịch → script dừng **trước** khi đụng vào app lẫn LaunchAgent, và in ra đúng lệnh cần gõ
 để chữa. Chỉ cần server nền, không cần icon thanh menu → dùng lệnh `sed` tay ở
-[§Bắt đầu](#bắt-đầu), không cần `swiftc`.
+[§Dashboard](#dashboard), không cần `swiftc`.
 
 | Triệu chứng | Nguyên nhân | Sửa |
 |---|---|---|
@@ -408,6 +448,7 @@ Chi tiết từng tab (Cursor/Antigravity), phím tắt, và cách dùng hàng n
 
 | Câu hỏi | Xem |
 |---|---|
+| Plugin `/now` đầy đủ — phạm vi cài, schema, cách gỡ, cách phát hành | [plugin/README.md](plugin/README.md) *(tiếng Anh)* |
 | Vì sao thiết kế/chart trông thế này | [docs/DESIGN.vi.md](docs/DESIGN.vi.md) |
 | Kiến trúc, nguồn dữ liệu, bản đồ file, cạm bẫy | [docs/ARCHITECTURE.vi.md](docs/ARCHITECTURE.vi.md) |
 | Khối hạn mức tính/vẽ thế nào | [docs/QUOTA.vi.md](docs/QUOTA.vi.md) |

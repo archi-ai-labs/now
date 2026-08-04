@@ -7,6 +7,31 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-08-05
+
+The plugin moved into the repo that holds the dashboard reading its boards, and
+gained a skill for installing that dashboard.
+
+### Added
+
+- `now-dash` skill — installs or updates the NOW dashboard. macOS only, and
+  closed to Claude like `now`, so it runs only when typed. It never installs
+  *from* the plugin cache: `bin/install-app` bakes an absolute `ROOT` into the
+  compiled binary, and the cache path carries a version number, so one plugin
+  upgrade would leave a LaunchAgent calling a path that no longer exists. The
+  skill puts the source where you choose and builds it there.
+
+### Changed
+
+- Lives at `plugin/` inside [archi-ai-labs/now](https://github.com/archi-ai-labs/now)
+  instead of a repo of its own. The catalog entry switched to a `git-subdir`
+  source; measured before switching, the cache layout is byte-for-byte what it
+  was when the plugin was its own repo, so `${CLAUDE_PLUGIN_ROOT}` and every
+  path resolved from it are unchanged. Nothing to do on an installed machine
+  beyond `/plugin marketplace update`.
+- Release tags are now `now-board--v<version>`; a bare `v<version>` no longer
+  says which half of the repo it marks.
+
 ## [0.1.0] — 2026-08-04
 
 First release. Extracted from a personal skill that lived in
@@ -31,5 +56,6 @@ First release. Extracted from a personal skill that lived in
 - The schema is resolved from `${CLAUDE_PLUGIN_ROOT}`, not from a hard-coded
   `~/.claude/skills/now/` path that does not exist for an installed plugin.
 
-[Unreleased]: https://github.com/archi-ai-labs/now-board/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/archi-ai-labs/now/compare/now-board--v0.2.0...HEAD
+[0.2.0]: https://github.com/archi-ai-labs/now/releases/tag/now-board--v0.2.0
 [0.1.0]: https://github.com/archi-ai-labs/now-board/releases/tag/v0.1.0
