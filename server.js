@@ -7,11 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { PORT, SESSIONS_DIR, TASKS_DIR } from './src/config.js';
 import { buildState } from './src/state.js';
-// Server import một module của TRÌNH DUYỆT, cố ý. Thang bỏ phí bốn bậc
-// (`verdictOf`) đã bị sửa lưng ba phiên liền mới chốt được; mục trên thanh menu mà
-// tự chấm bậc bằng bản Swift của riêng nó là mời đúng cái lỗi ấy quay lại ở chỗ khó
-// thấy hơn. `quota.js` chạy được dưới Node vì phần chấm bậc không đụng DOM.
-import { bindingOf, wasteOf, usedText } from './public/lib/quota.js';
+import { badgeOf } from './src/badge.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(ROOT, 'public');
@@ -247,56 +243,6 @@ async function openPath(res, target, app) {
   if (app && !bundle) return json(res, 400, { error: 'app không nằm trong danh sách cho phép' });
   execFile('open', bundle ? ['-a', bundle, target] : [target], () => {});
   return json(res, 200, { ok: true, opened: target, app: bundle });
-}
-
-// ── Hai mục trên thanh menu ──────────────────────────────────────────────────
-
-// Ký hiệu dẫn đứng trước số, và nó KHÔNG trang trí: theme của máy này là daltonized,
-// nên bậc bỏ phí không được để màu làm kênh phân biệt duy nhất. Hình đi theo nghĩa —
-// mũi nhọn xuống là tiêu quá ít so với cửa sổ, tròn đầy là đúng nhịp, mũi nhọn lên là
-// nhịp đòi nhiều hơn cả cửa sổ có.
-const BADGE_MARK = { cold: '▽', slack: '◇', full: '●', over: '▲', unknown: '·', rolled: '·' };
-
-/**
- * Chữ cho hai mục trên thanh menu, tính xong xuôi ở phía server.
- *
- * Thanh menu rộng chừng mười ký tự trước khi thành nhiễu, nên ba kênh chia nhau bốn
- * con số: chữ mang phần ĐÃ TIÊU của hai cửa sổ, còn màu và ký hiệu mang phần BỎ PHÍ
- * của cửa sổ ràng buộc. Đúng luật 1 và luật 2 của `public/lib/quota.js` — số dẫn là đã
- * tiêu, màu đo bỏ phí.
- */
-function badgeOf(s) {
-  const q = s?.quota;
-  const bind = q?.ok ? bindingOf(q) : null;
-  const verdict = bind?.verdict ?? 'unknown';
-  const awake = s?.stats?.awake ?? 0;
-  const hot = s?.stats?.hotDecisions ?? 0;
-
-  return {
-    ok: true,
-    at: Date.now(),
-    quota: {
-      // Hạn mức đọc trượt thì để dấu gạch, đừng để "0%·0%" — số không có thật mà trông
-      // y hệt số thật là cách nhanh nhất để mất lòng tin vào cả hai mục. `usedText` áp
-      // đúng luật ấy cho từng cửa sổ một: cửa sổ đã qua mốc reset cũng là số không có
-      // thật, và nó trượt LẺ — hôm 3/8 khung 5 giờ kẹt ở "6%" suốt sáu tiếng trong khi
-      // khung tuần bên cạnh vẫn tươi, nên cả huy hiệu trông vẫn bình thường.
-      //
-      // Dấu ngăn là "·" chứ không phải "-": dấu gạch nối đứng cạnh dấu gạch ngang của
-      // `usedText` ra "—-37%", một cụm không đọc được thành gì.
-      text: q?.ok ? `${usedText(q.fiveHour)}·${usedText(q.sevenDay)}` : '—',
-      tone: bind?.tone ?? 'mute',
-      verdict,
-      mark: BADGE_MARK[verdict] ?? '·',
-      waste: bind ? Math.round(wasteOf(bind.w)) : null,
-      binding: bind?.short ?? null,
-      stale: q?.stale ?? true,
-    },
-    // Không có mục thứ hai trên thanh menu nữa (bản trước có, và hai mục cùng mở một
-    // popover thì chỉ là hai cái nút giống hệt nhau). Hai con số này vẫn đi kèm để
-    // tooltip và popover khỏi phải hỏi thêm một lượt /api/state.
-    work: { awake, hot },
-  };
 }
 
 async function handle(req, res) {

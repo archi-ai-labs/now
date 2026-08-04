@@ -38,10 +38,14 @@
 
   <key>EnvironmentVariables</key>
   <dict>
-    <!-- Ghim cổng ngay trong định nghĩa service. App trên Dock trỏ cứng 4400; để nó cho
-         mặc định trong config quyết định thì hai chỗ có thể trôi khỏi nhau. -->
+    <!-- Ghim cổng ngay trong định nghĩa service, đừng để mặc định trong config quyết
+         định — hai chỗ đọc từ hai nguồn là hai chỗ sẽ trôi khỏi nhau. Con số này do
+         `bin/install-app` thay lúc dựng, CÙNG một biến $PORT nó nướng vào app: đặt số
+         cứng ở đây thì NOW_PORT=5000 cho ra app đi tìm cổng 5000 trong khi service vẫn
+         nghe 4400, và triệu chứng là "không nối được tới server" chứ không phải một lỗi
+         cổng nào đọc ra được. -->
     <key>NOW_PORT</key>
-    <string>4400</string>
+    <string>__PORT__</string>
     <!-- launchd KHÔNG nạp shell profile, nên PATH mặc định chỉ có bốn thư mục hệ thống.
          Server gọi git, ps, sqlite3, security — thiếu PATH là chúng lặng lẽ trả rỗng và
          mọi repo trên trang thành "chưa phải repo git". Homebrew đứng trước để dùng đúng

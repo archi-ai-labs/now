@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Mở app thanh menu lúc đăng nhập. Anh em với dev.hoanluu.now-dash.plist bên cạnh, nhưng
+  đây là APP chứ không phải server: __MENU_BIN__ được thay lúc dựng, bởi bin/install-app
+  hoặc bởi chính app khi bấm "Mở lúc đăng nhập".
+
+  Vì sao là LaunchAgent chứ không phải SMAppService — API mà Apple khuyên dùng và app
+  này đã từng dùng:
+
+    SMAppService ghi nhớ theo CHỮ KÝ của bundle. `swiftc` ký ad-hoc lại sau mỗi lần
+    dựng, nên bản mới là một danh tính khác: `register()` thêm một dòng thứ hai thay vì
+    thay dòng cũ, còn `unregister()` chỉ gỡ được dòng khớp chữ ký đang chạy. Đo được:
+    dựng lại hai lần là System Settings có hai "NOW Dashboard", và dòng mồ côi thì không
+    API nào gỡ nổi — phải vào System Settings bấm tay.
+
+  launchd thì khoá theo LABEL. Cài lại bao nhiêu lần cũng vẫn đúng một dòng ấy.
+
+  KHÔNG có KeepAlive: bấm "Thoát" trên menu của app là thoát thật, tới lần đăng nhập sau
+  mới gặp lại. Có KeepAlive thì nút Thoát biến thành nút "khởi động lại", và người dùng
+  không có cách nào tắt được cái icon.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.hoanluu.now-dash.menu</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__MENU_BIN__</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <!-- App có giao diện, không phải việc chạy nền: đừng để launchd hạ mức ưu tiên I/O và
+       CPU của nó như với một tác vụ bảo trì. -->
+  <key>ProcessType</key>
+  <string>Interactive</string>
+</dict>
+</plist>

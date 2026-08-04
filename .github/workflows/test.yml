@@ -1,0 +1,53 @@
+name: test
+
+# The dashboard's own suite. Mirror image of plugin-validate.yml: that one runs only
+# when the plugin moves, this one runs only when the dashboard does. Between the two
+# filters every push gets exactly the checks that can say something about it.
+#
+# `paths-ignore` fires the job unless EVERY changed file is under one of these — so a
+# commit touching `docs/` alone stays quiet, but `docs/` plus one line of `src/` runs.
+# Caveat if this ever becomes a required check: a PR that only edits `plugin/` or
+# `docs/` never starts this workflow, and a required-but-never-started check blocks
+# merge forever. Mark it required only together with a merge-queue/skip rule.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "plugin/**"
+      - "docs/**"
+  pull_request:
+    paths-ignore:
+      - "plugin/**"
+      - "docs/**"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      # One red version should not hide the others — when a Node upgrade breaks
+      # something, the useful information is WHICH versions break, not just "some did".
+      fail-fast: false
+      matrix:
+        # 18.10.0 is the exact floor the README badge and package.json `engines` claim,
+        # so it is pinned rather than ranged: `18.x` would quietly drift off the number
+        # actually being promised. The rest are the LTS lines plus current.
+        node: ["18.10.0", "20", "22", "24"]
+
+    name: node ${{ matrix.node }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          # No `cache: npm` on purpose — it needs a lockfile, and this repo has none
+          # because it has no dependencies. Asking for the cache fails the step outright.
+
+      # No install step: package.json declares zero dependencies and there is no
+      # lockfile, so `npm ci` would only fail and `npm install` would only be a no-op
+      # round-trip to the registry. `node:test` ships with Node itself.
+      - name: npm test
+        run: npm test

@@ -25,15 +25,19 @@ Cài một lần, để nó tự lên cùng máy:
 
 Dựng luôn app trên thanh menu (xem [§Trên thanh menu](#trên-thanh-menu)) **và** đặt
 LaunchAgent vào `~/Library/LaunchAgents/`, đường dẫn đã tự khớp với chỗ bạn `git clone`
-về — không cần sửa tay. Chạy lại bao nhiêu lần cũng được, kể cả sau khi dời repo.
+về — không cần sửa tay — rồi dựng cả hai lên, nên lệnh chưa trả về thì icon đã ở trên
+thanh. Chạy lại bao nhiêu lần cũng được, kể cả sau khi dời repo.
 
 Không muốn icon trên thanh menu, chỉ cần server nền (đòi hỏi ít hơn: không cần Xcode
 Command Line Tools), thì tự cài LaunchAgent bằng tay:
 
 ```bash
-sed -e "s|__ROOT__|$(pwd)|g" -e "s|__HOME__|$HOME|g" \
+sed -e "s|__ROOT__|$(pwd)|g" -e "s|__HOME__|$HOME|g" -e "s|__PORT__|4400|g" \
   launchd/dev.hoanluu.now-dash.plist > ~/Library/LaunchAgents/dev.hoanluu.now-dash.plist
 ```
+
+Phải thay đủ cả ba chỗ — sót `__PORT__` thì Node nhận đúng chữ đó làm số cổng và service
+chết ngay lúc khởi động, trong một cái log không ai ngồi xem.
 
 Từ đó trở đi chỉ cần:
 
@@ -299,11 +303,12 @@ cho Swift.
 |---|---|
 | [`app/NowMenuBar.swift`](app/NowMenuBar.swift) | ~290 dòng, và **không biết luật hạn mức nào**: chữ lấy từ `/api/badge`, popover là trang web bên dưới |
 | [`public/menubar.html`](public/menubar.html) · [`menubar.js`](public/menubar.js) | ruột popover. Gọi thẳng `lib/quota.js` — cùng `quotaBar`, cùng câu chữ với màn Token, nên không thể nói khác dashboard |
-| `/api/badge` trong [`server.js`](server.js) | chốt chữ và bậc màu ở một chỗ. Server import `public/lib/quota.js` (module của trình duyệt) cố ý: thang bỏ phí chỉ được có một bản |
+| `/api/badge` trong [`src/badge.js`](src/badge.js) | chốt chữ và bậc màu ở một chỗ, và khi bản đọc hỏng thì chốt luôn câu `note` — vì sao hỏng, làm gì để chữa. Server import `public/lib/quota.js` và `i18n.js` (module của trình duyệt) cố ý: thang bỏ phí và câu ấy mỗi thứ chỉ được có một bản. Để ngoài đây chứ không nằm trong `server.js` vì `server.js` gọi `listen` ngay lúc import: thứ gì sống trong đó là thứ không test được, mà nhánh không test được chính là nhánh chỉ chạy vào ngày mọi thứ đang hỏng |
 | [`app/make-tones.py`](app/make-tones.py) | bóc năm mã màu thẳng từ `styles.css` lúc dựng, sinh `Tones.swift`. **Hiện không dùng** — chữ trên thanh vẽ dưới dạng ảnh `isTemplate` nên chỉ giữ được alpha, không giữ màu. Vẫn dựng cùng app để bật lại màu chỉ tốn một dòng |
-| [`bin/install-app`](bin/install-app) | sinh `Tones.swift`, biên dịch bằng `swiftc`, cắt `.icns` từ `public/icon-1024.png`. Chạy lại bao nhiêu lần cũng được; từ chối đè nếu chỗ đó đang là app khác |
+| [`bin/install-app`](bin/install-app) | sinh `Tones.swift`, biên dịch bằng `swiftc`, cắt `.icns` từ `public/icon-1024.png`, rồi dựng lại service và mở app. Chạy lại bao nhiêu lần cũng được; từ chối đè nếu chỗ đó đang là app khác |
 
-Cần Xcode Command Line Tools (`swiftc`) và macOS 13+. Đường dẫn repo ghim tuyệt đối vào
+Cần một bộ biên dịch Swift chạy được — Command Line Tools hoặc Xcode, tuỳ `xcode-select`
+đang trỏ đâu (script kiểm tra trước và nói phải làm gì) — và macOS 13+. Đường dẫn repo ghim tuyệt đối vào
 bundle lúc dựng, và vào LaunchAgent luôn trong cùng lượt chạy (xem
 [§Bắt đầu](#bắt-đầu)) — cùng lý do: launchd/LaunchServices không giãn `~`/`$HOME`.
 **Dời repo thì chạy lại `./bin/install-app`.**
@@ -319,20 +324,25 @@ Sổ tay ngắn — đủ để tự xử lý không phải lục code.
 ```
 
 Idempotent, chạy lại bao nhiêu lần cũng an toàn (kể cả sau khi dời repo, đổi máy, hay
-đổi `NOW_PORT`) — ghi đè sạch cả app **và** LaunchAgent mỗi lần.
+đổi `NOW_PORT`) — ghi đè sạch cả app **và** LaunchAgent mỗi lần. Chạy một lần là mọi thứ
+**đang chạy**, không phải chỉ "đã cài": nó `bootout` service đang sống, chờ launchd tháo
+xong hẳn, dựng lại qua `./bin/now-dash`, rồi thay app thanh menu và mở luôn. Dashboard
+tắt vài giây; không mất dữ liệu, mọi sổ ghi ở `~/.now-dashboard/`, cài lại không đụng tới.
 
-⚠️ **Nếu service đang chạy sống, lệnh trên sẽ `bootout` nó** để buộc nạp lại đường dẫn
-mới — dashboard tắt vài giây, tự lên lại vào lần kế tiếp bạn mở app hoặc gọi
-`./bin/now-dash`. Không mất dữ liệu: mọi sổ ghi ở `~/.now-dashboard/`, cài lại không đụng
-tới. Muốn nó sống lại **ngay** thay vì chờ:
+**Mở lúc đăng nhập** là một LaunchAgent thứ hai (`dev.hoanluu.now-dash.menu`), không
+phải login item của macOS. launchd khoá theo label nên cài lại là thay đúng dòng ấy;
+còn `SMAppService` — API Apple khuyên dùng, và app này đã dùng trước đó — khoá theo
+*chữ ký* của bundle, mà `swiftc` thì ký ad-hoc lại sau mỗi lần dựng. Dựng lại hai lần là
+System Settings → Login Items có hai dòng "NOW Dashboard", và dòng mồ côi thì không API
+nào gỡ được, phải bấm tay. Bật một lần rồi thì mọi lần cài lại đều giữ nguyên:
 
 ```bash
-launchctl kickstart -k gui/$(id -u)/dev.hoanluu.now-dash
+NOW_LOGIN_ITEM=1 ./bin/install-app   # =0 để tắt lại
 ```
 
-**Yêu cầu:** macOS 13+, Xcode Command Line Tools (`xcode-select --install` nếu chưa có
-`swiftc`), Node ≥ 18.10. Thiếu `swiftc` → script dừng ngay ở bước biên dịch, **chưa kịp
-cài LaunchAgent**. Chỉ cần server nền, không cần icon thanh menu → dùng lệnh `sed` tay ở
+**Yêu cầu:** macOS 13+, một bộ biên dịch Swift chạy được, Node ≥ 18.10. Không có bộ biên
+dịch → script dừng **trước** khi đụng vào app lẫn LaunchAgent, và in ra đúng lệnh cần gõ
+để chữa. Chỉ cần server nền, không cần icon thanh menu → dùng lệnh `sed` tay ở
 [§Bắt đầu](#bắt-đầu), không cần `swiftc`.
 
 | Triệu chứng | Nguyên nhân | Sửa |
@@ -340,7 +350,10 @@ cài LaunchAgent**. Chỉ cần server nền, không cần icon thanh menu → d
 | App/web app mở ra chỉ thấy "chưa nối được tới server" | LaunchAgent chưa cài, hoặc service đang down | `./bin/now-dash` — tự `bootstrap`/`kickstart` nếu thấy plist. Chưa có plist → `./bin/install-app` trước |
 | `install-app` báo *"Đã có app khác ở … — không đè"* | Trùng tên với app KHÁC ở `~/Applications` (vd. web app Safari cũng có thể tên "NOW") — script cố tình không đè app lạ, xem [bin/install-app](bin/install-app) | Đổi tên: `APP_NAME="NOW Dashboard 2" ./bin/install-app`, hoặc tự xoá app cũ nếu chắc chắn là bản rác |
 | Dời repo sang chỗ khác, app/service vẫn gọi đường cũ | `__ROOT__` ghim tuyệt đối lúc cài, không tự giãn lại khi repo di chuyển | Chạy lại `./bin/install-app` **ở vị trí mới** của repo |
-| Đổi `NOW_PORT` nhưng service vẫn dùng cổng cũ | Cổng ghim trong plist lúc render, không đọc lại lúc chạy | `NOW_PORT=xxxx ./bin/install-app` rồi `launchctl kickstart -k gui/$(id -u)/dev.hoanluu.now-dash` |
+| Đổi `NOW_PORT` nhưng service vẫn dùng cổng cũ | Cổng ghim trong plist lúc render, không đọc lại lúc chạy | `NOW_PORT=xxxx ./bin/install-app` — một lần chạy đổi cả plist lẫn app, từ cùng một biến |
+| `install-app` chết với `xcrun: error: invalid active developer path` | `swiftc` và `xcrun` ở `/usr/bin` chỉ là vỏ; chúng chuyển tiếp sang thư mục mà `xcode-select` đang trỏ tới, mà thư mục đó không còn (Command Line Tools bị gỡ, hoặc chưa từng cài) | Script tự mượn Xcode.app cho lần dựng đó và in ra cách chốt hẳn: `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer`. Không có cái nào → `xcode-select --install` |
+| App đang chạy (`pgrep -f now-dash-menu` thấy) mà thanh menu không có icon | App không hỏng — thanh menu đã đầy và macOS bỏ bớt phần tràn, trên laptop có tai thỏ thì tràn vào đúng chỗ khuất | Thoát bớt một hai icon, hoặc ⌘-kéo xếp lại. Muốn chắc cái nút vẫn vẽ ra: `NOW_SNAP=/tmp/b.png "$HOME/Applications/NOW Dashboard.app/Contents/MacOS/now-dash-menu"` |
+| Đăng nhập lại thì icon không tự lên | "Mở lúc đăng nhập" đang tắt, tức là không có `~/Library/LaunchAgents/dev.hoanluu.now-dash.menu.plist` | `NOW_LOGIN_ITEM=1 ./bin/install-app`, hoặc chuột phải lên icon → Mở lúc đăng nhập. Đọc `on`/`off` từ chính file đó, hoặc từ `NOW_LOGIN=status "$HOME/Applications/NOW Dashboard.app/Contents/MacOS/now-dash-menu"`. File có mà icon vẫn không lên → System Settings → General → Login Items → **Allow in the Background**, chỗ macOS cho tắt một agent sau lưng launchd |
 | Không thấy log gì dù chắc chắn có lỗi | Log của service nằm ở `~/.now-dashboard/`, không phải terminal (launchd không có stdout) | `tail -f ~/.now-dashboard/service.err.log` |
 
 **Gỡ cài đặt — theo đúng thứ tự này:**
@@ -349,9 +362,12 @@ cài LaunchAgent**. Chỉ cần server nền, không cần icon thanh menu → d
 # 1. Dừng và bỏ đăng ký khỏi launchd TRƯỚC — làm sau bước 3 thì service còn sống sẽ
 #    lặp lại tìm bin/now-dash-service ở đường dẫn vừa bị xoá, spam service.err.log.
 launchctl bootout gui/$(id -u)/dev.hoanluu.now-dash 2>/dev/null || true
+launchctl bootout gui/$(id -u)/dev.hoanluu.now-dash.menu 2>/dev/null || true
 
-# 2. Xoá định nghĩa LaunchAgent và app (đổi tên nếu bạn từng cài với APP_NAME khác)
+# 2. Xoá CẢ HAI định nghĩa LaunchAgent và app (đổi tên nếu bạn từng cài với APP_NAME
+#    khác). Để sót .menu.plist thì lần đăng nhập sau vẫn đi mở một app đã bị xoá.
 rm -f ~/Library/LaunchAgents/dev.hoanluu.now-dash.plist
+rm -f ~/Library/LaunchAgents/dev.hoanluu.now-dash.menu.plist
 rm -rf ~/Applications/"NOW Dashboard.app"
 
 # 3. (tuỳ chọn) Xoá dữ liệu/log — sổ chu kỳ hạn mức, cache Cursor/Antigravity.

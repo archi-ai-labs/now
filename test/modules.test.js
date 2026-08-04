@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /**
  * Mọi module phía client phải NẠP ĐƯỢC.
@@ -20,7 +21,10 @@ import path from 'node:path';
  * nhớ cập nhật một danh sách — mà lưới chặn cần được nhớ mới hoạt động thì không phải lưới.
  */
 
-const ROOT = path.join(import.meta.dirname, '..', 'public');
+// `import.meta.dirname` chỉ có từ Node 20.11, mà package.json khai sàn là 18.10 — trên 18
+// nó là `undefined` và `path.join` ném ngay lúc nạp, giết cả file test. Dạng dưới đây chạy
+// từ 18 trở đi, nên CI canh được đúng cái sàn mà badge đang hứa.
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 
 const jsIn = (dir) =>
   fs

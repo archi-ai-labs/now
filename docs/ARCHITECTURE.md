@@ -112,6 +112,8 @@ lumping it in blindly.
 ```
 server.js              HTTP + SSE, zero-dep; watches fs, batches events, rescans every 30s
 src/config.js           health thresholds, paths, port
+src/badge.js            the one menu-bar item: two spent figures, waste band, and — when
+                        the read is broken — the reason plus what to do about it
 src/state.js            merges every source into one snapshot; attaches sessions to
                         projects; passes each quota window's open time to the token
                         scan so it can attach the dollar estimate back

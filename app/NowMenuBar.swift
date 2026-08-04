@@ -16,7 +16,6 @@
 
 import AppKit
 import WebKit
-import ServiceManagement
 
 let ROOT = "__ROOT__"
 let WEBAPP = "__WEBAPP__"
@@ -52,6 +51,10 @@ struct Badge {
     var tone = "mute"
     var tip = "Chưa nối được tới server"
     var live = false
+    /// Số trên thanh có thật sự là số của BÂY GIỜ không. Khác `live`: `live` nói server
+    /// có trả lời hay không, `fresh` nói cái server trả lời có còn giá trị hay không —
+    /// và hỏng kiểu thứ hai mới là kiểu nguy hiểm, vì màn hình vẫn đầy số trông như thật.
+    var fresh = true
 }
 
 // ── App ──────────────────────────────────────────────────────────────────────
@@ -64,6 +67,7 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
 
     func applicationDidFinishLaunching(_: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        loginModeIfAsked() // một nhát rồi thoát, không dựng mục nào lên thanh
 
         // ĐÚNG MỘT mục. Bản trước có hai — hạn mức và việc-đang-chờ — với lý do là hai
         // đại lượng ấy không so được với nhau. Lý do đúng, kết luận sai: cả hai đều mở
@@ -135,7 +139,14 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
                 } else {
                     b.tip = "Chưa đọc được nhịp tiêu"
                 }
-                if (q["stale"] as? Bool) == true { b.tip += " · số đã cũ" }
+                if (q["stale"] as? Bool) == true {
+                    b.fresh = false
+                    b.tip += " · số đã cũ"
+                }
+                // Vì sao hỏng và làm gì để chữa — nguyên văn từ server, xem `/api/badge`.
+                // Xuống dòng chứ không nối tiếp: câu này là việc phải làm, không phải
+                // phần đuôi của câu tả con số.
+                if let note = q["note"] as? String, !note.isEmpty { b.tip += "\n\(note)" }
             }
             DispatchQueue.main.async { self?.paint(b) }
         }.resume()
@@ -163,14 +174,24 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
     /// đọc được, không cần theo dõi thay đổi giao diện. Phân biệt hai dòng bằng ALPHA
     /// chứ không bằng màu, vì template chỉ giữ lại alpha.
     private func paint(_ b: Badge) {
+        // Mờ đi khi số không còn là số của bây giờ — dù vì server im (`live`) hay vì
+        // bản đọc đã quá cũ (`fresh`). Đây là kênh DUY NHẤT nói điều đó mà không đòi
+        // người dùng rê chuột lên hỏi tooltip, và nó phải nằm ngoài màu: màu trên thanh
+        // đã dành trọn cho phần bỏ phí (luật 1 của public/lib/quota.js), còn ảnh thì
+        // `isTemplate` nên chỉ giữ được alpha.
+        //
+        // Chỗ nguy hiểm không phải lúc mất hẳn số — "—" thì ai cũng thấy là hỏng. Nguy
+        // hiểm là lúc endpoint chết mà ảnh chụp cũ vẫn còn: thanh menu bày "11%·41%"
+        // trông y hệt số thật, và người đọc tin nó cả buổi.
+        let dim = !(b.live && b.fresh)
         let label = NSAttributedString(string: "CLAUDE", attributes: [
             .font: NSFont.systemFont(ofSize: LABEL_SIZE, weight: .medium),
             .kern: 0.8,
-            .foregroundColor: NSColor.black.withAlphaComponent(b.live ? 0.55 : 0.3),
+            .foregroundColor: NSColor.black.withAlphaComponent(dim ? 0.3 : 0.55),
         ])
         let value = NSAttributedString(string: b.quotaText, attributes: [
             .font: NSFont.monospacedDigitSystemFont(ofSize: VALUE_SIZE, weight: .medium),
-            .foregroundColor: NSColor.black.withAlphaComponent(b.live ? 1 : 0.4),
+            .foregroundColor: NSColor.black.withAlphaComponent(dim ? 0.4 : 1),
         ])
 
         let lw = label.size(), vw = value.size()
@@ -185,6 +206,32 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
         quotaItem.button?.image = img
         quotaItem.button?.imagePosition = .imageOnly
         quotaItem.button?.toolTip = b.tip
+    }
+
+    /// Hỏi hoặc đặt mục "Mở lúc đăng nhập" rồi thoát — bật bằng `NOW_LOGIN=status|on|off`.
+    /// In ra `on` hoặc `off`.
+    ///
+    /// Có mặt để `bin/install-app` và mắt người kiểm được cùng một đường đi mà nút trên
+    /// menu chuột phải dùng — nút ấy không bấm được từ terminal, và một nhánh không ai
+    /// chạy được là nhánh sẽ hỏng lặng lẽ.
+    private func loginModeIfAsked() {
+        guard let raw = ProcessInfo.processInfo.environment["NOW_LOGIN"] else { return }
+        var code: Int32 = 0
+        do {
+            switch raw.lowercased() {
+            case "status": break
+            case "on": try setLogin(true)
+            case "off": try setLogin(false)
+            default:
+                FileHandle.standardError.write(Data("NOW_LOGIN nhận status|on|off, không phải \(raw)\n".utf8))
+                code = 2
+            }
+        } catch {
+            FileHandle.standardError.write(Data("\(error.localizedDescription)\n".utf8))
+            code = 1
+        }
+        print(loginOn ? "on" : "off")
+        exit(code)
     }
 
     /// Chụp CHÍNH cái nút trên thanh menu ra PNG rồi thoát — bật bằng `NOW_SNAP=<file>`.
@@ -215,7 +262,12 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
                let out = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
                 try? out.write(to: URL(fileURLWithPath: path))
             }
+            // In cả tooltip: nó cũng là thứ không soi được từ terminal, và nó chở phần
+            // NÓI RA — vì sao hỏng, phải làm gì. Ảnh chụp một mình chỉ trả lời được câu
+            // "nút có mờ đi không", không trả lời được "nó có nói cho người ta biết
+            // không".
             print("nút: \(box.width)×\(box.height)pt → \(path)")
+            print("tooltip: \(btn.toolTip ?? "(không có)")")
             NSApp.terminate(nil)
         }
     }
@@ -347,7 +399,7 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
         m.addItem(.separator())
         m.addItem(withTitle: "Dựng lại server", action: #selector(restartServer), keyEquivalent: "")
         let login = NSMenuItem(title: "Mở lúc đăng nhập", action: #selector(toggleLogin), keyEquivalent: "")
-        login.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        login.state = loginOn ? .on : .off
         m.addItem(login)
         m.addItem(.separator())
         m.addItem(withTitle: "Thoát", action: #selector(quit), keyEquivalent: "q")
@@ -394,17 +446,50 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
 
     @objc private func toggleLogin() {
         do {
-            if SMAppService.mainApp.status == .enabled {
-                try SMAppService.mainApp.unregister()
-            } else {
-                try SMAppService.mainApp.register()
-            }
+            try setLogin(!loginOn)
         } catch {
             let a = NSAlert()
             a.messageText = "Không đổi được mục đăng nhập"
             a.informativeText = error.localizedDescription
             a.runModal()
         }
+    }
+
+    // ── Mở lúc đăng nhập ─────────────────────────────────────────────────────
+    //
+    // Một file plist trong ~/Library/LaunchAgents/, cùng khuôn với service — xem
+    // launchd/dev.hoanluu.now-dash.menu.plist để biết vì sao không dùng SMAppService.
+    //
+    // Ở đây KHÔNG gọi launchctl, cả lúc bật lẫn lúc tắt, và cả hai đều có lý do:
+    //
+    //   · bật  — `bootstrap` sẽ dựng ngay một bản THỨ HAI của chính app đang chạy, hai
+    //            icon giống hệt nhau trên thanh. Cái người dùng vừa bấm là "lần đăng
+    //            nhập SAU thì mở", không phải "mở thêm một cái bây giờ".
+    //   · tắt  — `bootout` giết đúng tiến trình đang chạy dòng lệnh này, nếu nó do
+    //            launchd dựng lên. Tắt mục đăng nhập mà app tự thoát là hỏng.
+    //
+    // Miền gui của launchd chết theo phiên đăng nhập, nên xoá file là đủ: đăng nhập lần
+    // sau launchd đọc lại thư mục ấy, không thấy thì không dựng.
+
+    private var loginPlist: URL {
+        URL(fileURLWithPath: NSHomeDirectory())
+            .appendingPathComponent("Library/LaunchAgents/dev.hoanluu.now-dash.menu.plist")
+    }
+
+    private var loginOn: Bool { FileManager.default.fileExists(atPath: loginPlist.path) }
+
+    private func setLogin(_ on: Bool) throws {
+        guard on else {
+            try? FileManager.default.removeItem(at: loginPlist)
+            return
+        }
+        let tpl = try String(contentsOfFile: "\(ROOT)/launchd/dev.hoanluu.now-dash.menu.plist",
+                             encoding: .utf8)
+        let bin = Bundle.main.bundleURL.appendingPathComponent("Contents/MacOS/now-dash-menu").path
+        try FileManager.default.createDirectory(at: loginPlist.deletingLastPathComponent(),
+                                                withIntermediateDirectories: true)
+        try tpl.replacingOccurrences(of: "__MENU_BIN__", with: bin)
+            .write(to: loginPlist, atomically: true, encoding: .utf8)
     }
 }
 

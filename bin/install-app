@@ -17,6 +17,7 @@ DEST="$DEST_DIR/$APP_NAME.app"
 WEBAPP="${NOW_WEBAPP:-$HOME/Applications/NOW.app}"
 PORT="${NOW_PORT:-4400}"
 ID="dev.hoanluu.now-dash.launcher"
+LAUNCH_AGENTS_DIR="$HOME/Library/LaunchAgents"
 
 # Chốt chặn khỏi tự bắn vào chân: DEST trùng tên với một app KHÁC (rất dễ xảy ra — web
 # app Safari cũng nằm ở ~/Applications và cũng tên NOW) thì dừng, đừng đè. Bundle của
@@ -26,6 +27,40 @@ if [[ -d "$DEST" ]]; then
   if [[ "$have" != "$ID" ]]; then
     echo "Đã có app khác ở $DEST (id: ${have:-không đọc được}) — không đè." >&2
     echo "Đặt tên khác: APP_NAME=\"…\" $0" >&2
+    exit 1
+  fi
+fi
+
+# ── Bộ biên dịch ────────────────────────────────────────────────────────────
+# Hỏi TRƯỚC khi dựng, vì `swiftc` và `xcrun` ở /usr/bin chỉ là vỏ: chúng chuyển tiếp
+# sang thư mục mà `xcode-select` đang trỏ tới, và khi thư mục ấy không có thật thì thứ
+# duy nhất ra màn hình là
+#
+#   xcrun: error: invalid active developer path (/Library/Developer/CommandLineTools)
+#
+# — không một chữ nào nói phải làm gì. Ca đã xảy ra: Command Line Tools bị gỡ (hoặc
+# chưa từng cài) trong khi `xcode-select` vẫn trỏ vào đó, còn Xcode.app thì nằm sẵn
+# trong /Applications. Có đường đi được thì đi, và nói rõ cách chốt lại cho lần sau;
+# không có thì dừng ở đây, kèm lệnh chữa.
+toolchain_ok() { xcrun --find swiftc >/dev/null 2>&1; }
+
+if ! toolchain_ok; then
+  broken="$(xcode-select -p 2>/dev/null || true)"
+  for cand in /Applications/Xcode.app/Contents/Developer /Library/Developer/CommandLineTools; do
+    [[ -x "$cand/usr/bin/xcrun" ]] || continue
+    export DEVELOPER_DIR="$cand"
+    toolchain_ok && break
+    unset DEVELOPER_DIR
+  done
+  if [[ -n "${DEVELOPER_DIR:-}" ]]; then
+    echo "xcode-select đang trỏ vào ${broken:-(không đọc được)} — chỗ đó không dùng được." >&2
+    echo "Lần dựng này mượn tạm $DEVELOPER_DIR. Chốt lại cho lần sau:" >&2
+    echo "  sudo xcode-select --switch $DEVELOPER_DIR" >&2
+  else
+    echo "Không có bộ biên dịch Swift nào chạy được (xcode-select trỏ vào ${broken:-(không đọc được)})." >&2
+    echo "Cài Command Line Tools:  xcode-select --install" >&2
+    echo "Đã có Xcode.app rồi thì:  sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer" >&2
+    echo "Chỉ cần server nền, không cần icon thanh menu → xem README.md §Bắt đầu, cách cài LaunchAgent bằng tay." >&2
     exit 1
   fi
 fi
@@ -74,6 +109,20 @@ else
 fi
 
 # ── Thay chỗ cũ ─────────────────────────────────────────────────────────────
+# "Mở lúc đăng nhập" bật hay tắt = một file plist có mặt hay không (xem
+# launchd/dev.hoanluu.now-dash.menu.plist). Đọc được từ đây bằng một phép thử -f, nên
+# cài lại giữ nguyên lựa chọn cũ mà không phải hỏi ai. NOW_LOGIN_ITEM=1 ép bật (lần cài
+# đầu, khi chưa có gì để giữ), =0 ép tắt.
+MENU_BIN="$DEST/Contents/MacOS/now-dash-menu"
+LOGIN_PLIST="$LAUNCH_AGENTS_DIR/dev.hoanluu.now-dash.menu.plist"
+WANT_LOGIN="${NOW_LOGIN_ITEM:-}"
+[[ -z "$WANT_LOGIN" && -f "$LOGIN_PLIST" ]] && WANT_LOGIN=1
+
+# App đang chạy giữ nguyên binary CŨ trong bộ nhớ cho tới khi bị thoát — không có dòng
+# này thì dựng lại xong vẫn là bản cũ đang ngồi trên thanh menu, và sửa gì cũng "không
+# thấy đổi gì cả".
+pkill -f "$MENU_BIN" 2>/dev/null || true
+
 mkdir -p "$DEST_DIR"
 rm -rf "$DEST"
 mv "$BUNDLE" "$DEST"
@@ -89,13 +138,65 @@ mv "$BUNDLE" "$DEST"
 # đây. bootout bản cũ (nếu có) để lần start kế tiếp nạp lại đúng đường dẫn mới, phòng
 # khi repo vừa dời chỗ và install-app chạy lại.
 SERVICE_LABEL="dev.hoanluu.now-dash"
-LAUNCH_AGENTS_DIR="$HOME/Library/LaunchAgents"
 PLIST_DEST="$LAUNCH_AGENTS_DIR/$SERVICE_LABEL.plist"
 mkdir -p "$LAUNCH_AGENTS_DIR"
-sed -e "s|__ROOT__|$ROOT|g" -e "s|__HOME__|$HOME|g" \
+sed -e "s|__ROOT__|$ROOT|g" -e "s|__HOME__|$HOME|g" -e "s|__PORT__|$PORT|g" \
   "$ROOT/launchd/$SERVICE_LABEL.plist" >"$PLIST_DEST"
 launchctl bootout "gui/$(id -u)/$SERVICE_LABEL" 2>/dev/null || true
+# `bootout` trả về TRƯỚC khi launchd tháo xong job, và `bootstrap` gọi vào giữa lúc job
+# còn đang tháo thì trượt — im lặng, mã lỗi nuốt mất, plist nằm đó mà launchd không nạp.
+# Đo được ở lần chạy đầu bản này: install-app báo "service chưa lên", rồi service vẫn tự
+# lên vài giây sau — vì app menu-bar khởi động sau đó gọi lại bin/now-dash và lần ấy thì
+# job đã tháo xong. Chờ ở đây thì không phải trông vào cú cứu tình cờ đó nữa.
+for _ in $(seq 1 40); do
+  launchctl print "gui/$(id -u)/$SERVICE_LABEL" >/dev/null 2>&1 || break
+  sleep 0.25
+done
 echo "Đã cài LaunchAgent: $PLIST_DEST"
 
+# `bootout` ở trên mới chỉ THÁO cái cũ ra. Nạp lại ngay tại đây, đừng để dành: bản trước
+# dừng ngay sau bootout và tin rằng "lần start kế tiếp" sẽ nạp — nhưng người vừa chạy
+# install-app thì tin là đã cài xong, nên chẳng có lần start nào cả. Kết quả là plist
+# nằm đúng chỗ mà launchd chưa từng biết tới nó: không tiến trình, không log, không lỗi.
+# Gọi qua bin/now-dash để phần dựng server vẫn chỉ có MỘT bản (bootstrap → kickstart →
+# chờ ping), không phải bản thứ hai chép ở đây.
+echo "Đang dựng service…"
+NOW_PORT="$PORT" "$ROOT/bin/now-dash" --no-open \
+  || echo "Service chưa lên — log: ~/.now-dashboard/service.err.log" >&2
+
+# ── Mở app ──────────────────────────────────────────────────────────────────
+# Đặt/gỡ mục đăng nhập bằng CHÍNH app vừa dựng (`NOW_LOGIN=on|off` ghi hoặc xoá plist),
+# không phải bằng một khúc sed thứ hai ở đây: cùng một việc mà có hai bản là hai bản sẽ
+# trôi khỏi nhau, và bản ít người chạy sẽ là bản hỏng.
+case "$WANT_LOGIN" in
+  1) NOW_LOGIN=on "$MENU_BIN" >/dev/null && echo "Mở lúc đăng nhập: bật" ;;
+  0) NOW_LOGIN=off "$MENU_BIN" >/dev/null && echo "Mở lúc đăng nhập: tắt" ;;
+esac
+
+# Hai plist đều chỉ được đọc lúc đăng nhập lần sau hoặc lúc launchd nạp, tức là một lỗi
+# cú pháp ở đây không kêu lên ngay bây giờ mà kêu vào lúc không còn ai ngồi xem.
+for p in "$PLIST_DEST" "$LOGIN_PLIST"; do
+  [[ -f "$p" ]] || continue
+  plutil -lint "$p" >/dev/null || echo "plist hỏng: $p" >&2
+done
+
+# macOS cho phép tắt một agent SAU LƯNG launchd (System Settings → General → Login Items
+# → Allow in the Background). Khi đó plist vẫn nằm đúng chỗ, script này vẫn báo "bật", và
+# đăng nhập vào thì không có gì lên — không log, không lỗi, không ai nói gì. Chỉ có
+# `print-disabled` biết, nên hỏi nó ngay lúc còn có người ngồi đây đọc.
+disabled="$(launchctl print-disabled "gui/$(id -u)" 2>/dev/null || true)"
+for label in "$SERVICE_LABEL" dev.hoanluu.now-dash.menu; do
+  grep -q "\"$label\" => disabled" <<<"$disabled" || continue
+  echo "⚠ macOS đang TẮT $label — nó sẽ không tự lên khi đăng nhập." >&2
+  echo "  Bật lại: System Settings → General → Login Items → Allow in the Background," >&2
+  echo "  hoặc:    launchctl enable gui/$(id -u)/$label" >&2
+done
+
+# Lý do dòng này có mặt: một app thanh menu vừa cài mà chưa chạy thì trên màn hình
+# KHÔNG có gì khác trước lúc cài — không icon, không cửa sổ, không thông báo. Người dùng
+# chỉ thấy script in "đã cài" rồi im, và kết luận hợp lý duy nhất là nó hỏng.
+open "$DEST" 2>/dev/null || echo "Chưa mở được app — mở tay: open \"$DEST\"" >&2
+
 echo "Đã cài: $DEST"
+[[ "$WANT_LOGIN" == "1" ]] || echo "Muốn icon tự lên sau khi đăng nhập: chuột phải lên icon → Mở lúc đăng nhập (hoặc NOW_LOGIN_ITEM=1 $0)"
 [[ -d "$WEBAPP" ]] || echo "Chưa thấy web app ở $WEBAPP — app sẽ mở bằng trình duyệt mặc định. Xem README.md §Chạy như app riêng trên Dock." >&2

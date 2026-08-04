@@ -8,7 +8,7 @@
   "bin": { "now-dash": "./server.js" },
   "scripts": {
     "start": "node server.js",
-    "test": "node --test \"test/*.test.js\"",
+    "test": "node --test test/*.test.js",
     "state": "node -e \"import('./src/state.js').then(m=>m.buildState()).then(s=>console.log(JSON.stringify(s,null,2)))\""
   },
   "engines": { "node": ">=18.10" }

@@ -25,16 +25,19 @@ Install once, and it comes up with the machine:
 
 Builds the menu-bar app (see [§On the menu bar](#on-the-menu-bar)) **and** drops a
 LaunchAgent into `~/Library/LaunchAgents/` with paths already matched to wherever you
-cloned the repo — no manual editing. Safe to rerun any number of times, including after
-moving the repo.
+cloned the repo — no manual editing — then starts both, so the icon is up before the
+command returns. Safe to rerun any number of times, including after moving the repo.
 
 Don't want the menu-bar icon and just need the background server (fewer requirements:
 no Xcode Command Line Tools needed), install the LaunchAgent by hand instead:
 
 ```bash
-sed -e "s|__ROOT__|$(pwd)|g" -e "s|__HOME__|$HOME|g" \
+sed -e "s|__ROOT__|$(pwd)|g" -e "s|__HOME__|$HOME|g" -e "s|__PORT__|4400|g" \
   launchd/dev.hoanluu.now-dash.plist > ~/Library/LaunchAgents/dev.hoanluu.now-dash.plist
 ```
+
+All three placeholders have to go — a leftover `__PORT__` reaches Node as the port
+number and the service dies at startup, in a log nobody is watching.
 
 After that, all you need is:
 
@@ -312,11 +315,12 @@ dimensions to Swift.
 |---|---|
 | [`app/NowMenuBar.swift`](app/NowMenuBar.swift) | ~290 lines, and it **knows no quota rule**: the text comes from `/api/badge`, the popover is the web page below |
 | [`public/menubar.html`](public/menubar.html) · [`menubar.js`](public/menubar.js) | the popover's guts. Calls `lib/quota.js` directly — same `quotaBar`, same sentences as the Token screen, so it cannot contradict the dashboard |
-| `/api/badge` in [`server.js`](server.js) | settles text and color band in one place. The server imports `public/lib/quota.js` (a browser module) on purpose: the waste scale gets exactly one copy |
+| `/api/badge` in [`src/badge.js`](src/badge.js) | settles text and color band in one place, and — when the reading is broken — the `note` saying why and what to do. The server imports `public/lib/quota.js` and `i18n.js` (browser modules) on purpose: the waste scale and that sentence get exactly one copy each. Out here, not in `server.js`, because `server.js` calls `listen` on import: anything living in it can't be tested, and the branch nobody can test is the one that only runs on the day everything is broken |
 | [`app/make-tones.py`](app/make-tones.py) | lifts the five color codes out of `styles.css` at build time into `Tones.swift`. **Currently unused** — the bar text is an `isTemplate` image, which keeps alpha but not color. Still built alongside the app so turning color back on costs one line |
-| [`bin/install-app`](bin/install-app) | generates `Tones.swift`, compiles with `swiftc`, cuts the `.icns` from `public/icon-1024.png`. Re-runnable; refuses to overwrite if something else is sitting there |
+| [`bin/install-app`](bin/install-app) | generates `Tones.swift`, compiles with `swiftc`, cuts the `.icns` from `public/icon-1024.png`, then brings the service and the app back up. Re-runnable; refuses to overwrite if something else is sitting there |
 
-Needs Xcode Command Line Tools (`swiftc`) and macOS 13+. The repo path is baked into the
+Needs a working Swift compiler — Command Line Tools or Xcode, whichever `xcode-select`
+points at (the script checks first and says what to do) — and macOS 13+. The repo path is baked into the
 bundle as an absolute path at build time, and into the LaunchAgent in the same run
 (see [§Getting started](#getting-started)) — same reason: launchd/LaunchServices don't
 expand `~`/`$HOME`. **Move the repo, re-run `./bin/install-app`.**
@@ -333,30 +337,37 @@ A short runbook — enough to self-serve without reading the code.
 
 Idempotent, safe to rerun any number of times (after moving the repo, switching
 machines, or changing `NOW_PORT`) — cleanly overwrites both the app **and** the
-LaunchAgent every time.
+LaunchAgent every time. One run leaves you with everything **up**, not merely installed:
+it `bootout`s the running service, waits for launchd to actually let go, brings it back
+through `./bin/now-dash`, then replaces the menu-bar app and opens it. The dashboard is
+down for a few seconds; no data is lost, since everything is logged under
+`~/.now-dashboard/`, which reinstalling never touches.
 
-⚠️ **If the service is currently running, this command `bootout`s it** to force a
-reload of the new paths — the dashboard goes down for a few seconds and comes back the
-next time you open the app or call `./bin/now-dash`. No data is lost: everything is
-logged under `~/.now-dashboard/`, which reinstalling never touches. To bring it back up
-**immediately** instead of waiting:
+**Open at login** is a second LaunchAgent (`dev.hoanluu.now-dash.menu`), not a macOS
+login item. launchd keys on the label, so reinstalling replaces that one entry;
+`SMAppService` — the API Apple points you at, and the one this app used first — keys on
+the *code signature*, which `swiftc` re-rolls ad-hoc on every build. Two rebuilds, two
+"NOW Dashboard" rows under System Settings → Login Items, and the orphaned row is
+removable by no API, only by hand. Turn it on once and every reinstall keeps it:
 
 ```bash
-launchctl kickstart -k gui/$(id -u)/dev.hoanluu.now-dash
+NOW_LOGIN_ITEM=1 ./bin/install-app   # =0 turns it back off
 ```
 
-**Requirements:** macOS 13+, Xcode Command Line Tools (`xcode-select --install` if
-`swiftc` is missing), Node ≥ 18.10. Missing `swiftc` → the script stops right at the
-compile step, **before** installing the LaunchAgent. Only want the background server,
-no menu-bar icon → use the manual `sed` command in [§Getting started](#getting-started)
-instead, which needs no `swiftc`.
+**Requirements:** macOS 13+, a working Swift compiler, Node ≥ 18.10. No compiler → the
+script stops **before** touching the app or the LaunchAgent, and prints the exact
+command to fix it. Only want the background server, no menu-bar icon → use the manual
+`sed` command in [§Getting started](#getting-started) instead, which needs no `swiftc`.
 
 | Symptom | Cause | Fix |
 |---|---|---|
 | App/web app opens to just "can't reach the server" | LaunchAgent not installed, or the service is down | `./bin/now-dash` — self-`bootstrap`s/`kickstart`s if it finds the plist. No plist yet → run `./bin/install-app` first |
 | `install-app` says *"Something else is already at … — not overwriting"* | Name collision with a DIFFERENT app in `~/Applications` (e.g. the Safari web app can also be named "NOW") — the script deliberately refuses to overwrite a foreign app, see [bin/install-app](bin/install-app) | Rename: `APP_NAME="NOW Dashboard 2" ./bin/install-app`, or manually delete the old app once you're sure it's stale |
 | Moved the repo elsewhere, app/service still call the old path | `__ROOT__` is baked in absolute at install time, doesn't reflow when the repo moves | Re-run `./bin/install-app` **from the new location** of the repo |
-| Changed `NOW_PORT` but the service still uses the old port | The port is baked into the plist at render time, not re-read at runtime | `NOW_PORT=xxxx ./bin/install-app` then `launchctl kickstart -k gui/$(id -u)/dev.hoanluu.now-dash` |
+| Changed `NOW_PORT` but the service still uses the old port | The port is baked into the plist at render time, not re-read at runtime | `NOW_PORT=xxxx ./bin/install-app` — one run moves both the plist and the app, from the same variable |
+| `install-app` dies with `xcrun: error: invalid active developer path` | `swiftc` and `xcrun` under `/usr/bin` are only shims; they forward to whatever `xcode-select` points at, and that directory is gone (Command Line Tools uninstalled, or never installed) | The script now borrows Xcode.app for that one build and prints the permanent fix: `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer`. Neither one present → `xcode-select --install` |
+| App runs (`pgrep -f now-dash-menu` finds it) but no icon in the menu bar | Nothing is wrong with the app — the bar is full and macOS drops the overflow, into the notch on laptops that have one | Quit an icon or two, or reorder with ⌘-drag. To confirm the button itself still draws: `NOW_SNAP=/tmp/b.png "$HOME/Applications/NOW Dashboard.app/Contents/MacOS/now-dash-menu"` |
+| Icon doesn't come back after logging in | "Open at login" is off — i.e. `~/Library/LaunchAgents/dev.hoanluu.now-dash.menu.plist` isn't there | `NOW_LOGIN_ITEM=1 ./bin/install-app`, or right-click the icon → Open at login. Reads as `on`/`off` from either the file or `NOW_LOGIN=status "$HOME/Applications/NOW Dashboard.app/Contents/MacOS/now-dash-menu"`. The file being there and the icon still not coming up → System Settings → General → Login Items → **Allow in the Background**, where macOS lets you switch an agent off behind launchd's back |
 | No logs anywhere despite a clear error | The service's logs live under `~/.now-dashboard/`, not the terminal (launchd has no stdout) | `tail -f ~/.now-dashboard/service.err.log` |
 
 **Uninstall — in this exact order:**
@@ -366,10 +377,13 @@ instead, which needs no `swiftc`.
 #    running service repeatedly looking for bin/now-dash-service at a path that no
 #    longer exists, spamming service.err.log.
 launchctl bootout gui/$(id -u)/dev.hoanluu.now-dash 2>/dev/null || true
+launchctl bootout gui/$(id -u)/dev.hoanluu.now-dash.menu 2>/dev/null || true
 
-# 2. Remove the LaunchAgent definition and the app (adjust the name if you ever
-#    installed with a custom APP_NAME)
+# 2. Remove BOTH LaunchAgent definitions and the app (adjust the name if you ever
+#    installed with a custom APP_NAME). Leave .menu.plist behind and the next login
+#    still tries to open an app that no longer exists.
 rm -f ~/Library/LaunchAgents/dev.hoanluu.now-dash.plist
+rm -f ~/Library/LaunchAgents/dev.hoanluu.now-dash.menu.plist
 rm -rf ~/Applications/"NOW Dashboard.app"
 
 # 3. (optional) Remove data/logs — quota cycle ledgers, Cursor/Antigravity caches.
