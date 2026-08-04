@@ -31,13 +31,18 @@ const commit = (cwd, msg) =>
  */
 const fixture = (async () => {
   const base = await fs.mkdtemp(path.join(os.tmpdir(), 'nowdash-git-'));
+  // Chỗ thứ hai, cố tình KHÔNG nằm dưới thư mục tạm hệ thống: luật `inTmp` chỉ soi
+  // `/tmp` và `/private/tmp`, mà trên Linux `os.tmpdir()` chính là `/tmp`. Muốn kiểm
+  // nhánh "sạch, ngoài /tmp" thì phải có một chỗ ngoài /tmp trên MỌI hệ, và thư mục
+  // nhà là chỗ duy nhất chắc chắn như vậy mà không phải đoán.
+  const outside = await fs.mkdtemp(path.join(os.homedir(), '.nowdash-git-test-'));
   const repo = path.join(base, 'repo');
   await fs.mkdir(repo);
   await sh(repo, '-c', 'init.defaultBranch=main', 'init');
   await fs.writeFile(path.join(repo, 'a.txt'), 'một\n');
   await sh(repo, 'add', '.');
   await commit(repo, 'commit đầu');
-  return { base, repo };
+  return { base, outside, repo };
 })();
 
 test('repo sạch: đọc đúng nhánh, HEAD, và không có file bẩn', async () => {
@@ -119,8 +124,13 @@ test('B3 — board nằm TRONG repo cha không được mượn số của repo 
 });
 
 test('worktree phụ: nhận diện được, cờ cảnh báo đúng, KHÔNG tính repo chính vào', async () => {
-  const { base, repo } = await fixture;
-  const wt = path.join(base, 'wt-tinh-nang');
+  const { repo, outside } = await fixture;
+  // Worktree này phải nằm NGOÀI /tmp, nên nó không dùng `base` như các test khác:
+  // `os.tmpdir()` là `/var/folders/…` trên macOS nhưng đúng `/tmp` trên Linux. Đặt nó
+  // trong `base` thì trên máy Linux nó rơi thẳng vào luật `inTmp`, và bài test "sạch
+  // thì không cảnh báo" trở thành bài test không dựng được cảnh cần kiểm — xanh trên
+  // máy dev, đỏ trên CI, mà cái đỏ ấy không nói gì về code.
+  const wt = path.join(outside, 'wt-tinh-nang');
   await sh(repo, 'worktree', 'add', '-b', 'tinh-nang', wt);
 
   const g = await collectGit(repo);
@@ -147,7 +157,9 @@ test('worktree trong thư mục tạm hệ thống không bị báo nhầm là "
 });
 
 test('dọn thư mục tạm', async () => {
-  const { base } = await fixture;
-  await fs.rm(base, { recursive: true, force: true });
-  assert.equal(await fs.access(base).then(() => true, () => false), false);
+  const { base, outside } = await fixture;
+  for (const dir of [base, outside]) {
+    await fs.rm(dir, { recursive: true, force: true });
+    assert.equal(await fs.access(dir).then(() => true, () => false), false, `còn sót ${dir}`);
+  }
 });
