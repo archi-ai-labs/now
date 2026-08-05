@@ -197,6 +197,53 @@ const DICT = {
     'menubar.busy': 'đang đổi…',
     'menubar.err': (o) => `Không đổi được: ${o.msg}`,
 
+    // ── Quản gia nuôi được ──────────────────────────────────────────────────
+    //
+    // Gọi là XU, không phải "điểm". "Điểm" là thứ được CHẤM — nó ngụ ý ai đó đang đánh
+    // giá người dùng, mà đó đúng là điều chốt d-game gỡ đi. Xu thì chỉ để tiêu.
+    //
+    // Và tuyệt đối không viết "kiếm được" cho phần tiền vào ví: người dùng không kiếm
+    // gì cả, họ TIÊU — xu chỉ là hoá đơn đọc theo chiều khác. Chữ nào làm mờ chuyện ấy
+    // là chữ biến một trò chơi lương thiện thành một thanh XP bịa.
+    'pet.coins': (o) => `${o.n} xu`,
+    'pet.wallet': 'Ví',
+    'pet.rateNote': '1 xu = $1 tiêu ước tính.',
+    'pet.since': (o) => `Tính từ ${o.day}.`,
+    'pet.hunger': 'Độ no',
+    'pet.fullAria': (o) => `còn no ${o.pct}%`,
+    'pet.starved': 'đói lả rồi',
+    'pet.leftMin': (o) => `còn ${o.n} phút nữa thì đói`,
+    'pet.leftHour': (o) => `còn ${o.n} giờ nữa thì đói`,
+    'pet.mood.starving': 'Đói lả',
+    'pet.mood.hungry': 'Đang đói',
+    'pet.mood.fine': 'Ổn',
+    'pet.mood.stuffed': 'No căng',
+    'pet.secFood': 'Ăn uống',
+    'pet.secDecor': 'Trang trí',
+    'pet.feedHint': 'Mua là cho ăn luôn, không có kho.',
+    'pet.decorHint': 'Mua một lần, ở lại trên popover thanh menu.',
+    'pet.owned': 'đã có',
+    'pet.tooPoor': (o) => `còn thiếu ${o.n} xu`,
+    'pet.fills': (o) => `+${o.pct}% no`,
+    'pet.off': 'Trò chơi đang tắt',
+    'pet.offNote': 'Popover trở lại đúng bản nghiêm túc. Xu và đồ đã mua vẫn còn nguyên trong sổ.',
+    'pet.turnOn': 'Bật trò chơi',
+    'pet.turnOff': 'Tắt trò chơi',
+    'pet.openShop': 'Mở cửa hàng trên dashboard',
+    'pet.loading': 'Đang mở sổ…',
+    'pet.tally': (o) => `${o.earned} xu đã vào ví · ${o.spent} xu đã tiêu · ${o.meals} bữa`,
+    'pet.item.coffee': 'Cà phê',
+    'pet.item.che': 'Chè',
+    'pet.item.beer': 'Bia',
+    'pet.item.banhmi': 'Bánh mì',
+    'pet.item.pho': 'Phở',
+    'pet.item.hat': 'Nón chóp',
+    'pet.item.plant': 'Chậu cây',
+    'pet.item.balloon': 'Bóng bay',
+    'pet.item.bunting': 'Dây cờ',
+    'pet.item.cat': 'Con mèo',
+    'pet.item.rainbow': 'Cầu vồng',
+
     // Ngôn ngữ
     'lang.title': (o) => `Ngôn ngữ: Tiếng Việt — bấm để đổi sang ${o.next} (l)`,
     'skin.title': (o) => `Phong cách chart — bấm để đổi sang ${o.next} (s)`,
@@ -1394,6 +1441,8 @@ const DICT = {
     // đang sửa repo, nên chúng bám theo mã nguồn chứ không bám theo người đọc.
     'nav.bench': 'Bàn chỉnh',
     'title.bench': 'Vặn thử popover thanh menu, rồi chép giá trị vào code',
+    'nav.pet': 'Cửa hàng',
+    'title.pet': 'Cho quản gia ăn và sắm đồ, bằng xu đổi từ tiền đã tiêu',
     'lookback.broken': 'Chưa dựng được phần nhìn lại',
     'lookback.noLive': 'không đọc được hạn mức lúc này — thẻ chỉ còn phần lịch sử',
     'lookback.buySection': 'Gói có đáng tiền không',
@@ -1608,6 +1657,52 @@ const DICT = {
     'menubar.toOn': 'The NOW icon is off — click to bring it back now and at every login from here on',
     'menubar.busy': 'switching…',
     'menubar.err': (o) => `Could not switch: ${o.msg}`,
+
+    // ── The butler you can feed ─────────────────────────────────────────────
+    //
+    // "Coins", never "points". Points are AWARDED — they imply someone is grading the
+    // user, which is exactly what the d-game decision removed. Coins are just spent.
+    //
+    // And never "earned" for money going into the wallet: nothing is earned here, it is
+    // SPENT — a coin is the same invoice read the other way round.
+    'pet.coins': (o) => `${o.n} coins`,
+    'pet.wallet': 'Wallet',
+    'pet.rateNote': '1 coin = $1 of estimated spend.',
+    'pet.since': (o) => `Counting from ${o.day}.`,
+    'pet.hunger': 'Fullness',
+    'pet.fullAria': (o) => `${o.pct}% full`,
+    'pet.starved': 'starving',
+    'pet.leftMin': (o) => `hungry in ${o.n} min`,
+    'pet.leftHour': (o) => `hungry in ${o.n} h`,
+    'pet.mood.starving': 'Starving',
+    'pet.mood.hungry': 'Hungry',
+    'pet.mood.fine': 'Fine',
+    'pet.mood.stuffed': 'Stuffed',
+    'pet.secFood': 'Food and drink',
+    'pet.secDecor': 'Decorations',
+    'pet.feedHint': 'Buying feeds it straight away — there is no inventory.',
+    'pet.decorHint': 'Bought once, stays on the menu-bar popover.',
+    'pet.owned': 'owned',
+    'pet.tooPoor': (o) => `${o.n} coins short`,
+    'pet.fills': (o) => `+${o.pct}% full`,
+    'pet.off': 'The game is off',
+    'pet.offNote': 'The popover is back to the plain version. Coins and anything bought stay in the ledger.',
+    'pet.turnOn': 'Turn the game on',
+    'pet.turnOff': 'Turn the game off',
+    'pet.openShop': 'Open the shop on the dashboard',
+    'pet.loading': 'Opening the ledger…',
+    'pet.tally': (o) => `${o.earned} coins in · ${o.spent} coins spent · ${o.meals} meals`,
+    'pet.item.coffee': 'Coffee',
+    'pet.item.che': 'Chè',
+    'pet.item.beer': 'Beer',
+    'pet.item.banhmi': 'Bánh mì',
+    'pet.item.pho': 'Phở',
+    'pet.item.hat': 'Top hat',
+    'pet.item.plant': 'Potted plant',
+    'pet.item.balloon': 'Balloon',
+    'pet.item.bunting': 'Bunting',
+    'pet.item.cat': 'Cat',
+    'pet.item.rainbow': 'Rainbow',
 
     // Language
     'lang.title': (o) => `Language: English — click to switch to ${o.next} (l)`,
@@ -2695,6 +2790,8 @@ const DICT = {
     // screen's own name is translated, because it sits on the rail next to seven others.
     'nav.bench': 'Bench',
     'title.bench': 'Turn the menu-bar popover knobs, then paste the values into code',
+    'nav.pet': 'Shop',
+    'title.pet': 'Feed the butler and buy it things, with coins traded from what you spent',
     'lookback.broken': 'Could not build the lookback data',
     'lookback.noLive': 'quota unreadable right now — this card shows history only',
     'lookback.buySection': 'Are the plans earning their keep',

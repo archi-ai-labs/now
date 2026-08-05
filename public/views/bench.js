@@ -30,6 +30,7 @@
  */
 import { html } from '../lib/dom.js';
 import { popoverView, DEFAULTS } from '../lib/menubar-view.js';
+import { currentPet } from './pet.js';
 
 /**
  * Ánh sáng ĐANG CHỐT trong `.mb-wrap` ở styles.css. Chép lại đây vì bàn chỉnh cần biết
@@ -97,7 +98,10 @@ const CONTROLS = [
     label: 'Khung cảnh + quản gia',
     opts: [
       [true, 'có — ngủ gật khi đang bỏ phí, mở mắt khi bám đích'],
-      [false, 'không — tiết kiệm ~90px'],
+      // Tắt chỉ bỏ BỨC TRANH và dải trò chơi; câu hạn mức ở lại vì nó đã dọn xuống nửa
+      // dưới (xem `saying` trong lib/menubar-view.js). Trước đây nó nằm trong khung cảnh
+      // nên tắt hero là mất luôn câu ấy — một công tắc bố cục lặng lẽ gỡ mất một con số.
+      [false, 'không — tiết kiệm ~130px, câu hạn mức vẫn còn'],
     ],
   },
   {
@@ -316,7 +320,7 @@ export function renderBench(s) {
       <!-- Dải giả lập thanh menu: popover thật luôn treo dưới một dải tối/sáng cỡ này,
            và mấy quyết định về tương phản chỉ đúng khi nhìn cùng cái nền ấy. -->
       <div class="mbd-bar"><span class="mbd-item">CLAUDE<br /><b>6%·37%</b></span></div>
-      <div class="mbd-pop" style="width:${opts.width}px">${popoverView(s, opts)}</div>
+      <div class="mbd-pop" style="width:${opts.width}px">${popoverView(s, { ...opts, pet: currentPet() })}</div>
       <div class="mbd-meas" id="mbd-meas">—</div>
     </div>
 

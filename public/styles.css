@@ -1829,26 +1829,45 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
    nó ngủ gật đúng lúc tiền nằm không (băng crit/warn), mở mắt khi nhịp đã bám đích.
    Hình dáng là kênh thứ hai bên cạnh sắc — theme daltonized không được dựa vào mỗi
    một khác biệt màu. Tắt được bằng `hero: false` trong DEFAULTS. */
-.mb-scene { display: flex; flex-direction: column; gap: 8px; }
+.mb-scene { display: block; }
+/* MỘT cái khung ôm cả bức tranh lẫn dải chân trò chơi. Viền và bo góc dọn từ `.mb-sky`
+   sang đây, nên hai thứ bên trong không còn là hai khối rời cách nhau 8px — chúng là một
+   vật, và cái viền nói điều đó rẻ hơn bất kỳ cái nhãn nào.
+   `overflow: hidden` để góc bo cắt được cả hai lớp con; `.mb-sky` vẫn giữ overflow riêng
+   của nó vì đồ trang trí phải bị cắt theo mép TRANH, không theo mép khung. */
+.mb-stage {
+  border-radius: var(--r-sm, 8px); overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--skin) 26%, transparent);
+}
 /* Khung trời luôn là trời chiều, kể cả ở theme sáng: nó là một BỨC TRANH lồng trong
    giao diện, giống ảnh bìa — không phải một mảng nền phải lật theo theme. Lật theo
-   thì bản sáng mất sạch sao và mặt trời không còn gì để nổi lên. */
+   thì bản sáng mất sạch sao và mặt trời không còn gì để nổi lên.
+
+   94px chứ không phải 74px. Chỗ thêm ra lấy từ mấy cái thanh hạn mức bên dưới (xem
+   `.mb-wins`), không phải cộng thêm vào chiều cao popover — popover chỉ ngắn đi. Nó về
+   đúng chỗ cần: dây cờ ở mép trên và quả bóng bay từng chen sát đỉnh đầu quản gia, ba
+   vật dính thành một cụm ở đúng một dải 20px. */
 .mb-sky {
-  position: relative; height: 74px; border-radius: var(--r-sm, 8px); overflow: hidden;
+  position: relative; height: 94px; overflow: hidden;
   background:
     radial-gradient(34px 30px at 8% 31%, color-mix(in srgb, var(--lux) var(--halo), transparent) 0%, transparent 70%),
     radial-gradient(48px 42px at 50% 62%, color-mix(in srgb, var(--skin) 24%, transparent) 0%, transparent 74%),
     radial-gradient(150% 96% at 16% 118%, color-mix(in srgb, var(--lux) calc(var(--halo) * 0.62), transparent) 0%, transparent 60%),
     linear-gradient(180deg, var(--sky-a) 0%, var(--sky-b) 66%, var(--sky-c) 100%);
-  border: 1px solid color-mix(in srgb, var(--skin) 26%, transparent);
 }
 /* Sắc của băng đổ vào một biến riêng rồi mới dùng, để chấm nhịp và chữ "z" lấy từ MỘT
-   chỗ — hai chỗ tự đặt màu là hai chỗ sẽ trôi khỏi nhau. */
-.mb-scene { --tone-c: var(--later); }
-.mb-scene.tone-crit { --tone-c: var(--crit); }
-.mb-scene.tone-warn { --tone-c: var(--warn); }
-.mb-scene.tone-ok { --tone-c: var(--ok); }
-.mb-scene.tone-cheer { --tone-c: var(--cheer); }
+   chỗ — hai chỗ tự đặt màu là hai chỗ sẽ trôi khỏi nhau.
+
+   Khai theo CLASS BĂNG chứ không theo tên khối. Bảng này từng gắn cứng vào `.mb-scene`,
+   và nó đứt ngay lần đầu có khối mang băng dọn sang chỗ khác: câu hạn mức xuống nửa dưới
+   là chấm nhịp của nó mất màu. Khoanh trong `.mb-wrap` để nó không rơi vào mấy `.tone-*`
+   của màn web — ở đó không ai đọc `--tone-c`, nhưng một biến vãi khắp trang là một biến
+   sẽ bị ai đó dùng nhầm. */
+.mb-scene, .mb-say { --tone-c: var(--later); }
+.mb-wrap .tone-crit { --tone-c: var(--crit); }
+.mb-wrap .tone-warn { --tone-c: var(--warn); }
+.mb-wrap .tone-ok { --tone-c: var(--ok); }
+.mb-wrap .tone-cheer { --tone-c: var(--cheer); }
 
 .mb-star { position: absolute; width: 2px; height: 2px; background: #ffeedc; opacity: var(--star); }
 /* Vài ngôi to hơn để trời không thành lưới chấm đều. Chọn theo vị trí trong danh sách,
@@ -1962,12 +1981,17 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
    người đọc phải bấm mới biết bên kia có gì, mà cái popover này mở ra để liếc. */
 .mb-tab b { font-family: var(--mono); font-weight: 700; color: var(--crit); }
 .mb-tab.on b { color: var(--crit); }
-.mb-tabbody, .mb-agents { display: flex; flex-direction: column; gap: 11px; }
+/* NỬA DƯỚI: câu hạn mức, hàng tab, rồi ruột tab. Ba thứ này dính nhau chặt hơn khoảng
+   cách 11px của `.mb-wrap` — chúng là một mạch (đang thế nào → xem theo cách nào → nội
+   dung), còn 11px là khoảng ngăn nửa trên với nửa dưới. Không có khối này thì câu hạn mức
+   trôi lơ lửng giữa hai nửa, không thuộc về bên nào. */
+.mb-data { display: flex; flex-direction: column; gap: 9px; }
+.mb-tabbody, .mb-agents { display: flex; flex-direction: column; gap: 9px; }
 
 /* Tab Token: ba công cụ, mỗi công cụ một khối có tên. Tên đứng riêng một hàng có kẻ
    ngang vì ba khối này là ba SỔ KHÁC NHAU — trộn thẳng mười mấy cái thanh vào một cột
    thì "7 ngày" của Claude và "tuần" của Antigravity đọc thành cùng một cửa sổ. */
-.mb-agent { display: flex; flex-direction: column; gap: 10px; }
+.mb-agent { display: flex; flex-direction: column; gap: 7px; }
 .mb-agent-h { display: flex; align-items: center; gap: 8px; }
 .mb-agent-n { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
 .mb-agent-h .rule { flex: 1; height: 1px; background: var(--border); }
@@ -2030,11 +2054,22 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
 .mb-eyebrow-k { font-size: 10px; letter-spacing: 0.06em; color: var(--text-3); white-space: nowrap; }
 .mb-eyebrow .rule { flex: 1; height: 1px; background: var(--border); }
 
-.mb-wins { display: flex; flex-direction: column; gap: 13px; }
+/* Khoảng giữa hai cửa sổ: 8px, không phải 13px.
+   Con số đọc ra thấp hơn thực tế vì mỗi cái thanh còn cõng sẵn `--pad` dưới thân nó, nên
+   khoảng TRÔNG THẤY giữa hai cửa sổ là `--pad` cộng cái gap này. Ở bản 13px nó thành 19px
+   — đúng bằng khoảng đang ngăn hai LOẠI nội dung khác nhau (việc đáng làm với hạn mức),
+   nên ba cửa sổ của cùng một sổ đọc thành ba khối rời. Chỗ 10px lấy lại được đổ hết vào
+   bức tranh ở nửa trên. */
+.mb-wins { display: flex; flex-direction: column; gap: 8px; }
+/* `--pad` là chỗ chừa cho nhãn NẰM DƯỚI thanh, mà popover thì gọi `quotaBar` với
+   `pace: false` và `est: 'mid'` — không mốc đều, không nhãn dự phóng rời, nên dưới thân
+   thanh không có gì cả. Rút còn 3px là bỏ đi khoảng trống không chở gì, không phải bóp
+   một khoảng đang có việc. Bản `.lab` (15px) vẫn nguyên cho chỗ thật sự có nhãn. */
+.mb-win .qbar { --pad: 3px; }
 /* Hàng đầu chia HAI CỰC: tên và mấy thứ phụ dồn trái, con số đã tiêu đứng riêng ở lề
    phải. Bản trước xếp cả bốn thứ chảy từ trái sang, nên mắt phải quét hết hàng mới gặp
    con số — mà đó là thứ duy nhất trong hàng người ta mở popover ra để xem. */
-.mb-win-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 11.5px; margin-bottom: 5px; }
+.mb-win-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 11.5px; margin-bottom: 3px; }
 .mb-win-lead { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
 .mb-win-meta { font-size: 10.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mb-win-name { color: var(--text-2); }
@@ -2144,3 +2179,153 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
 .mbd-chips .mbd-opt { margin-bottom: 0; padding: 5px 10px; }
 .mbd-chips .mbd-opt input { display: none; }
 .mbd-code { font-family: var(--mono); font-size: 11px; line-height: 1.6; background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px; padding: 10px; white-space: pre-wrap; word-break: break-all; }
+
+/* ── Quản gia nuôi được: đồ ăn, đồ trang trí, cửa hàng ────────────────────────
+
+   Bảng màu của đồ vật đứng RIÊNG, không lấy token giao diện.
+
+   Lý do là luật `d-theme`: không dòng CSS component nào được biết mình đang ở nền nào.
+   Mấy cái sprite này lách được luật ấy chứ không phạm nó — chúng luôn đứng trên cùng
+   một mặt, đúng cái mặt mà `.mb-sky` đã tự khai là "một BỨC TRANH lồng trong giao diện,
+   không phải một mảng nền phải lật theo theme". Nên cửa hàng cũng dựng đúng cái mặt ấy
+   dưới mỗi món (`.shop-art`): một cái ly gốm trắng ngà thì ở popover hay ở cửa hàng cũng
+   phải là một cái ly, không phải hai vật khác màu.
+
+   Đổi lại, không món nào được mượn màu BĂNG (`--crit`/`--warn`/`--ok`/`--cheer`). Bốn màu
+   ấy đang chở nghĩa "bỏ phí bao nhiêu" ở mấy cái thanh ngay bên trên; một cái nơ đỏ dưới
+   một cái thanh đỏ là mời người đọc ghép hai thứ không liên quan. */
+.pet-art {
+  --art-base: #f2e7d5;
+  --art-ink: #4a2c17;
+  --art-broth: #c98b45;
+  --art-foam: #fff6e0;
+  --art-leaf: #56b374;
+  --art-plum: #a04a9e;
+  --art-gold: #f0b429;
+  position: relative; display: block;
+}
+/* Đè cả `.mb-scene .px` (cùng độ đặc hiệu, nhưng nó nằm trước trong file) BẰNG một
+   selector đặc hiệu hơn hẳn — không dựa vào thứ tự dòng, vì thứ tự dòng là thứ lần
+   refactor sau sẽ đổi mà không ai nhớ ra là nó đang chở nghĩa. */
+.pet-art .px, .mb-scene .pet-art .px { background: var(--art-base); }
+.pet-art .px.ink, .mb-scene .pet-art .px.ink { background: var(--art-ink); }
+.pet-art .px.broth, .mb-scene .pet-art .px.broth { background: var(--art-broth); }
+.pet-art .px.foam, .mb-scene .pet-art .px.foam { background: var(--art-foam); }
+.pet-art .px.leaf, .mb-scene .pet-art .px.leaf { background: var(--art-leaf); }
+.pet-art .px.plum, .mb-scene .pet-art .px.plum { background: var(--art-plum); }
+.pet-art .px.gold, .mb-scene .pet-art .px.gold { background: var(--art-gold); }
+.pet-art .px.steam, .mb-scene .pet-art .px.steam { background: rgb(255 255 255 / 0.45); }
+
+/* Chỗ đứng trong khung trời. Bóng đổ giống hệt quản gia — cùng một mặt trời trên-trái,
+   nên một vật không đổ bóng đứng cạnh một vật có bóng sẽ đọc thành vật dán thêm. */
+/* Chỗ đứng chỉ khai NEO, không khai kích thước: `itemArt` đã đặt bề rộng thật lên
+   `.pet-art` từ chính cái lưới sprite, nên mấy chỗ này co theo nội dung và
+   `translateX(-50%)` căn đúng. Chép lại kích thước ở đây là dựng bản thứ hai của một con
+   số — sửa sprite một dòng là hai bản lệch nhau ngay. */
+.pet-slot { position: absolute; filter: drop-shadow(2px 2px 0 rgb(10 6 24 / 0.42)); }
+.slot-back { left: 50%; bottom: 4px; transform: translateX(-50%); opacity: 0.85; }
+.slot-top { left: 50%; top: 2px; transform: translateX(-50%); }
+.slot-left { left: 8px; bottom: 2px; }
+.slot-right { right: 8px; bottom: 2px; }
+/* Chừa 58px chứ không phải 48px: đám mây đứng ở `right: 15px` và rộng 36px, nên ở mốc cũ
+   quả bóng dính ngay cạnh nó và hai vật đọc thành một cụm. */
+.slot-air { right: 58px; top: 5px; animation: mb-float 3.4s ease-in-out infinite; }
+/* Nón nằm TRONG `.mb-sprite` nên toạ độ của nó là toạ độ trong khung 64×64 của quản gia,
+   không phải trong khung trời — xem chú thích của SLOT trong lib/menubar-view.js.
+
+   `-5px`, không phải `-13px`. Thân quản gia dùng TRỌN 16 hàng của khung 64px và khung ấy
+   ngồi ở `bottom: 3px` trong một bầu trời cao 74px, nên đỉnh đầu đã ở sát mép trên (y=7)
+   — mà `.mb-sky` thì `overflow: hidden`. Đội nón cao hơn 7px là nón bị CẮT MẤT, và bản
+   đầu mất trắng: mua 70 xu xong không thấy gì. Nên nón trùm lên nửa trên cái đầu thay vì
+   đứng hẳn bên trên. Nó vẽ SAU dây cờ nên chỗ giao nhau đọc thành nón che dây, đúng lớp. */
+.slot-head { left: 50%; top: -5px; transform: translateX(-50%); filter: none; }
+.slot-meal { left: calc(50% + 30px); bottom: 4px; }
+
+/* ── Thanh đói ─────────────────────────────────────────────────────────────────
+
+   MỘT sắc cố định, không đổi màu theo mức. Đây không phải sự tiết kiệm mà là điều kiện
+   để nó được đứng ngay dưới mấy cái thanh hạn mức: bốn màu băng ở trên đang chở nghĩa
+   "bỏ phí bao nhiêu", và một cái thanh thứ hai chạy qua đúng bốn màu ấy với một nghĩa
+   khác thì hai thang trộn vào nhau trong đầu người đọc.
+
+   Chiều dài đã là con số rồi. Cái duy nhất thêm vào là NHỊP ĐẬP lúc đói lả — chuyển động
+   là kênh mà mấy cái thanh kia không dùng, nên nó không tranh chỗ với gì cả. */
+.pet-bar { display: block; width: 100%; height: 6px; border-radius: 99px; overflow: hidden; background: var(--surface-3, rgb(128 128 128 / 0.22)); }
+.pet-bar i { display: block; height: 100%; border-radius: 99px; background: var(--art-leaf, #56b374); transition: width 0.35s ease; }
+.pet-bar { --art-leaf: #56b374; }
+.pet-bar.mood-starving i { animation: pet-pulse 1.5s ease-in-out infinite; }
+@keyframes pet-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* DẢI CHÂN của khung cảnh: thanh đói + ví, một dòng, bấm vào là sang cửa hàng.
+   Nó nằm trong `.mb-stage`, dưới bức tranh, chung một cái viền — cơn đói và cái ví là
+   trạng thái của chính con vật vừa vẽ, nên chúng không được là một hàng rời.
+
+   Nền lấy TOKEN GIAO DIỆN chứ không lấy màu trời. Bức tranh ngay trên được phép cố định
+   màu vì nó tự khai mình là tranh; dải này thì chở CHỮ, mà chữ trên một nền tối cố định
+   là chữ chỉ đọc được ở một theme — đúng chỗ luật `d-theme` cấm.
+   Rê chuột thì sáng bằng `--accent-weak`, không phải `--surface-3`: `--surface-3` chính
+   là màu rãnh thanh đói, nên phần rãnh trống sẽ biến mất đúng lúc con trỏ chỉ vào nó. */
+.mb-pet {
+  display: flex; align-items: center; gap: 9px; text-decoration: none;
+  padding: 6px 10px; background: var(--surface-2);
+  border-top: 1px solid color-mix(in srgb, var(--skin) 20%, transparent);
+}
+.mb-pet:hover { background: var(--accent-weak); }
+.mb-pet .pet-bar { flex: 1; }
+.mb-pet-coins { flex: none; font: 600 11px var(--mono); color: var(--text-3); }
+.mb-pet:hover .mb-pet-coins { color: var(--text); }
+
+/* ── Màn Cửa hàng ─────────────────────────────────────────────────────────── */
+.shop { max-width: 760px; }
+.shop-top { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.shop-wallet, .shop-hunger {
+  flex: 1 1 220px; padding: 11px 14px 13px; border-radius: var(--r-sm);
+  background: var(--panel); border: 1px solid var(--line-soft); box-shadow: var(--shadow-sm);
+}
+.shop-wallet .v { display: block; margin-top: 5px; font: 800 26px/1 var(--mono); color: var(--accent-ink, var(--accent)); }
+/* Câu tỉ giá KHÔNG được thu nhỏ tới mức thành chú thích chân trang. Nó là chỗ duy nhất
+   nối đồng xu với hoá đơn thật; giấu nó đi là đúng cái làm thanh XP cũ thành lời nói dối. */
+.shop-why { margin: 7px 0 0; font: 400 11.5px/1.5 var(--sans); color: var(--text-3); }
+.shop-hunger .pet-bar { margin-top: 8px; }
+.shop-mood { margin: 8px 0 0; font: 500 12.5px var(--sans); color: var(--text-2); }
+.shop-err { margin: 0 0 14px; padding: 8px 12px; border-radius: var(--r-sm); font: 500 12.5px var(--sans); color: var(--now, var(--text)); background: var(--surface-2); border: 1px solid var(--line-soft); }
+
+.shop-sec { margin-bottom: 22px; }
+.shop-sec h2 { margin: 0 0 3px; font: 700 15px var(--sans); }
+.shop-hint { margin: 0 0 11px; font: 400 12px var(--sans); color: var(--text-3); }
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; }
+
+.shop-item {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 10px 8px 11px; border-radius: var(--r-sm); cursor: pointer;
+  background: var(--panel); border: 1px solid var(--line-soft);
+  font: inherit; color: inherit; text-align: center;
+  transition: border-color 0.12s, transform 0.08s;
+}
+.shop-item:hover:not(:disabled) { border-color: var(--accent); }
+.shop-item:active:not(:disabled) { transform: translateY(1px); }
+.shop-item:disabled { cursor: default; opacity: 0.62; }
+/* Thiếu tiền thì vẫn BẤM ĐƯỢC, chỉ mờ đi và tooltip nói còn thiếu bao nhiêu. Chặn cứng
+   thì người ta không biết mình đang cách món đó bao xa — mà đó chính là thứ làm cái giá
+   có nghĩa. */
+.shop-item.poor .shop-price { color: var(--text-3); }
+.shop-item.owned { border-style: dashed; }
+
+/* Bệ đặt món: dựng lại đúng mặt của khung trời popover, để một món ở hai nơi vẫn là một
+   món. Cố định qua cả hai theme — nó là tranh, không phải nền. */
+.shop-art {
+  display: flex; align-items: flex-end; justify-content: center;
+  width: 100%; height: 46px; border-radius: 6px; padding-bottom: 4px;
+  background: linear-gradient(180deg, #2a1b4d 0%, #48294c 100%);
+  border: 1px solid rgb(167 139 250 / 0.26);
+}
+/* `overflow: hidden` vì dây cờ rộng 76px còn ô hàng thì hẹp hơn thế ở màn nhỏ. Cắt gọn
+   trong bệ đọc ra "cái dây còn dài nữa"; tràn ra ngoài đọc ra bố cục vỡ. */
+.shop-art { overflow: hidden; }
+.shop-art .pet-art { flex: none; filter: drop-shadow(2px 2px 0 rgb(10 6 24 / 0.42)); }
+.shop-name { font: 600 12.5px var(--sans); }
+.shop-price { font: 700 12px var(--mono); color: var(--accent-ink, var(--accent)); }
+.shop-fill { font: 500 10.5px var(--mono); color: var(--text-3); }
+
+.shop-foot { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-top: 6px; border-top: 1px solid var(--line-soft); }
+.shop-tally { flex: 1; font: 500 11.5px var(--mono); color: var(--text-3); }

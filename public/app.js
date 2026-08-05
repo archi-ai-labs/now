@@ -16,6 +16,7 @@ import { renderStats } from './views/stats.js';
 import { renderUsage } from './views/usage.js';
 import { renderLookback } from './views/lookback.js';
 import { renderBench, initBench } from './views/bench.js';
+import { renderPet, initPet } from './views/pet.js';
 
 // Nhãn và tiêu đề giữ dưới dạng KHOÁ i18n rồi dịch lúc vẽ — không phải chuỗi cố định,
 // vì cả VIEWS được dựng một lần lúc nạp module còn ngôn ngữ thì đổi được giữa chừng.
@@ -41,6 +42,14 @@ const VIEWS = {
   // đường nào trên dashboard trỏ tới — và một công cụ phải nhớ URL mới mở được thì lần
   // sau cần đến sẽ tìm không ra. Đó đúng là chuyện đã xảy ra.
   bench: { icon: '⚙', labelKey: 'nav.bench', titleKey: 'title.bench', render: renderBench },
+  // Cửa hàng đứng CUỐI CÙNG, sau cả bàn chỉnh. Nó không nói gì về hôm nay và cũng không
+  // sửa được gì — nó là chỗ tiêu xu, và chỗ ấy phải xa mấy màn số liệu nhất có thể.
+  //
+  // Chốt `d-game` gỡ lớp trò chơi ra khỏi mặt số liệu, và luật ấy VẪN ĐỨNG. Cái đổi là
+  // trò chơi được có nhà riêng, không phải được quay lại ngồi lẫn: không một thẻ hạn mức
+  // nào mọc thêm huy hiệu, không một con số thật nào bị dán nhãn mới. Lý do đầy đủ ở khối
+  // đầu `src/pet.js`.
+  pet: { icon: '☘', labelKey: 'nav.pet', titleKey: 'title.pet', render: renderPet },
 };
 const ORDER = Object.keys(VIEWS);
 
@@ -1361,6 +1370,9 @@ window.addEventListener('hashchange', () => {
 // ở đây — nó còn chạy cả trong trang lẻ `/menubar-demo.html`, nơi không có `app.js` nào
 // cả. Nên chỗ CHỦ đưa cách vẽ của mình vào, và bàn chỉnh không biết mình đang ở nhà ai.
 initBench(render);
+// Cùng lý do: cửa hàng giữ sổ riêng (không nằm trong `app.state`) nên mua xong nó phải tự
+// gọi vẽ lại, mà nó thì không được biết mình đang ở nhà ai.
+initPet(render);
 
 connect();
 render();

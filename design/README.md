@@ -284,3 +284,49 @@ sentence change.
 **Kept:** the consecutive-day streak, items finished in 7 days, the board-freshness bar,
 and the "one sentence + one button" summary block — just now stated in words instead of
 performed.
+
+#### Amendment 2026-08-05 — `d-pet`: the game comes back, but with its OWN HOUSE
+
+A real game layer now exists: the butler can be fed, has a coin wallet, and has a shop
+(`src/pet.js`, `public/views/pet.js`). That sounds like a reversal of `d-game`, but the
+underlying principle is **unchanged word for word** — what changed is where it stands.
+
+`d-game` never banned games. It banned **a fabricated number standing next to a real one
+and looking just like a measurement**. Three conditions preserve that, and all three are
+load-bearing:
+
+1. **There is no weight left to fabricate.** The rate is `1 coin = $1` of estimated spend.
+   Not a coefficient picked because it "felt right" — it is the dollar figure itself under
+   another name. That is the sharp difference from `items×25 + streak×30`.
+2. **A coin does not pretend to measure anything.** A rank of `S` tells the reader they
+   have been GRADED; a creature eating a bowl of phở is not mistaken for data. Hunger is
+   measurable too: it is the difference between two clock readings, not a bar that drains
+   by house rules.
+3. **It never stands on a data surface.** The shop is the LAST screen in the nav, after
+   even the bench. No quota card grows a badge, no real number gets a new label. The
+   character lives in the popover — a surface that already declared itself a picture.
+
+Two guardrails come with it, on the same reasoning as `d-theme`:
+- Objects **may not borrow the band colours** (`--crit`/`--warn`/`--ok`/`--cheer`). Those
+  four already carry "how much is being wasted" on the bars directly above.
+- The fullness bar uses **one fixed hue** and never runs through that scale. Its length is
+  already the number; recolouring by level would only blend two scales in the reader's head.
+
+And it *agrees* with the original argument rather than fighting it: rule 1 of `CLAUDE.md`
+— *spending it all is the TARGET*. Prepaid quota does not roll over, so whatever is unused
+at reset evaporates. Rewarding money already spent rewards exactly the behaviour this
+project already encourages; it introduces no new incentive.
+
+There is an off switch, defaulting to on.
+
+**Fixed the same day, after looking at it:** condition 3 held at the screen level and broke
+at the layout level. The quota sentence — the one real number in the block — sat **wedged
+between** the picture and the fullness bar, so the game wrapped around the data instead of
+standing beside it. Picture + fullness bar + wallet are now ONE bordered frame, and the
+quota sentence moved down to open the lower half, directly above the tab row. The tabs moved
+too: they used to sit ABOVE the scene, where they lied — the scene does not change with the
+tab.
+
+The room for the frame came out of the slack between the quota bars (13px → 8px, plus the
+`--pad` under each bar reserved for labels the popover never draws), **not out of added
+height**: the picture grew 20px while the whole window got 7px shorter.

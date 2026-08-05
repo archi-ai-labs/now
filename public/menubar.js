@@ -33,11 +33,31 @@ function readTab() {
 }
 
 let state = null;
+let pet = null;
 let tab = readTab();
 
 function render() {
-  mount(root, popoverView(state, { tab }));
+  mount(root, popoverView(state, { tab, pet }));
   reportSize();
+}
+
+/**
+ * Sổ quản gia — lượt hỏi RIÊNG, chạy song song với lượt hỏi trạng thái.
+ *
+ * Không đi nhờ `/api/state` vì bản ấy có cache 30 giây: mua xong quay lại popover mà ví
+ * vẫn hiện số cũ thì cú bấm trông như trượt. Và không `await` chung với nó: sổ hỏng hay
+ * server bản cũ không có endpoint này thì popover vẫn phải vẽ đủ mọi thứ còn lại —
+ * `pet` để `null` là khung cảnh y như trước khi có trò chơi.
+ */
+async function loadPet() {
+  try {
+    const res = await fetch('/api/pet');
+    if (!res.ok) return;
+    pet = (await res.json()).pet ?? null;
+    if (state) render();
+  } catch {
+    /* không có sổ thì thôi — khung cảnh không phụ thuộc vào nó */
+  }
 }
 
 /**
@@ -118,3 +138,4 @@ async function load() {
 }
 
 load();
+loadPet();

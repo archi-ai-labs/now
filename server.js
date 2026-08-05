@@ -8,6 +8,7 @@ import { execFile } from 'node:child_process';
 import { PORT, SESSIONS_DIR, TASKS_DIR } from './src/config.js';
 import { buildState } from './src/state.js';
 import { badgeOf } from './src/badge.js';
+import { accrue, buy, emptyLedger, petView, readLedger, writeLedger, ITEMS } from './src/pet.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(ROOT, 'public');
@@ -254,6 +255,108 @@ function menubar(res, on) {
   });
 }
 
+/* ── Quản gia nuôi được ───────────────────────────────────────────────────────
+   Endpoint RIÊNG, không nhét vào `/api/state`. Lý do là cái cache 30 giây ngay trên:
+   mua xong mà ví vẫn hiện số cũ tới nửa phút thì cú bấm trông như trượt, và người ta
+   bấm lần hai. Sổ này bé (≈1KB) nên một lượt hỏi riêng rẻ hơn hẳn việc phá cache của
+   một payload 300KB. */
+
+/**
+ * Ngày ĐỊA PHƯƠNG hôm nay, cùng dạng khoá với `series` của sổ token.
+ *
+ * Phải trùng cách `collect/usage.js` cắt ngày (`localDay`), nếu không thì máy ở UTC+7
+ * sẽ cộng tiền của "hôm nay" vào một khoá không ngày nào có, và ví đứng yên.
+ */
+function todayLocal(d = new Date()) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/**
+ * Nối đuôi mọi lượt đọc-sửa-ghi sổ.
+ *
+ * Hai cú bấm mua gần nhau đi qua hai request song song; cả hai đọc ví 100 xu, cả hai
+ * trừ 70, và người mua được hai cái mũ bằng tiền một cái. Sổ này quá bé để đáng một cơ
+ * chế khoá tử tế — một hàng đợi promise là đủ, vì mọi đường vào sổ đều đi qua đây.
+ */
+let petQueue = Promise.resolve();
+const petLock = (fn) => (petQueue = petQueue.then(fn, fn));
+
+/**
+ * Đọc sổ, cộng phần tiền chưa cộng, rồi (tuỳ chọn) làm một việc lên nó.
+ *
+ * Cộng tiền chạy ở MỌI lượt kể cả lượt chỉ đọc: nguồn tiền là sổ token, mà sổ token thì
+ * cập nhật theo lượt quét chứ không theo cú bấm. Không cộng lúc đọc thì ví chỉ nhúc nhích
+ * khi người ta mua gì đó — đúng lúc họ đang thiếu tiền.
+ */
+async function withPet(action) {
+  const state = await getState({ watched: false });
+  const series = state.usage?.ok ? (state.usage.series ?? []) : [];
+  const today = todayLocal();
+
+  let ledger = await readLedger();
+  const fresh = !ledger;
+  // `emptyLedger` rồi `accrue` NGAY, không phải một trong hai. Sổ mới đánh dấu mọi ngày
+  // cũ là đã cộng và để hôm nay ở 0; chính lượt `accrue` liền sau mới biến hôm nay thành
+  // xu. Tách hai nhánh loại trừ nhau thì lần mở đầu tiên ví rỗng dù hôm nay đã tiêu $50,
+  // và nó chỉ tự đúng ở lượt hỏi sau — một cái ví sai trong đúng lần người ta nhìn kỹ nhất.
+  if (fresh) ledger = emptyLedger(series, today);
+  // Sổ token lỗi thì `series` rỗng và `accrue` không cộng gì — đúng như vậy. Đoán bừa
+  // một khoản tiền lúc không đọc được hoá đơn là kiểu bịa mà cả file `pet.js` tránh.
+  if (series.length) ledger = accrue(ledger, series, today);
+
+  const out = action ? action(ledger) : { ledger, error: null };
+  if (out.ledger !== ledger || fresh) await writeLedger(out.ledger);
+  return { view: petView(out.ledger), error: out.error ?? null };
+}
+
+function petHandler(req, res, url) {
+  if (req.method === 'GET') {
+    return petLock(async () => {
+      try {
+        const { view } = await withPet(null);
+        return json(res, 200, { ok: true, pet: view });
+      } catch (err) {
+        return json(res, 500, { error: err.message });
+      }
+    });
+  }
+  if (req.method !== 'POST') return json(res, 405, { error: 'chỉ GET hoặc POST' });
+
+  let body = '';
+  req.on('data', (c) => {
+    body += c;
+    if (body.length > 512) req.destroy();
+  });
+  req.on('end', () =>
+    petLock(async () => {
+      try {
+        const { action, id, on } = JSON.parse(body);
+        // Chỉ ba việc, và mỗi việc kiểm kiểu ngay tại cửa. `id` không bao giờ được dùng
+        // để tra một đường dẫn hay dựng một lệnh — nó chỉ tra vào `ITEMS`, một bảng
+        // đóng — nên phép kiểm này là toàn bộ hàng rào cần có.
+        if (action === 'buy') {
+          if (typeof id !== 'string' || !Object.hasOwn(ITEMS, id)) {
+            return json(res, 400, { error: 'mã món không hợp lệ' });
+          }
+          const { view, error } = await withPet((l) => buy(l, id));
+          // Thiếu tiền hay đã có rồi là câu trả lời BÌNH THƯỜNG của một cửa hàng, không
+          // phải lỗi hệ thống — nên vẫn 200 và vẫn trả ví mới nhất về để màn hình đúng.
+          return json(res, 200, { ok: !error, error, pet: view });
+        }
+        if (action === 'toggle') {
+          if (typeof on !== 'boolean') return json(res, 400, { error: 'cần {on: true|false}' });
+          const { view } = await withPet((l) => ({ ledger: { ...l, on }, error: null }));
+          return json(res, 200, { ok: true, pet: view });
+        }
+        return json(res, 400, { error: 'action phải là buy hoặc toggle' });
+      } catch (err) {
+        return json(res, 400, { error: err.message });
+      }
+    }),
+  );
+}
+
 async function openPath(res, target, app) {
   const state = await getState();
   const known = new Set([
@@ -353,6 +456,10 @@ async function handle(req, res) {
       return;
     }
     return json(res, 405, { error: 'chỉ GET hoặc POST' });
+  }
+
+  if (url.pathname === '/api/pet') {
+    return petHandler(req, res, url);
   }
 
   if (url.pathname === '/api/open' && req.method === 'POST') {

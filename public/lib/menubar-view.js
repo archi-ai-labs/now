@@ -12,6 +12,8 @@
  */
 import { html, ago } from './dom.js';
 import { t } from './i18n.js';
+import { pixels } from './pixel.js';
+import { itemArt, hungerBar } from './pet.js';
 import { briefing, toolWindows } from './butler.js';
 import {
   windowsOf,
@@ -147,34 +149,6 @@ const STARS = [
   [19, 41], [30, 54], [70, 49], [97, 55], [9, 62],
 ];
 
-/**
- * Nguồn sáng ở TRÊN-TRÁI, đúng chỗ mặt trời đang đứng trong khung.
- *
- * Sắc độ của mỗi ô suy ra từ chính hình, không phải từ một bản đồ bóng chép tay: khuyết
- * ô chéo phía mặt trời thì ô ấy là cạnh hứng nắng, khuyết ô chéo phía đối diện thì nó là
- * cạnh khuất, còn lại là thân. Sửa hình một dòng là bóng tự đi theo — bản chép tay thì
- * lần sửa thứ hai đã lệch.
- */
-function shadeOf(rows, x, y) {
-  const at = (xx, yy) => (((rows[yy] ?? '')[xx]) ?? '.') !== '.';
-  if (!at(x - 1, y - 1)) return 'rim';
-  if (!at(x + 1, y + 1)) return 'shade';
-  return '';
-}
-
-/** Một sprite → một mớ ô 4px đặt tuyệt đối. `chars` gán class riêng cho ký tự đặc biệt;
- *  ký tự không có trong đó thì lấy sắc độ theo hướng nắng. */
-function pixels(rows, chars = {}, shaded = true) {
-  return rows.map(
-    (row, y) => html`${[...row].map((c, x) =>
-      c === '.'
-        ? ''
-        : html`<i class="px ${chars[c] ?? (shaded ? shadeOf(rows, x, y) : '')}"
-            style="left:${x * 4}px;top:${y * 4}px"></i>`,
-    )}`,
-  );
-}
-
 const BODY_CHARS = { ':': 'face', o: 'eye', O: 'eye spark', '-': 'eye shut', '*': 'tie' };
 
 export const TABS = ['work', 'token'];
@@ -183,8 +157,13 @@ export const TABS = ['work', 'token'];
 const WORK_TONE = { alert: 'crit', warn: 'warn', calm: 'ok', mute: 'later' };
 
 /**
- * Khung cảnh ở đầu popover: trời theo buổi, mặt trời hoặc mặt trăng, quản gia, và một
- * dòng trạng thái.
+ * NỬA TRÊN của popover: trời theo buổi, mặt trời hoặc mặt trăng, quản gia và đồ đạc của
+ * nó, rồi một dải chân mang thanh đói với cái ví.
+ *
+ * Trọn khối này là TRÒ CHƠI, và đó là luật của nó: không một con số hạn mức nào được lọt
+ * vào trong cái viền. Dòng trạng thái từng nằm ở đây và đã dọn xuống nửa dưới (xem
+ * `saying`) — nó là số thật, mà một số thật kẹp giữa hai nửa của một trò chơi thì người
+ * đọc phải tự tách chúng ra mỗi lần liếc.
  *
  * Khung cảnh KHÔNG đổi màu theo băng — nó là một bức tranh, và một bức tranh đổi màu
  * theo số liệu thì người xem nhớ màu chứ không nhớ số. Băng nói bằng ba chỗ giữ nguyên:
@@ -198,29 +177,106 @@ const WORK_TONE = { alert: 'crit', warn: 'warn', calm: 'ok', mute: 'later' };
  * phải xoay lại toàn bộ phép chấm sắc độ trong `shadeOf`, và một nhân vật đổi hướng đổ
  * bóng bốn lần một ngày là bốn lần người xem phải nhận lại cái hình.
  */
-function scene(s, b, phase) {
-  const bind = b.quota.binding;
-  const tone = bind?.tone ?? 'mute';
+/**
+ * Chỗ đứng của từng món trang trí trong khung trời.
+ *
+ * `head` nằm TRONG `.mb-sprite` chứ không nằm trong `.mb-sky`: cái mũ phải đi theo cái
+ * đầu, mà `.mb-sprite` là thứ duy nhất biết cái đầu đang ở đâu (nó căn `left:50%` rồi
+ * dịch lại một nửa). Đặt mũ vào bầu trời thì mỗi lần đổi bề rộng popover là mũ trượt
+ * khỏi đầu — và bề rộng thì bàn chỉnh vặn được.
+ */
+const SLOT = { rainbow: 'back', bunting: 'top', plant: 'left', cat: 'right', balloon: 'air' };
+
+/**
+ * Băng của cửa sổ đang quyết — MỘT chỗ suy ra, hai chỗ dùng.
+ *
+ * Mắt quản gia và chấm nhịp trước câu hạn mức đều đọc nó, mà từ lần chia đôi popover thì
+ * hai thứ ấy không còn chung một khối nữa: khung cảnh lên nửa trên, câu hạn mức xuống nửa
+ * dưới. Để mỗi bên tự lấy `b.quota.binding?.tone` là dựng hai bản của cùng một phép —
+ * sửa một bên xong thì hai bên nói khác nhau về đúng một cửa sổ.
+ */
+const toneOf = (b) => b.quota.binding?.tone ?? 'mute';
+
+function scene(b, phase, pet) {
+  const tone = toneOf(b);
   // Ngủ gật khi tiền nằm không. `crit` và `warn` là hai băng BỎ PHÍ; `ok`, `cheer`,
   // `over` là nhịp đã bám đích trở lên — lúc ấy quản gia đang làm việc.
   const dozing = tone === 'crit' || tone === 'warn' || tone === 'mute';
   const eyes = dozing ? EYES_SHUT : EYES_OPEN;
   const rows = BUTLER.map((r, i) => eyes[i - EYE_ROW] ?? r);
-  const say = bind ? forecastText(bind.w) : t('mb.noQuota');
   const night = phase === 'night';
+  // Trò chơi tắt, hoặc chưa hỏi được sổ → khung cảnh y như trước khi có nó. Không có
+  // nhánh nào bày một cái thanh rỗng hay một ô xám chờ dữ liệu: popover mở ra trong vài
+  // giây, và một chỗ trống đang chờ thì tệ hơn hẳn một chỗ không có gì.
+  const on = Boolean(pet?.on);
+  const owned = on ? pet.owned : [];
+  const deco = (slot) => owned.filter((id) => SLOT[id] === slot).map((id) => itemArt(id));
+
   return html`<div class="mb-scene tone-${tone}">
-    <div class="mb-sky">
-      ${STARS.map(([x, y]) => html`<i class="mb-star" style="left:${x}%;top:${y}%"></i>`)}
-      ${night
-        ? html`<div class="mb-moon">${pixels(MOON, { o: 'core' }, false)}</div>`
-        : html`<div class="mb-sun">${pixels(SUN, { o: 'core' }, false)}</div>`}
-      <div class="mb-cloud">${pixels(CLOUD, {}, false)}</div>
-      <div class="mb-sprite">
-        ${pixels(rows, BODY_CHARS)}
-        ${dozing ? html`<span class="mb-zzz">z</span>` : ''}
+    <!-- Bức tranh và hàng trò chơi nằm trong MỘT cái khung. Trước đây chúng là hai khối
+         rời cách nhau 8px, mà chen đúng vào giữa là câu hạn mức — một con số THẬT kẹp
+         giữa hai nửa của một trò chơi. Gộp lại thì cái khung trả lời trọn một câu hỏi
+         (con vật đang thế nào, mua được gì) và câu hạn mức dọn xuống nửa dưới, chỗ nó
+         thuộc về. Ranh giới giữa hai thế giới vì thế thành một cái viền, không còn là
+         một khoảng trống ai cũng đọc ra một kiểu. -->
+    <div class="mb-stage">
+      <div class="mb-sky">
+        ${STARS.map(([x, y]) => html`<i class="mb-star" style="left:${x}%;top:${y}%"></i>`)}
+        ${night
+          ? html`<div class="mb-moon">${pixels(MOON, { o: 'core' }, false)}</div>`
+          : html`<div class="mb-sun">${pixels(SUN, { o: 'core' }, false)}</div>`}
+        <div class="mb-cloud">${pixels(CLOUD, {}, false)}</div>
+        <!-- Cầu vồng vẽ TRƯỚC quản gia để nó nằm dưới; mấy chỗ còn lại vẽ sau. Thứ tự trong
+             DOM là toàn bộ thứ tự lớp ở đây, không có z-index nào — thêm z-index vào một
+             khung cảnh chỉ có sáu vật là dựng một hệ thứ hai để nói điều thứ tự đã nói. -->
+        ${deco('back').length ? html`<div class="pet-slot slot-back">${deco('back')}</div>` : ''}
+        ${deco('top').length ? html`<div class="pet-slot slot-top">${deco('top')}</div>` : ''}
+        <div class="mb-sprite">
+          ${pixels(rows, BODY_CHARS)}
+          ${deco('head').length || owned.includes('hat') ? html`<div class="pet-slot slot-head">${itemArt('hat')}</div>` : ''}
+          ${dozing ? html`<span class="mb-zzz">z</span>` : ''}
+        </div>
+        ${deco('left').length ? html`<div class="pet-slot slot-left">${deco('left')}</div>` : ''}
+        ${deco('right').length ? html`<div class="pet-slot slot-right">${deco('right')}</div>` : ''}
+        ${deco('air').length ? html`<div class="pet-slot slot-air">${deco('air')}</div>` : ''}
+        <!-- Món vừa ăn đứng cạnh nhân vật một lúc rồi biến mất (holding do server tính, xem
+             MEAL_SHOW_MS). Nó là phần thưởng cho cú bấm mua — không có nó thì mua đồ ăn chỉ
+             là một con số tụt đi và một cái thanh dài ra.
+             Chữ trần, không quote: backtick trong comment HTML nằm trong template literal
+             sẽ ĐÓNG LUÔN chuỗi — CLAUDE.md điều 3, và nó vừa lọt thêm một lần ở đây. -->
+        ${on && pet.holding ? html`<div class="pet-slot slot-meal">${itemArt(pet.holding)}</div>` : ''}
       </div>
+      <!-- Dải chân của khung: thanh đói và ví. Nó ở TRONG khung chứ không đứng dưới khung
+           vì cơn đói với cái ví là trạng thái của chính con vật vừa vẽ ở trên — tách ra
+           thành một hàng rời là bắt người đọc tự nối lại. Không con số hạn mức nào lọt
+           vào đây, và đó là điều kiện để cả cái khung được phép vui. -->
+      ${on
+        ? html`<a class="mb-pet mood-${pet.mood}" href="now://open?view=pet" title="${t('pet.openShop')}">
+            <!-- Viết trọn chữ "xu", không dùng ký hiệu. Bản đầu rút gọn thành một dấu nhân
+                 và "1002⨯" đọc thành một phép nhân dở dang chứ không đọc thành số tiền —
+                 mà chỗ này rộng tới 360pt, thừa sức chứa hai chữ. -->
+            ${hungerBar(pet)}<span class="mb-pet-coins">${t('pet.coins', { n: pet.coins })}</span>
+          </a>`
+        : ''}
     </div>
-    <div class="mb-say"><i class="mb-pulse"></i>${bind ? html`<b>${bind.short}</b> · ` : ''}${say}</div>
+  </div>`;
+}
+
+/**
+ * Câu của cửa sổ đang quyết — một dòng, mở đầu nửa dưới.
+ *
+ * Nó ĐÚNG như nhau ở cả hai tab, nên nó đứng trên hàng tab chứ không nằm trong tab nào:
+ * một câu lặp lại y hệt ở hai bên tab đọc thành nội dung của tab, và người ta sẽ đổi tab
+ * để xem nó có đổi không. Trước 5/8 nó nằm giữa khung cảnh, chỗ nó là con số thật duy
+ * nhất bị kẹp giữa hai nửa của một trò chơi.
+ *
+ * Chấm nhịp mang sắc băng và nó là kênh THỨ HAI của cùng cái băng mà mắt quản gia đang
+ * chở — hai kênh cho một tin, vì theme daltonized làm đỏ/lục hết phân biệt.
+ */
+function saying(b) {
+  const bind = b.quota.binding;
+  return html`<div class="mb-say tone-${toneOf(b)}">
+    <i class="mb-pulse"></i>${bind ? html`<b>${bind.short}</b> · ` : ''}${bind ? forecastText(bind.w) : t('mb.noQuota')}
   </div>`;
 }
 
@@ -435,20 +491,28 @@ export function popoverView(s, opts = {}) {
       </span>
     </div>
 
-    <!-- Tab, không phải hai khối xếp dọc: ba công cụ nhân với mấy cửa sổ mỗi cái là hơn
-         mười cái thanh, mà popover mở ra để LIẾC. Con số trên tab Việc là số việc đang
-         chờ — nhãn tab phải tự nói có gì bên trong, nếu không thì việc đổi tab thành
-         một canh bạc. -->
-    <div class="mb-tabs" role="tablist">
-      <button type="button" class="mb-tab ${o.tab === 'work' ? 'on' : ''}" data-tab="work" role="tab"
-        aria-selected="${o.tab === 'work'}">${t('mb.tabWork')}${hot ? html` <b>${hot}</b>` : ''}</button>
-      <button type="button" class="mb-tab ${o.tab === 'token' ? 'on' : ''}" data-tab="token" role="tab"
-        aria-selected="${o.tab === 'token'}">${t('mb.tabToken')}</button>
+    <!-- HAI nửa, đúng thứ tự này: con vật trước, số liệu sau.
+         Hàng tab từng đứng TRÊN khung cảnh, và ở chỗ ấy nó nói dối — khung cảnh không đổi
+         theo tab, nên một hàng tab ngay trên nó mời người đọc hiểu rằng nó có đổi. Dời
+         xuống dưới thì tab đứng ngay trên đúng thứ nó điều khiển, và ranh giới giữa hai
+         nửa rơi đúng chỗ nó vốn phải rơi: hết trò chơi, sang hoá đơn. -->
+    ${o.hero ? scene(b, phase, o.pet) : ''}
+
+    <div class="mb-data">
+      ${saying(b)}
+      <!-- Tab, không phải hai khối xếp dọc: ba công cụ nhân với mấy cửa sổ mỗi cái là hơn
+           mười cái thanh, mà popover mở ra để LIẾC. Con số trên tab Việc là số việc đang
+           chờ — nhãn tab phải tự nói có gì bên trong, nếu không thì việc đổi tab thành
+           một canh bạc. -->
+      <div class="mb-tabs" role="tablist">
+        <button type="button" class="mb-tab ${o.tab === 'work' ? 'on' : ''}" data-tab="work" role="tab"
+          aria-selected="${o.tab === 'work'}">${t('mb.tabWork')}${hot ? html` <b>${hot}</b>` : ''}</button>
+        <button type="button" class="mb-tab ${o.tab === 'token' ? 'on' : ''}" data-tab="token" role="tab"
+          aria-selected="${o.tab === 'token'}">${t('mb.tabToken')}</button>
+      </div>
+
+      ${o.tab === 'token' ? tokenTab(s, o) : workTab(s, b, o)}
     </div>
-
-    ${o.hero ? scene(s, b, phase) : ''}
-
-    ${o.tab === 'token' ? tokenTab(s, o) : workTab(s, b, o)}
   </div>`;
 }
 

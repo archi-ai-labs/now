@@ -134,6 +134,10 @@ src/collect/editors.js  open Cursor/VS Code folders
 src/collect/git.js      branch, drift, dirty files, extra worktrees
 src/collect/tasks.js    each session's todo list
 src/lib/pb.js           wire-level protobuf reader, no .proto file needed
+src/pet.js              the feedable butler's coin ledger: 1 coin = $1 of estimated spend,
+                        credited PER DAY so refreshing the page mints nothing; the shop's
+                        price table; hunger measured from the last feeding timestamp.
+                        Persisted to ~/.now-dashboard/pet.json
 public/app.js           shell: routing, keybindings, drawers, keeps scroll position across
                         every redraw
 public/lib/butler.js    the butler's voice: TWO fixed slots — worth-doing items + token quota
@@ -147,6 +151,10 @@ public/lib/tip.js       tooltip label↔value formatting, packed into a single H
 public/lib/surface.js   name and glyph for each work surface
 public/lib/tabs.js      Token screen's tab state, kept outside the DOM, remembered via
                         localStorage
+public/lib/pixel.js     the 4px-grid pixel renderer + sun-direction shading, shared by the
+                        butler and the objects (split out so the two do not import in a cycle)
+public/lib/pet.js       food/decoration sprites + the fullness bar. Item ids must match the
+                        price table in src/pet.js — test/pet.test.js guards exactly that seam
 public/styles.css       the HUD design system (tokens, cornered frames, gauges)
 public/views/           7 screens, one file each — except views/tools.js, which is half
                         the Cursor + Antigravity content of the Token screen, not a

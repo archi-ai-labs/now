@@ -10,12 +10,17 @@
  */
 import { mount } from './lib/dom.js';
 import { renderBench, initBench } from './views/bench.js';
+import { initPet } from './views/pet.js';
 
 const root = document.getElementById('bench');
 let state = null;
 
 const draw = () => mount(root, renderBench(state));
 initBench(draw);
+// Bàn chỉnh vẽ cả nhân vật, mà sổ của nó không nằm trong `/api/state`. Không gọi lượt hỏi
+// ấy ở đây thì trang lẻ bày ra một popover THIẾU đúng phần vừa thêm — mà hai chỗ mở bàn
+// chỉnh phải cho ra cùng một hình, nếu không thì lại có bản thứ hai để lệch.
+initPet(draw);
 
 const res = await fetch('/api/state');
 state = await res.json();

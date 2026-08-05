@@ -258,3 +258,45 @@ lớn hơn của chính dự án — *mọi con số phải có thật*:
 hiệu ứng gõ từng ký tự, vệt quét khi đổi câu.
 **Giữ nguyên:** chuỗi ngày liên tiếp, việc xong 7 ngày, thanh độ tươi board, và khối tóm
 tắt "một câu + một nút" — chỉ khác là giờ nó nói bằng chữ chứ không diễn.
+
+#### Bổ sung 2026-08-05 — `d-pet`: trò chơi được quay lại, nhưng có NHÀ RIÊNG
+
+Đã dựng một lớp trò chơi thật: quản gia ăn được, có ví xu, có cửa hàng (`src/pet.js`,
+`public/views/pet.js`). Nghe như lật ngược `d-game`, nhưng nguyên tắc bên dưới **không
+đổi một chữ** — cái đổi là chỗ đứng.
+
+`d-game` không cấm trò chơi. Nó cấm **một con số bịa đứng cạnh một con số thật và trông
+cũng như một phép đo**. Ba điều kiện giữ nguyên tinh thần ấy, và cả ba đều bắt buộc:
+
+1. **Không còn trọng số nào để bịa.** Tỉ giá là `1 xu = $1` tiêu ước tính. Không phải
+   một hệ số chọn cho "cảm giác đúng" — nó là chính con số đô-la, chỉ đổi tên. Đây là
+   chỗ khác hẳn `việc×25 + chuỗi×30`.
+2. **Đồng xu không giả vờ đo cái gì.** Hạng `S` nói với người đọc rằng họ vừa bị ĐÁNH
+   GIÁ; một con thú ăn hết bát phở thì không ai nhầm là số liệu. Cơn đói cũng đo được:
+   nó là hiệu hai mốc đồng hồ, không phải một thanh tự tụt theo luật chơi.
+3. **Không đứng trên mặt số liệu.** Cửa hàng là màn CUỐI CÙNG trong nav, sau cả bàn
+   chỉnh. Không một thẻ hạn mức nào mọc thêm huy hiệu, không một con số thật nào bị dán
+   nhãn mới. Nhân vật ở popover — nơi vốn đã là một bức tranh.
+
+Hai hàng rào kèm theo, cùng loại lý lẽ với `d-theme`:
+- Đồ vật **không được mượn màu băng** (`--crit`/`--warn`/`--ok`/`--cheer`). Bốn màu ấy
+  đang chở nghĩa "bỏ phí bao nhiêu" ở mấy cái thanh ngay bên trên.
+- Thanh đói dùng **một sắc cố định**, không chạy qua thang màu ấy. Chiều dài đã là con
+  số; đổi màu theo mức chỉ để hai thang trộn vào nhau trong đầu người đọc.
+
+Và nó **thuận** với luận điểm gốc chứ không cãi lại: luật 1 của `CLAUDE.md` — *tiêu hết
+là ĐÍCH*. Hạn mức trả trước không cộng dồn, phần chưa dùng lúc reset là mất trắng. Thưởng
+theo tiền đã tiêu là thưởng đúng hành vi dự án này vẫn cổ vũ, không đẻ thêm động cơ nào.
+
+Có công tắc tắt, mặc định bật.
+
+**Sửa cùng ngày, sau khi nhìn bằng mắt:** điều kiện 3 đúng ở mức màn hình nhưng hỏng ở mức
+bố cục. Câu hạn mức — con số thật duy nhất trong khối — lại nằm **kẹp giữa** bức tranh và
+thanh đói, tức trò chơi bọc lấy số liệu chứ không phải đứng cạnh nó. Đã gộp tranh + thanh
+đói + ví vào MỘT khung có viền, và dọn câu hạn mức xuống mở đầu nửa dưới, ngay trên hàng
+tab. Hàng tab cũng dời theo: nó từng đứng TRÊN khung cảnh, chỗ nó nói dối, vì khung cảnh
+không đổi theo tab.
+
+Chỗ cho cái khung lấy từ khoảng cách thừa giữa mấy cái thanh hạn mức (13px → 8px, cộng
+`--pad` dưới thân thanh vốn chừa cho nhãn mà popover không bao giờ vẽ), **không phải cộng
+thêm vào popover**: bức tranh cao thêm 20px trong khi cả cửa sổ ngắn đi 7px.

@@ -117,6 +117,9 @@ src/collect/editors.js thư mục Cursor/VS Code đang mở
 src/collect/git.js     nhánh, độ lệch, file bẩn, worktree phụ
 src/collect/tasks.js   todo của từng phiên
 src/lib/pb.js          bộ đọc protobuf mức dây, không cần .proto
+src/pet.js             sổ xu của quản gia nuôi được: 1 xu = $1 tiêu ước tính, cộng theo
+                       NGÀY nên làm mới trang không đẻ xu; bảng giá hàng hoá; cơn đói
+                       tính từ mốc cho ăn. Chốt vào ~/.now-dashboard/pet.json
 public/app.js          khung: định tuyến, phím tắt, ngăn kéo, giữ cuộn qua mỗi lượt vẽ
 public/lib/butler.js   giọng quản gia: HAI ô cố định — việc đáng làm + hạn mức token
 public/lib/game.js     số đo được thẳng: streak, done7, tình trạng dự án bằng chữ
@@ -127,6 +130,10 @@ public/lib/quota.js    hạn mức đọc thành câu: đã tiêu, bỏ phí, th
 public/lib/tip.js      định dạng tooltip nhãn ↔ trị, nhét vừa một thuộc tính HTML
 public/lib/surface.js  tên và ký hiệu của từng bề mặt làm việc
 public/lib/tabs.js     tab của màn Token: trạng thái sống ngoài DOM, nhớ qua localStorage
+public/lib/pixel.js    phép vẽ pixel lưới 4px + chấm bóng theo hướng nắng, dùng chung cho
+                       quản gia và đồ vật (tách riêng để hai bên khỏi nhập vòng)
+public/lib/pet.js      hình đồ ăn / đồ trang trí + thanh đói. Mã món phải khớp bảng giá ở
+                       src/pet.js — test/pet.test.js canh đúng chỗ khớp ấy
 public/styles.css      hệ thiết kế HUD (tokens, khung góc, thanh đo)
 public/views/          7 màn, mỗi màn một file — trừ views/tools.js là nửa Cursor +
                        Antigravity của màn Token, không phải một màn riêng
