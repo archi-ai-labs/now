@@ -1761,15 +1761,11 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
    Sắc nắng là CAM SAN HÔ chứ không phải hổ phách: `--warn` là hổ phách, mà nắng thì
    phủ khắp trang nên nó không được trùng sắc với một băng cảnh báo. Nó cũng ĐỨNG YÊN —
    thứ không bao giờ đổi thì không đọc thành trạng thái. */
-.mb-wrap {
-  --skin: #a78bfa;
-  --skin-deep: #2a1b4d;
-  /* `--sun-hi` là ánh sáng dùng cho MẤY CÁI THANH, và nó cố định qua cả bốn buổi. Khung
-     trời đổi được vì nó là tranh; cái thanh thì là dữ liệu, mà một mảng đổi sắc theo giờ
-     là một mảng người đọc phải hỏi "sáng nay nó có màu này không". Buổi chỉ đổi `--lux`
-     và `--lux-hi` — hai token của riêng khung trời và vệt nắng nền. */
-  --sun: #ff9d5c;
-  --sun-hi: #ffe3c2;
+/* Bộ token dùng chung với `.shop-scene` — cái khung thử đồ ở tiệm trang trí, vốn LÀ bức
+   tranh này lồng vào một màn khác (xem `dressArt` trong `lib/pet.js`). Tách khỏi khối bố
+   cục ngay dưới chứ không thêm `.shop-scene` vào cả cụm: bề rộng 360px và `display: flex`
+   là chuyện của cửa sổ popover, không phải của bức tranh. */
+.mb-wrap, .shop-scene {
   --lux: #ff9d5c;
   --lux-hi: #ffe3c2;
   --sky-a: #130e29;
@@ -1804,6 +1800,8 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
      nguyên khối, không phải ba số rời nhau phải chỉnh tay cho khớp. */
   --gloss: 1;
   --gloss-cut: 51%;
+}
+.mb-wrap {
   width: var(--mb-w, 360px); padding: 13px 16px 12px; display: flex; flex-direction: column; gap: 11px;
   background:
     radial-gradient(calc(128% * var(--wash-k)) calc(62% * var(--wash-k)) at 6% -12%,
@@ -1811,6 +1809,35 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
     radial-gradient(calc(84% * var(--wash-k)) calc(52% * var(--wash-k)) at 106% 110%,
       color-mix(in srgb, var(--skin) var(--wash-skin), transparent) 0%, transparent 66%),
     var(--bg);
+}
+
+/* ── Sắc của NHÂN VẬT ─────────────────────────────────────────────────────────
+
+   Khai ở `:root` chứ không trong `.mb-wrap`, và việc dọn lên đây là nửa còn lại của lượt
+   gộp sprite quản gia (xem khối đầu `lib/pet.js`): từ giờ anh ta đứng ở HAI chỗ — bầu trời
+   popover và căn phòng trong thị trấn — mà thị trấn thì nằm ngoài `.mb-wrap`. Gộp hình mà
+   để màu ở lại thì vẫn là hai nhân vật, chỉ khác là lần này họ cùng dáng.
+
+   Cố định qua cả hai theme và cả bốn buổi: đây là một VẬT trong tranh, không phải một mảng
+   nền. Buổi chỉ đổi `--lux*` và `--sky-*` — hai token của riêng khung trời.
+
+   `--mb-face` và `--mb-lash` có hai người dùng chứ không một: mấy ô pixel của sprite, và
+   cái mí CSS cụp lên trên chúng. Mí phải trùng sắc TUYỆT ĐỐI với thứ nó đang che — lệch một
+   chút là lúc chớp hiện ra một vệt chữ nhật sáng hơn mặt, tức cái mí tự tố cáo mình không
+   phải một phần của cái đầu.
+
+   `--sun-hi` cũng là ánh sáng của MẤY CÁI THANH, nên nó không được đổi theo giờ: một mảng
+   đổi sắc theo buổi là một mảng người đọc phải hỏi "sáng nay nó có màu này không". */
+:root {
+  --skin: #a78bfa;
+  --skin-deep: #2a1b4d;
+  --sun: #ff9d5c;
+  --sun-hi: #ffe3c2;
+  --mb-face: color-mix(in srgb, var(--skin-deep) 46%, #000);
+  --mb-lash: color-mix(in srgb, var(--sun-hi) 38%, var(--skin-deep));
+  /* Sắc con mắt, tách thành token vì từ lượt này nó có hai chỗ đọc — `.mb-scene` và
+     `.pet-art`. Hai bản `color-mix` chép tay thì lần chỉnh sắc sau đã đủ để chúng trôi. */
+  --mb-eye: color-mix(in srgb, var(--sun-hi) 84%, var(--sun));
 }
 
 /* BỐN BUỔI, lấy theo giờ máy (`phaseOf` trong lib/menubar-view.js).
@@ -1855,6 +1882,30 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
     radial-gradient(150% 96% at 16% 118%, color-mix(in srgb, var(--lux) calc(var(--halo) * 0.62), transparent) 0%, transparent 60%),
     linear-gradient(180deg, var(--sky-a) 0%, var(--sky-b) 66%, var(--sky-c) 100%);
 }
+/* ── Khung cảnh đổi sang CÔNG VIÊN ────────────────────────────────────────────
+
+   Chỉ có khi quản gia đang đi bộ hoặc đang ra nắng — hai việc duy nhất bắt bạn ra khỏi cửa
+   (xem `where` trong `MOVES`). Cả lớp này là câu "anh ta không ở nhà lúc này".
+
+   Vạt cỏ giữ nguyên sắc qua cả hai theme và qua cả bốn buổi, y như mặt đất của thị trấn:
+   một bãi cỏ lật màu theo nền giao diện thì nó thôi không còn là bãi cỏ. Bầu trời phía trên
+   thì VẪN đổi theo buổi — ra công viên lúc 8 giờ tối thì trời vẫn phải tối, và đó chính là
+   chỗ cái khung này còn nói thật.
+
+   Cỏ neo ở đáy `.mb-sky` chứ không ở đáy `.mb-sprite`: chân quản gia đứng ở `bottom: 3px`
+   của bầu trời, nên một vạt cỏ cao 14px là anh ta đứng TRONG cỏ, không đứng trên một cái
+   bục. */
+.mb-park {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, transparent 0 calc(100% - 15px), #5f9a4a calc(100% - 15px) 100%);
+}
+.mb-park .pet-art { position: absolute; }
+/* Hai cây ở hai bên, cái xa nhỏ hơn và mờ hơn — một cặp cây giống hệt nhau hai bên đọc
+   thành hoa văn đối xứng, không đọc thành hai cái cây. */
+.park-tree.t1 { left: 6px; bottom: 8px; }
+.park-tree.t2 { right: 10px; bottom: 11px; scale: 0.75; transform-origin: bottom right; opacity: 0.9; }
+.park-bench { left: 50%; bottom: 4px; margin-left: -80px; }
+
 /* Sắc của băng đổ vào một biến riêng rồi mới dùng, để chấm nhịp và chữ "z" lấy từ MỘT
    chỗ — hai chỗ tự đặt màu là hai chỗ sẽ trôi khỏi nhau.
 
@@ -1869,20 +1920,138 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
 .mb-wrap .tone-ok { --tone-c: var(--ok); }
 .mb-wrap .tone-cheer { --tone-c: var(--cheer); }
 
-.mb-star { position: absolute; width: 2px; height: 2px; background: #ffeedc; opacity: var(--star); }
+/* Lấp lánh bằng MỘT HỆ SỐ NHÂN, không phải bằng `opacity` thẳng.
+   Sao có hai độ sáng (ngôi thường, ngôi to `3n`) và cả hai đều tính từ `--star` của buổi
+   — ba con số nhân với nhau. Cho keyframes đặt thẳng `opacity` thì nó đè mất cả hai tầng
+   ấy: mọi ngôi lấp lánh về cùng một mức, ngôi to hết to, và ban ngày (`--star: 0`) trời
+   quang bỗng mọc đầy sao. Nhân thêm một núm thì mỗi tầng giữ nguyên tỉ lệ của nó.
+   Phải khai `@property` mới nội suy được một biến; `var(--tw, 1)` là đường lui cho trình
+   duyệt không hiểu nó — ở đó sao đứng yên đúng độ sáng cũ, không phải sáng trắng hết. */
+@property --tw { syntax: '<number>'; inherits: false; initial-value: 1; }
+.mb-star {
+  position: absolute; width: 2px; height: 2px; background: #ffeedc;
+  opacity: calc(var(--star) * var(--tw, 1));
+  animation: mb-twinkle 5.2s ease-in-out infinite;
+}
 /* Vài ngôi to hơn để trời không thành lưới chấm đều. Chọn theo vị trí trong danh sách,
    không theo ngẫu nhiên — trời phải giống nhau qua mỗi lần mở. */
-.mb-star:nth-child(3n) { width: 3px; height: 3px; opacity: calc(var(--star) * 1.55); }
+.mb-star:nth-child(3n) { width: 3px; height: 3px; opacity: calc(var(--star) * 1.55 * var(--tw, 1)); }
+/* Bốn nhịp lệch nhau, và độ trễ ÂM. Cùng chu kỳ thì mười hai ngôi thở như một, đọc thành
+   cả bầu trời đang nhấp nháy chứ không thành sao. Độ trễ dương cũng hỏng theo kiểu khác:
+   popover tải lại mỗi lần mở nên mọi nhịp bắt đầu từ 0, và một khoảng chờ 3 giây trước
+   ngôi đầu tiên là gần trọn thời gian cửa sổ này sống. Âm thì mở ra đã đang lấp lánh. */
+.mb-star:nth-child(4n + 1) { animation-duration: 4.4s; animation-delay: -3.1s; }
+.mb-star:nth-child(4n + 2) { animation-duration: 6.1s; animation-delay: -1.2s; }
+.mb-star:nth-child(4n + 3) { animation-duration: 5.3s; animation-delay: -4.6s; }
+.mb-star:nth-child(4n) { animation-duration: 7.2s; animation-delay: -2.4s; }
+/* Ban ngày `--star` bằng 0 nên có chạy cũng không ai thấy — tắt hẳn để khỏi trả tiền cho
+   mười hai cái hoạt hình vô hình. */
+.sky-day .mb-star { animation: none; }
+@keyframes mb-twinkle { 0%, 100% { --tw: 1; } 50% { --tw: 0.34; } }
+
 /* Mặt trời và mặt trăng đứng CÙNG chỗ: nguồn sáng không đổi hướng qua các buổi, nên vật
    phát sáng cũng không được đổi chỗ. Cái đổi là hình (đĩa/khuyết) và sắc. */
 .mb-sun, .mb-moon { position: absolute; left: 13px; top: 9px; width: 28px; height: 28px; }
-.mb-cloud { position: absolute; right: 15px; top: 14px; width: 36px; height: 12px; opacity: 0.9; }
+/* Quầng thở, vẽ dưới mấy ô pixel: `::before` đứng trước các con trong cây nên nó nằm
+   dưới, không cần một z-index nào — cùng luật thứ tự mà cả khung cảnh đang dùng.
+   Cường độ nhân từ `--halo`, không phải một con số riêng. Đó là chỗ duy nhất ghi rằng
+   ban đêm quầng phải yếu hẳn (22% so với 66% ban ngày), và một quầng thứ hai không đọc
+   bảng ấy sẽ nở ra thành vệt trắng to hơn cả mặt trăng — đúng cái mà `--halo` sinh ra
+   để chặn. Nhân 0.5 vì nó CỘNG lên cái quầng nền đã có sẵn trong `.mb-sky`. */
+.mb-sun::before, .mb-moon::before {
+  content: ''; position: absolute; inset: -10px; border-radius: 50%;
+  background: radial-gradient(closest-side,
+    color-mix(in srgb, var(--lux) calc(var(--halo) * 0.5), transparent) 0%, transparent 100%);
+  animation: mb-glow 6.8s ease-in-out infinite;
+}
+/* Quầng được phép trượt mượt, khác mọi thứ còn lại: nó vốn đã là một vệt mờ dần, không
+   có cạnh nào để nhoè. Luật `steps()` là luật của mấy vật lưới 4px. */
+@keyframes mb-glow { 0%, 100% { opacity: 0.42; scale: 0.92; } 50% { opacity: 1; scale: 1.08; } }
+
+/* Mây ĐI RA RỒI VỀ, không trôi một chiều. Trôi một chiều thì hết vòng phải nhảy về chỗ
+   cũ, và cú nhảy ấy là thứ duy nhất trong cả khung cảnh mắt sẽ bắt được — một chuyển
+   động giật nảy nói to hơn hẳn mọi thứ đang nói tin thật ở nửa dưới. Đi 7px rồi về thì
+   không có mép nào để nhảy qua.
+   `steps(7)` = mỗi bước đúng 1px. Trượt mượt thì mấy ô 4px của đám mây nhoè cạnh ở mọi
+   khung hình, và cái nhoè ấy đọc thành lỗi render chứ không đọc thành mây. */
+.mb-cloud {
+  position: absolute; right: 15px; top: 14px; width: 36px; height: 12px; opacity: 0.9;
+  animation: mb-drift 19s steps(7, end) infinite;
+}
+@keyframes mb-drift { 0%, 100% { translate: 0 0; } 50% { translate: -7px 0; } }
 /* Bóng đổ CỨNG, lệch xuống dưới-phải: đúng phía khuất nắng, và không mờ viền — một
    vệt mờ đứng cạnh mấy ô vuông 4px thì lạc phong cách ngay. */
+/* Căn giữa bằng `translate` chứ không bằng `transform`: nhịp thở cũng dịch theo trục dọc,
+   và gộp cả hai vào `transform` thì mọi keyframe phải chép lại cái `-50%` — quên một
+   khung hình là quản gia nhảy sang mép phải đúng khung ấy. Hai thuộc tính, hai việc.
+   Thở bằng SỐ NGUYÊN pixel và đi bằng `steps(1)`: 2px chia làm ba bậc, mỗi bậc đứng yên
+   một quãng rồi nhảy. Trượt mượt 2px trong 4 giây thì phần lớn thời gian sprite nằm ở
+   một toạ độ lẻ và cả 16 hàng pixel nhoè cạnh. */
 .mb-sprite {
-  position: absolute; left: 50%; bottom: 3px; width: 64px; height: 64px; transform: translateX(-50%);
+  position: absolute; left: 50%; bottom: 3px; width: 64px; height: 64px; translate: -50% 0;
   filter: drop-shadow(2px 2px 0 rgb(10 6 24 / 0.42));
+  animation: mb-breathe 4.4s steps(1, end) infinite;
 }
+@keyframes mb-breathe {
+  0%, 100% { translate: -50% 0; }
+  25% { translate: -50% -1px; }
+  50% { translate: -50% -2px; }
+  75% { translate: -50% -1px; }
+}
+/* Ngủ gật thì thở CHẬM HƠN và sâu hơn — 3px trong 7 giây thay vì 2px trong 4,4.
+   Đây là chỗ duy nhất chuyển động đi theo trạng thái, và nó được phép vì nó không chở
+   thêm tin nào: cái nói "đang ngủ" vẫn là đôi mắt nhắm và mấy chữ z: ai không nhận ra
+   nhịp thở chậm hơn thì cũng không mất gì. */
+.mb-sprite.dozing { animation-name: mb-doze; animation-duration: 7s; }
+@keyframes mb-doze {
+  0%, 100% { translate: -50% 0; }
+  20% { translate: -50% -1px; }
+  40%, 60% { translate: -50% -3px; }
+  80% { translate: -50% -1px; }
+}
+
+/* ── Chớp mắt ──────────────────────────────────────────────────────────────────
+   Hai mảng 8×8 đặt đúng lên hai ô mắt của hàng EYES_OPEN: mắt trái ở cột 5–6 (x 20px,
+   rộng 8px), mắt phải ở cột 9–10 (x 36px), cả hai bắt đầu ở hàng 3 (y 12px) và cao hai
+   hàng. Toạ độ chép tay từ sprite là chỗ dễ trôi nhất trong cả khối này — đổi EYE_ROW
+   hay xê hai con mắt trong `lib/menubar-view.js` thì phải sửa bốn con số ở đây.
+
+   Cụp bằng `height`, không bằng `scaleY`. Nền là một gradient hai nửa cứng — nửa trên
+   màu mặt, nửa dưới màu hàng mắt nhắm — và `background-size` ghim ở 8px nên nó KHÔNG co
+   theo chiều cao: mí kéo tới 4px là vừa hết hàng mắt trên (còn hàng dưới hở ra, thành mắt
+   lim dim), kéo hết 8px thì hàng dưới hiện đúng cái gạch của EYES_SHUT. `scaleY` thì kéo
+   dãn luôn cả gradient nên không có khung hình nào ra hình mí sụp.
+
+   `steps(1)` cho ba khung hình 4px/8px/4px. Chớp mắt thật kéo ~200ms, và ở cỡ này thì
+   một cú trượt mượt 200ms chỉ ra một vệt xám nhấp nháy. */
+.mb-lid {
+  position: absolute; top: 12px; width: 8px; height: 0;
+  background: linear-gradient(var(--mb-face) 0 4px, var(--mb-lash) 4px 8px);
+  background-size: 8px 8px; background-repeat: no-repeat;
+  /* Trễ ÂM, và chọn số để cú chớp đầu rơi vào khoảng giây thứ 1,3 sau khi mở. Popover
+     sống vài giây; để nhịp chạy từ 0 thì phải chờ hơn 6 giây mới tới cú chớp đầu — tức
+     là gần như không ai thấy nó bao giờ, và cả cái mí thành mã chết. */
+  animation: mb-blink-lid 6.6s steps(1, end) infinite;
+  animation-delay: -5.3s;
+}
+.mb-lid.lid-l { left: 20px; }
+.mb-lid.lid-r { left: 36px; }
+@keyframes mb-blink-lid {
+  0% { height: 0; }
+  94.5% { height: 4px; }
+  95.6% { height: 8px; }
+  97.2% { height: 4px; }
+  98% { height: 0; }
+  100% { height: 0; }
+}
+
+/* Ba chữ z bay lên phía trên-phải, to dần và lệch pha nhau một phần ba vòng. To dần chứ
+   không nhỏ dần: chữ gần miệng là chữ vừa thoát ra, và nó nở ra khi đi xa — nhỏ dần thì
+   đọc thành ba chữ rơi vào trong người. Chúng ra NGOÀI khung 64px của sprite (`right`
+   âm), chỗ ấy là trời trống nên không đè lên cái đầu. */
+.mb-zzz.zz1 { right: 6px; top: 14px; font-size: 8px; }
+.mb-zzz.zz2 { right: -1px; top: 6px; font-size: 10px; animation-delay: -0.87s; }
+.mb-zzz.zz3 { right: -8px; top: -2px; font-size: 12px; animation-delay: -1.74s; }
 
 /* Bốn sắc độ, suy từ hướng nắng trong `shadeOf` — một mảng tím phẳng đọc thành hình
    dán, không đọc thành vật có khối. */
@@ -1894,15 +2063,15 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
 /* MẶT TỐI trong lòng viên kim cương — viền tím, lòng đen, đúng hình cái mark. Nó cũng
    là nền để hai con mắt sáng có chỗ đứng: mắt sáng đặt trên nền tím sáng thì nhoè vào
    nhau, mà mắt tối đặt trên nền tím sáng thì cả cái mặt chỉ còn là hai vệt. */
-.mb-scene .px.face { background: color-mix(in srgb, var(--skin-deep) 46%, #000); }
+.mb-scene .px.face { background: var(--mb-face); }
 /* Đốm nắng nhỏ ở góc trên-trái mỗi con mắt — đúng phía mặt trời, và nó là thứ tắt đi
    khi ngủ. */
-.mb-scene .px.eye { background: color-mix(in srgb, var(--sun-hi) 84%, var(--sun)); }
+.mb-scene .px.eye { background: var(--mb-eye); }
 .mb-scene .px.eye.spark { background: #fffdf7; }
 /* Mắt nhắm là một GẠCH cao một ô và mờ hẳn đi, mắt mở là khối cao hai ô có đốm nắng —
    phân biệt được cả khi không nhận ra màu, mà theme daltonized thì bắt buộc phải có
    kênh thứ hai ấy. */
-.mb-scene .px.eye.shut { background: color-mix(in srgb, var(--sun-hi) 38%, var(--skin-deep)); }
+.mb-scene .px.eye.shut { background: var(--mb-lash); }
 .mb-scene .mb-sun .px { background: var(--lux); }
 .mb-scene .mb-sun .px.core { background: var(--lux-hi); }
 /* Trăng ngược lớp với trời: vành ngoài sáng, phía trong tối dần — đó là chỗ bóng của
@@ -1915,7 +2084,26 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
   opacity: 0.75; animation: mb-float 2.6s ease-in-out infinite;
 }
 @keyframes mb-float { 0%, 100% { transform: translateY(0); opacity: 0.3; } 50% { transform: translateY(-5px); opacity: 0.85; } }
-@media (prefers-reduced-motion: reduce) { .mb-zzz, .mb-pulse, .mb-wrap .qb-pred { animation: none; } }
+/* Khối `*` ở đầu file ĐÃ tắt mọi hoạt hình rồi, nên đây không phải chỗ tắt — nó là chỗ
+   sửa CHỖ ĐỨNG YÊN.
+   Cách tắt ở trên là ép mỗi hoạt hình chạy đúng 0,01ms rồi dừng, tức là mọi vật đọng lại
+   ở khung hình CUỐI của chính nó. Với phần lớn thì cuối cũng là nghỉ (mây về 0, sao sáng
+   trở lại, quản gia về đúng chỗ đứng). Nhưng `mb-float` kết ở `opacity: 0.3` và `mb-glow`
+   kết ở nửa tối — để nguyên thì người bật "giảm chuyển động" nhận một quả bóng bay mờ tịt
+   và một mặt trời mất quầng, tức là họ mất luôn cả VẬT chứ không chỉ mất chuyển động.
+   `animation: none` trả chúng về giá trị khai trong quy tắc gốc, chỗ chúng vốn phải nghỉ.
+   Đó cũng là lý do `.mb-zzz` nằm sẵn ở đây từ trước; `.slot-air` thì cùng bệnh mà bị bỏ
+   sót — cùng dùng `mb-float`, cùng đọng ở 0.3.
+   `.mb-sprite` chỉ gỡ hoạt hình, không gỡ `translate: -50% 0`: phép căn giữa nằm ở một
+   thuộc tính riêng chính vì lý do này. `.mb-lid` ẩn hẳn thay vì dừng — dừng thì nó vô
+   hình nhờ `height: 0`, mà một mảng vô hình chờ sẵn trên mắt là thứ lần sửa sau sẽ vô
+   tình bật lại. */
+@media (prefers-reduced-motion: reduce) {
+  .mb-zzz, .mb-pulse, .mb-wrap .qb-pred,
+  .mb-star, .mb-cloud, .mb-sprite, .mb-sun::before, .mb-moon::before,
+  .slot-air, .pet-bar.mood-starving i { animation: none; }
+  .mb-lid { display: none; }
+}
 
 .mb-say { display: flex; align-items: center; gap: 7px; font-size: 11.5px; line-height: 1.4; color: var(--text-2); }
 .mb-say b { color: var(--text); font-weight: 600; }
@@ -2202,6 +2390,49 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
   --art-leaf: #56b374;
   --art-plum: #a04a9e;
   --art-gold: #f0b429;
+  /* Hồng và lam thêm vào cùng lượt với cây nấm, đèn lồng và con diều. Cả hai đều tránh xa
+     bốn màu BĂNG (`--crit`/`--warn`/`--ok`/`--cheer`) theo đúng luật ghi ở đầu khối: hồng
+     ở đây là hồng đào chứ không phải đỏ cảnh báo, và lam thì không màu băng nào dùng. */
+  --art-rose: #e0708c;
+  --art-sky: #58a6e6;
+  /* Sắc VÁCH KHUẤT, thêm vào cùng lượt với thị trấn nhìn từ trên cao — và nó là một sắc
+     phải có, không phải một sắc muốn có. Một khối đẳng cự cần BA bậc sáng cho ba mặt, mà
+     bảng cũ chỉ có hai bậc sáng (`base` với `foam` chênh nhau 3%, ở cỡ thật là không chênh)
+     rồi nhảy thẳng xuống `broth`. Nhìn màn hình thật thì căn phòng đọc thành một khối
+     trắng có viền nâu: hai bức tường gặp nhau ở giữa mà không có đường nào chia chúng ra.
+     Đây là bậc ở giữa. Vẫn tránh xa bốn màu BĂNG theo đúng luật ghi ở đầu khối — nó là be
+     xám, không phải một sắc cảnh báo nào. */
+  --art-dim: #bd9d75;
+  /* Lục ĐẬM, thêm vào cùng lượt với cây cối quanh thị trấn — và như `--art-dim`, nó là một
+     sắc phải có chứ không phải một sắc muốn có. Cây là vật lặp lại nhiều nhất trên bản đồ
+     (hai trong công viên, sáu quanh phố, một trong nhà), và một tán cây phẳng MỘT màu lục ở
+     cỡ 40px đọc thành cái chấm chứ không đọc thành tán lá — nó cần một mặt hứng nắng và một
+     mặt khuất, đúng như hai vách của mọi khối trong thị trấn. `--art-leaf` là lục cỏ tươi,
+     không hạ tối được thêm mà vẫn còn là nó, nên bậc tối phải là một sắc riêng. Vẫn tránh xa
+     bốn màu BĂNG: đây là lục rêu, không phải `--ok`. */
+  --art-pine: #2f7d4f;
+  /* Hai sắc SÀN GỖ, thêm 5/8, và cũng là hai sắc phải có chứ không muốn có.
+     Sàn nhà mình là mảng đặc lớn nhất trên cả bản đồ (208×104px), và bản trước nó mượn
+     `broth` cho mặt sàn với `dim` cho rãnh ván. Cái bàn thì mượn `dim` cho mặt và `broth`
+     cho vách — tức là hai vật chồng lên nhau dùng đúng một cặp màu, đảo chỗ. Nhìn màn hình
+     thật thì cái bàn không mờ đi, nó BIẾN MẤT: chỉ còn đường viền `ink` do `boxed` kẻ ra là
+     nói có gì đó ở đấy. Người dùng chỉ đúng chỗ này.
+     Chữa ở SÀN chứ không ở đồ đạc: sàn phải là thứ lùi ra sau, nên nó lấy hai bậc tối hơn
+     hẳn cả `broth` lẫn `dim`, và mọi món đồ trong nhà tự khắc nổi lên trên nó — kể cả món
+     thêm vào sau này, thứ mà cách chữa kia không lo được.
+     Vẫn tránh xa bốn màu BĂNG theo luật ở đầu khối: đây là nâu gỗ, không phải một sắc
+     cảnh báo nào. */
+  --art-wood: #96582f;
+  --art-plank: #7c4826;
+  /* Hai sắc BÓNG, thêm vào cùng lượt vẽ lại kiến trúc ba cửa hàng, và cùng một lý do với
+     `--art-pine` với `--art-plank`: từ lượt này mái quán ăn là mái CHÓP và mái thư viện là
+     mái VÒM, tức cả hai lần đầu tiên có hai mặt cong/nghiêng khác nhau trong cùng một vật.
+     Hai mặt ấy cần hai bậc sáng của CÙNG một sắc, mà `rose` với `sky` đều không hạ tối
+     được thêm mà vẫn còn là chúng.
+     Vẫn tránh xa bốn màu BĂNG theo luật ghi ở đầu khối: `berry` là mận chín chứ không phải
+     `--crit`, `deep` là lam mực chứ không màu băng nào dùng. */
+  --art-berry: #a8455f;
+  --art-deep: #2f6ca8;
   position: relative; display: block;
 }
 /* Đè cả `.mb-scene .px` (cùng độ đặc hiệu, nhưng nó nằm trước trong file) BẰNG một
@@ -2214,6 +2445,14 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
 .pet-art .px.leaf, .mb-scene .pet-art .px.leaf { background: var(--art-leaf); }
 .pet-art .px.plum, .mb-scene .pet-art .px.plum { background: var(--art-plum); }
 .pet-art .px.gold, .mb-scene .pet-art .px.gold { background: var(--art-gold); }
+.pet-art .px.rose, .mb-scene .pet-art .px.rose { background: var(--art-rose); }
+.pet-art .px.sky, .mb-scene .pet-art .px.sky { background: var(--art-sky); }
+.pet-art .px.dim, .mb-scene .pet-art .px.dim { background: var(--art-dim); }
+.pet-art .px.pine, .mb-scene .pet-art .px.pine { background: var(--art-pine); }
+.pet-art .px.wood, .mb-scene .pet-art .px.wood { background: var(--art-wood); }
+.pet-art .px.plank, .mb-scene .pet-art .px.plank { background: var(--art-plank); }
+.pet-art .px.berry, .mb-scene .pet-art .px.berry { background: var(--art-berry); }
+.pet-art .px.deep, .mb-scene .pet-art .px.deep { background: var(--art-deep); }
 .pet-art .px.steam, .mb-scene .pet-art .px.steam { background: rgb(255 255 255 / 0.45); }
 
 /* Chỗ đứng trong khung trời. Bóng đổ giống hệt quản gia — cùng một mặt trời trên-trái,
@@ -2239,7 +2478,28 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
    đầu mất trắng: mua 70 xu xong không thấy gì. Nên nón trùm lên nửa trên cái đầu thay vì
    đứng hẳn bên trên. Nó vẽ SAU dây cờ nên chỗ giao nhau đọc thành nón che dây, đúng lớp. */
 .slot-head { left: 50%; top: -5px; transform: translateX(-50%); filter: none; }
-.slot-meal { left: calc(50% + 30px); bottom: 4px; }
+/* Món đang dùng neo vào BÀN TAY của tư thế đang vẽ, và cặp toạ độ tới từ `butlerHand` —
+   nên ở đây không có con số nào. Bản trước nó là `left: calc(50% + 30px); bottom: 4px`,
+   đo trong bầu TRỜI và đúng cho mỗi tư thế đứng; từ lượt quản gia đổi tư thế theo việc thì
+   con số ấy để cái tạ lơ lửng cách bàn tay đang giơ hai ô. Cùng chỗ sửa, cùng lý lẽ với
+   `.resident-item` ngoài bản đồ — chỉ khác là ở đây nó dọn hẳn vào trong `.mb-sprite`, nên
+   nó thở cùng nhịp với người đang cầm nó. */
+.slot-meal { position: absolute; }
+
+/* ── Đồng xu ──────────────────────────────────────────────────────────────────
+
+   Nó đứng ở hai chỗ CHỞ CHỮ — dải chân popover và thẻ Ví trong cửa hàng — tức đất của
+   token giao diện theo luật `d-theme`. Nhưng nó vẫn giữ sắc vàng cố định, vì nó là một
+   VẬT trong bức tranh chứ không phải một mảng nền: đã quyết rằng cái ly ở cửa hàng và
+   cái ly trên trời phải là MỘT cái ly, thì đồng xu ở hai bề mặt cũng phải là một đồng.
+   Bóng đổ y hệt mọi vật khác, cùng một mặt trời trên-trái. Nhạt hơn bóng trong khung
+   trời một chút (0.34 thay vì 0.42) vì ở đây nó rơi lên nền sáng của theme sáng, chỗ
+   một vệt đen đặc đọc thành cái lỗ chứ không đọc thành bóng. */
+.art-coin { flex: none; filter: drop-shadow(2px 2px 0 rgb(10 6 24 / 0.34)); }
+/* Hai bậc bevel, khai bằng selector ĐẶC HIỆU HƠN chứ không dựa vào thứ tự dòng để đè
+   `.mb-scene .pet-art .px` — cùng lý do đã ghi ở khối bảng màu bên trên. */
+.pet-art.art-coin .px.hi { background: #ffe9a3; }
+.pet-art.art-coin .px.lo { background: #b06f16; }
 
 /* ── Thanh đói ─────────────────────────────────────────────────────────────────
 
@@ -2248,13 +2508,89 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
    "bỏ phí bao nhiêu", và một cái thanh thứ hai chạy qua đúng bốn màu ấy với một nghĩa
    khác thì hai thang trộn vào nhau trong đầu người đọc.
 
-   Chiều dài đã là con số rồi. Cái duy nhất thêm vào là NHỊP ĐẬP lúc đói lả — chuyển động
-   là kênh mà mấy cái thanh kia không dùng, nên nó không tranh chỗ với gì cả. */
-.pet-bar { display: block; width: 100%; height: 6px; border-radius: 99px; overflow: hidden; background: var(--surface-3, rgb(128 128 128 / 0.22)); }
-.pet-bar i { display: block; height: 100%; border-radius: 99px; background: var(--art-leaf, #56b374); transition: width 0.35s ease; }
-.pet-bar { --art-leaf: #56b374; }
-.pet-bar.mood-starving i { animation: pet-pulse 1.5s ease-in-out infinite; }
+   Số ô đã là con số rồi. Cái duy nhất thêm vào là NHỊP ĐẬP lúc đói lả — chuyển động là
+   kênh mà mấy cái thanh kia không dùng, nên nó không tranh chỗ với gì cả.
+
+   Mười ô rời, cạnh vuông, khung 2px: cùng ngôn ngữ vẽ với bức tranh ngay bên trên. Lý do
+   bỏ viên thuốc bo tròn nằm ở `hungerBar` trong `lib/pet.js`.
+
+   Cỡ ô khai bằng BIẾN chứ không viết cứng, vì một cái thanh phải sống ở hai chỗ rộng
+   khác hẳn nhau. Và nó có bề rộng THẬT chứ không `width: 100%` nữa: co theo chỗ chứa thì
+   mỗi ô lẻ ra phần thập phân, mà nửa pixel trên một cạnh vuông đọc thành lỗi render —
+   đúng cái mà cả khung cảnh này tránh (xem khối luật chuyển động ở `menubar-view.js`). */
+/* Ví: đồng xu + con số, không có chữ "xu". Lý do ở `wallet()` trong lib/pet.js. */
+.pet-wallet { display: flex; align-items: center; gap: 8px; }
+
+/* Sắc lấp của thanh chỉ số. Lục cho độ no, TÍM cho tập trung — hai màu này còn phân biệt
+   được ở cả ba dạng mù màu phổ biến, khác hẳn cặp đỏ/lục mà luật theme daltonized cấm.
+   Không màu nào trong hai màu mượn của băng hạn mức (`--crit`/`--warn`/`--ok`/`--cheer`);
+   mượn là mời người đọc áp thang "bỏ phí bao nhiêu" lên một cái thanh không có thang đó. */
+.pet-bar {
+  --cell: 7px; --cell-h: 10px; --fill: #56b374;
+  /* `flex` + `max-content`, KHÔNG phải `inline-flex`. Bản cũ là `display: block` nên nó
+     luôn tự xuống dòng dưới cái nhãn "Độ no" trong cửa hàng; đổi sang inline là nó leo
+     lên nằm cạnh nhãn. Khối cấp block với bề rộng nội dung giữ được cả hai: xuống dòng
+     như cũ, mà vẫn không kéo dài hết thẻ như một `display: block` trơn. */
+  display: flex; width: max-content; gap: 2px; padding: 2px;
+  background: color-mix(in srgb, var(--text-3) 10%, transparent);
+  border: 2px solid color-mix(in srgb, var(--text-3) 40%, transparent);
+}
+.pet-bar i { display: block; width: var(--cell); height: var(--cell-h); background: color-mix(in srgb, var(--text-3) 24%, transparent); }
+.pet-bar i.on { background: var(--fill); }
+/* Chỉ thanh ĐÓI đập, không chỉ số nào khác. Đói lả là ca bấm một nút là xong; hết nhịp
+   tập trung thì việc phải làm là đứng dậy, và câu nhắc bên dưới nói điều đó rõ hơn mọi
+   nhịp nhấp nháy. Hai thứ cùng đập trong một dải 340px là hai cái còi cùng kêu. */
+.pet-bar.mood-starving i.on { animation: pet-pulse 1.5s ease-in-out infinite; }
 @keyframes pet-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* ── ĐỒNG HỒ CÁT tập trung ────────────────────────────────────────────────────
+
+   Chỉ số này đã đổi hình hai lần, và hai lần vì hai lỗi KHÁC NHAU. Lý lẽ đầy đủ nằm ở
+   `hungerBar` và `focusGlass` trong `lib/pet.js`; gọn lại:
+
+   1. Đời đầu là một cái thanh hẹp hơn thanh đói vài pixel. Ô 5px cạnh khe 2px đọc thành
+      gạch chéo chứ không thành ô đếm được, và ở mức 79% phần chưa sáng chỉ còn 12px trên
+      75px vẽ bằng `--text-3` ở 24% — tức MẤT MẪU SỐ.
+   2. Đời hai là một vành chín chấm. Nó sửa được mẫu số và vẫn xấu: chín chấm 4px cách
+      nhau 2,8 ô không hợp thành một VẬT, giữa một màn hình toàn khối liền có khung có
+      bóng. Lưới 4px không đủ mịn để chín điểm ra một đường tròn.
+
+   Đồng hồ cát là khối LIỀN, vẽ toàn hàng ngang thẳng nên lưới 4px không phá được, vẫn
+   khác LOẠI so với cái thanh, và nói đúng thứ nó đo: một quãng 90 phút đang chảy hết.
+
+   KHÔNG có `border-radius` nào ở đây, cùng lý do đã ghi cho viên thuốc bo tròn ngày
+   trước — xem `.pet-bar`. */
+.pet-glass { position: relative; flex: none; --fill: #a04a9e; }
+/* Ba lớp, và cả ba đều là màu ĐẶC — không lớp nào được phép pha loãng. Con số này đã phải
+   sửa một lần ở bản vành chấm: chấm chưa sáng để 40% thì trên nền tối đủ thấy, còn trên
+   `--panel` trắng ra #c0c3c8, tương phản 1,5:1 — tức lặp lại ĐÚNG cái lỗi mẫu số vừa sửa,
+   chỉ ở một theme khác. Cùng một độ mờ trên hai nền ngược nhau không ra cùng một mức đọc
+   được; token đặc thì chính nó đã theo theme rồi.
+
+   BA lớp chứ không bốn, và đó là chỗ sửa của lượt này. Bản trước còn một lớp thứ tư — lòng
+   bầu trống, vẽ bằng `--text-3` — nhưng từ khi cát đã chảy cũng là màu xám thì hai thứ ấy
+   chỉ chênh nhau đúng một bậc, và một bậc ở cỡ 4px thì đọc thành một (cùng lý lẽ đã ghi
+   ngay dưới đây cho `--text-2`). Chỗ trống giờ không vẽ gì cả; hình cái bầu do VÁCH KÍNH
+   giữ, xem `glassRows`.
+
+   Khung lấy `--text` chứ không `--text-2`: nó phải tách hẳn khỏi cả hai đống cát, mà
+   `--text-2` với `--text-3` chỉ chênh nhau một bậc trên cùng thang xám — đứng cạnh nhau
+   ở cỡ 4px thì hai bậc ấy đọc thành một.
+
+   Cát ĐÃ CHẢY lấy `--text-3`, tức đúng vai của ô chưa sáng trong `.pet-bar`, và đó là toàn
+   bộ nội dung của phép sửa: hai đống cát cùng một sắc thì đọc mức phải so TỈ LỆ giữa hai
+   tam giác trông y hệt nhau; một đống có sắc cạnh một đống xám thì chỉ cần nhìn phần có
+   sắc. Mẫu số không mất — đống xám vẫn nằm nguyên đấy và vẫn đếm được.
+
+   Cặp tím/xám KHÔNG phạm luật daltonized dù độ sáng của chúng gần nhau trên theme sáng
+   (98 với 105 trên thang 255). Luật ấy cấm phân biệt bằng một cặp HUE — đỏ với lục là ca
+   kinh điển. Ở đây là một màu CÓ SẮC đứng cạnh một màu KHÔNG SẮC, mà mù màu không phải
+   nhìn đen trắng: mắt deutan vẫn thấy phần lam của tím, mắt tritan vẫn thấy phần đỏ. Mà
+   kênh dẫn ở đây vốn không phải màu: cát nằm ở bầu TRÊN hay bầu DƯỚI là một khác biệt về
+   CHỖ, đọc được cả khi in đen trắng. */
+.pet-glass .px.frame { background: var(--text); }
+.pet-glass .px.sand { background: var(--fill); }
+.pet-glass .px.spent { background: var(--text-3); }
 
 /* DẢI CHÂN của khung cảnh: thanh đói + ví, một dòng, bấm vào là sang cửa hàng.
    Nó nằm trong `.mb-stage`, dưới bức tranh, chung một cái viền — cơn đói và cái ví là
@@ -2263,35 +2599,212 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
    Nền lấy TOKEN GIAO DIỆN chứ không lấy màu trời. Bức tranh ngay trên được phép cố định
    màu vì nó tự khai mình là tranh; dải này thì chở CHỮ, mà chữ trên một nền tối cố định
    là chữ chỉ đọc được ở một theme — đúng chỗ luật `d-theme` cấm.
-   Rê chuột thì sáng bằng `--accent-weak`, không phải `--surface-3`: `--surface-3` chính
-   là màu rãnh thanh đói, nên phần rãnh trống sẽ biến mất đúng lúc con trỏ chỉ vào nó. */
+   Rê chuột thì sáng bằng `--accent-weak`, không phải một bậc `--surface-*`: mấy bậc bề
+   mặt là đúng thứ thanh đói đang dựng rãnh và ô tối bằng, nên chọn một bậc ở đây là để
+   cái thanh tan vào nền đúng lúc con trỏ chỉ vào nó.
+
+   Hai thanh dồn TRÁI, ví dồn PHẢI bằng `margin-left: auto`. Trước đây thanh đói `flex: 1`
+   nên nó tự đẩy cụm xu ra mép; giờ mọi thứ có bề rộng thật (xem `.pet-bar`) nên phải có
+   ai đó nhận việc ấy, không thì ba cụm dính nhau ở giữa dải.
+
+   `flex-wrap` là lưới an toàn, không phải bố cục mong muốn: ba cụm đo được 286px trong
+   một dải rộng 326px ở bề rộng popover nhỏ nhất, nhưng ví thì dài ra theo số chữ số và
+   bàn chỉnh thì vặn được bề rộng. Xuống dòng còn đọc được; tràn ra ngoài thì không. */
 .mb-pet {
-  display: flex; align-items: center; gap: 9px; text-decoration: none;
-  padding: 6px 10px; background: var(--surface-2);
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px; text-decoration: none;
+  padding: 5px 10px; background: var(--surface-2);
   border-top: 1px solid color-mix(in srgb, var(--skin) 20%, transparent);
 }
 .mb-pet:hover { background: var(--accent-weak); }
-.mb-pet .pet-bar { flex: 1; }
-.mb-pet-coins { flex: none; font: 600 11px var(--mono); color: var(--text-3); }
-.mb-pet:hover .mb-pet-coins { color: var(--text); }
+.mb-pet .pet-bar { flex: none; }
+.mb-pet .pet-wallet { margin-left: auto; font: 700 13px var(--mono); color: var(--text-2); }
+.mb-pet:hover .pet-wallet { color: var(--text); }
+
+/* ── Lời nhắc sức khoẻ ────────────────────────────────────────────────────────
+
+   Cùng nền với dải chỉ số ngay trên, chỉ cách nhau một sợi viền: nó là câu nói VỀ cái
+   thanh tím ở đó, không phải một khối thông báo mới. Một cái hộp có màu riêng ở đây sẽ
+   đọc thành cảnh báo hệ thống — mà đây là lời nhắc đứng dậy uống nước, không phải hạn
+   mức sắp cháy.
+
+   Không có nút tắt, vì nó tự tắt: chỉ hiện khi đã ngồi quá pha tỉnh của một nhịp, và
+   biến mất ngay sau quãng nghỉ đầu tiên. */
+.mb-nudge {
+  margin: 0; padding: 7px 11px 8px;
+  font: 500 11.5px/1.45 var(--sans); color: var(--text-2);
+  background: var(--surface-2);
+  border-top: 1px solid color-mix(in srgb, var(--skin) 20%, transparent);
+}
+.mb-nudge.focus-spent { color: var(--text); }
 
 /* ── Màn Cửa hàng ─────────────────────────────────────────────────────────── */
-.shop { max-width: 760px; }
-.shop-top { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
-.shop-wallet, .shop-hunger {
-  flex: 1 1 220px; padding: 11px 14px 13px; border-radius: var(--r-sm);
-  background: var(--panel); border: 1px solid var(--line-soft); box-shadow: var(--shadow-sm);
+/* `container-type` để dải thông số bên dưới hỏi được BỀ RỘNG CỘT, không phải bề rộng cửa
+   sổ. Hai con số ấy khác nhau một thanh rail cộng phần đệm, và ở khung hẹp thì chênh nhau
+   gần 100px — một `@media` đặt ở đây sẽ lật bố cục sai chỗ. */
+/* Cả CỘT rộng đúng bằng bức tranh, và đó là điều kiện để cái ngăn bên dưới đọc thành cái
+   ngăn CỦA bản đồ. Bản trước cột rộng 760 còn bức tranh 680: bản đồ đứng giữa với hai
+   khoảng thụt 40px, còn khối bên dưới ăn trọn bề rộng — hai mép lệch nhau, và hai thứ mép
+   không thẳng hàng thì mắt đọc thành hai khối rời, đúng cái mà phép sửa này đang gỡ.
+
+   Bề rộng ấy đến từ `--town-w` nhân hệ số co, tức nó tự đi theo mọi lần thị trấn đổi cỡ.
+   Có `max-width: 100%` vì `--town-k` do JS gán: một lượt vẽ trước khi `ResizeObserver` kịp
+   chạy thì `k` bằng 1, và ở khung 400px thì 680px sẽ thò ra ngoài. Có dự phòng 760px cho
+   nhánh "trò chơi đang tắt" — nhánh ấy không vẽ bản đồ nên nó không khai `--town-w`. */
+.shop {
+  width: calc(var(--town-w, 760px) * var(--town-k, 1)); max-width: 100%;
+  container-type: inline-size; container-name: shop;
 }
-.shop-wallet .v { display: block; margin-top: 5px; font: 800 26px/1 var(--mono); color: var(--accent-ink, var(--accent)); }
-/* Câu tỉ giá KHÔNG được thu nhỏ tới mức thành chú thích chân trang. Nó là chỗ duy nhất
-   nối đồng xu với hoá đơn thật; giấu nó đi là đúng cái làm thanh XP cũ thành lời nói dối. */
+/* ── Dải thông số ─────────────────────────────────────────────────────────────
+
+   MỘT DÒNG, dán liền mép trên bản đồ. Nó đã đổi chỗ hai lần và mỗi lần vì một lỗi đo được:
+
+   1. Trước 5/8: ba cái thẻ riêng, mỗi cái có nền có viền có bóng, cao 110px, xếp TRÊN thị
+      trấn cộng hai khối chữ. Cộng lại là trọn một màn hình đầu tiên không có bức tranh
+      nào, trong khi bức tranh mới là thứ người ta mở màn này ra để nhìn. → gộp một dải,
+      dời xuống dưới bản đồ.
+   2. Lượt này: người dùng báo phần dưới bản đồ "hiển thị quá nhiều các thông số và chữ".
+      Đo ra thì giữa bức tranh và cái khối trả lời cho một cú bấm có 139px chen vào — dải
+      80px, dòng gập 17px, khối nhắc 42px — trong một khung cuộn cao 708px, nên khối trả
+      lời bắt đầu ở 705px. Ba pixel. → dải rút về MỘT dòng và leo lên trên bản đồ; hai thứ
+      kia đi chỗ khác (xem `.town-alert` và `.hud-why`).
+
+   Vì sao lên TRÊN chứ không mỏng đi tại chỗ: nó là thanh trạng thái của con vật đang đứng
+   trong bức tranh ngay dưới, nên chỗ của nó là mép trên cái màn hình ấy — chứ không phải
+   một khối thứ hai đứng chen giữa bản đồ và cửa hàng. Ở trên thì nó không còn nằm trên
+   đường mắt đi từ cú bấm tới hậu quả của cú bấm.
+
+   KHÔNG cho tự xuống dòng, và đó là một chỗ đã phải sửa sau khi nhìn màn hình hẹp: với
+   `flex-wrap: wrap` thì ô thứ ba rơi xuống hàng mới NHƯNG vẫn mang nguyên cái viền trái
+   đang làm vạch ngăn — một sợi kẻ dọc lửng lơ ở đầu một hàng không ngăn gì cả. CSS không
+   có cách nào hỏi "ô này có vừa xuống dòng không".
+   Nên bố cục do TRUY VẤN KHUNG quyết, không do phép xuống dòng quyết. Và truy vấn ấy hỏi
+   `.town-shell` chứ không hỏi `.shop`: từ lượt này dải rộng đúng bằng bức tranh SAU KHI
+   co, mà bức tranh co theo `--town-k` — ở khung 700px thì cột vẫn rộng 700 nhưng dải chỉ
+   còn 680, và ở khung 520px thì cột 520 mà dải cũng 520. Hỏi nhầm khung là lật bố cục
+   sớm hoặc muộn mất vài chục pixel. */
+.town-hud {
+  display: flex; flex-wrap: nowrap; align-items: center; gap: 0 18px;
+  padding: 5px 12px; background: var(--panel);
+  border-bottom: 1px solid var(--line-soft);
+}
+/* Ô co được, nhưng KHÔNG được co dưới phần chữ của nó: `min-width: 0` cho phép cắt cụt,
+   mà một câu bị cắt giữa chừng trong một dải liếc nhanh thì tệ hơn một dải xuống dòng. */
+.hud-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.hud-cell + .hud-cell { padding-left: 18px; border-left: 1px solid var(--line-soft); }
+/* Nhãn: chữ nhỏ, xám, KHÔNG viết hoa. Nó đứng trước cái hình trên cùng một dòng nên nó
+   phải đọc thành một cái nhãn ở tầm mắt ngoại vi mà không kéo mắt về phía mình. */
+.hud-k { font: 500 11.5px/1 var(--sans); color: var(--text-3); white-space: nowrap; }
+/* Tên trạng thái ĐẬM, phần chi tiết nhạt — hai vai, hai bậc. Đây là chỗ trả lời câu
+   "khó nhìn để biết được tình trạng tập trung là thế nào": cái liếc đầu tiên bắt lấy chữ
+   đậm, và chữ đậm chính là phán xét ("Ổn", "Sắp hết nhịp"). Con số ở lại ngay sau cho ai
+   muốn kiểm.
+   KHÔNG mượn `--warn`/`--crit` cho mấy trạng thái xấu, cùng lý do đã ghi ở `.pet-bar`:
+   bốn màu ấy đang chở nghĩa "bỏ phí bao nhiêu" ở băng hạn mức. */
+.hud-say { min-width: 0; font: 400 12px/1.35 var(--sans); color: var(--text-3); }
+.hud-say b { font-weight: 700; color: var(--text); }
+.town-hud .pet-wallet { gap: 7px; font: 800 15px/1 var(--mono); color: var(--accent-ink, var(--accent)); }
+/* Ô to hơn ở cửa hàng. Đây là màn người ta MỞ RA để cho ăn, không phải một dải liếc nhanh
+   — thanh đói là số dẫn của cả ô, nên nó được cỡ của một số dẫn. */
+.town-hud .pet-bar { --cell: 8px; --cell-h: 12px; }
+@container town (max-width: 560px) {
+  .town-hud { flex-wrap: wrap; gap: 0; padding: 7px 11px; }
+  .hud-cell { flex: 1 1 100%; }
+  .hud-cell + .hud-cell {
+    padding: 7px 0 0; margin-top: 7px;
+    border-left: 0; border-top: 1px solid var(--line-soft);
+  }
+}
+
+/* ── Dải nhắc ─────────────────────────────────────────────────────────────────
+
+   Mép DƯỚI cái khung, đối xứng với dải thông số ở mép trên — một cái màn hình có thanh
+   trạng thái và một dòng báo. Vì sao nó rời khỏi luồng trang và vì sao nó bấm được: xem
+   `townAlert` trong `views/pet.js`.
+
+   Nền bề mặt chứ không nền accent, cùng lý do đã ghi ở `.mb-nudge`: câu này xuất hiện
+   thường xuyên trong một ngày làm việc dài, và một dải màu cảnh báo hiện thường xuyên thì
+   sau ba hôm nó thành thứ người ta học cách không nhìn. */
+.town-alert {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  padding: 8px 12px; border: 0; border-top: 1px solid var(--line-soft);
+  font: 500 12.5px/1.45 var(--sans); color: var(--text);
+  background: var(--surface-2); cursor: pointer;
+}
+.town-alert:hover { background: var(--accent-weak); }
+.town-alert-say { flex: 1 1 auto; min-width: 0; }
+/* Cái cửa dẫn tới chỗ làm được việc vừa khuyên. Mũi tên là ký tự, không phải hình: nó
+   phải xoay theo chiều đọc của trang, mà bản tiếng Việt và tiếng Anh cùng chiều nên một
+   ký tự là đủ và nó tự đổi font theo hệ. */
+.town-alert-go {
+  flex: none; padding: 2px 9px 3px; border-radius: 999px;
+  font: 700 11.5px var(--sans); color: var(--accent-ink, var(--accent));
+  background: var(--panel); border: 1px solid var(--accent-line);
+}
+.town-alert-go::after { content: ' →'; }
+/* Hai câu NGUỒN GỐC, gập sau một dòng bấm ra. Vì sao là `<details>` chứ không phải một
+   cái `title=` — trong khi tên trạng thái thì ngược lại, ĐƯỢC dọn vào `title=` — nằm ở
+   khối chú thích trong `views/pet.js`. Tóm tắt: tooltip chỉ được chở thứ suy ra được từ
+   cái hình nó dán vào; hai câu này thì không suy ra được từ đâu cả.
+
+   Khối này KHÔNG mượn class `.shop-why` nữa, và đó là chỗ sửa một lỗi im lặng: `.shop-why`
+   được khai HAI lần trong file — một lần cho câu tỉ giá, một lần nữa ở khối thẻ món
+   (`margin-top: 2px; font-size: 11px`), cùng độ đặc hiệu nên bản sau đè bản trước. Cái
+   `<p class="shop-why hud-why">` cũ vì thế nhận `margin` viết tắt của bản sau, và
+   `margin-bottom: 16px` của `.hud-why` bị xoá sạch mà không có gì báo. Nhìn thấy được
+   trên màn: câu giải thích dính liền vào tiêu đề khối ngay dưới nó. Một class dùng chung
+   cho hai vai là một cái bẫy đặt sẵn — giờ hai vai, hai class. */
+/* Chân trang từ lượt này, nên lề đảo chiều: cách khối trên ra, không cách khối dưới. */
+.hud-why { margin: 4px 0 18px; padding: 0 2px; }
+.hud-why > summary {
+  width: max-content; cursor: pointer; list-style: none;
+  font: 500 11.5px/1.5 var(--sans); color: var(--text-3);
+  text-decoration: underline dotted; text-underline-offset: 3px;
+}
+.hud-why > summary::-webkit-details-marker { display: none; }
+.hud-why > summary:hover, .hud-why[open] > summary { color: var(--text-2); }
+.hud-why p { margin: 5px 0 0; font: 400 11.5px/1.5 var(--sans); color: var(--text-3); }
+/* Câu tỉ giá KHÔNG được thu nhỏ tới mức thành chú thích chân trang. */
 .shop-why { margin: 7px 0 0; font: 400 11.5px/1.5 var(--sans); color: var(--text-3); }
-.shop-hunger .pet-bar { margin-top: 8px; }
-.shop-mood { margin: 8px 0 0; font: 500 12.5px var(--sans); color: var(--text-2); }
+.shop-mood { margin: 6px 0 0; font: 500 12px var(--sans); color: var(--text-2); }
 .shop-err { margin: 0 0 14px; padding: 8px 12px; border-radius: var(--r-sm); font: 500 12.5px var(--sans); color: var(--now, var(--text)); background: var(--surface-2); border: 1px solid var(--line-soft); }
 
+/* ── CÁI NGĂN vừa kéo ra ──────────────────────────────────────────────────────
+
+   Khối bên dưới bản đồ giờ là một VẬT có khung, và đây là phần thứ ba của phép sửa "bấm
+   nhà mà gần như mù". Hai phần kia — dọn 139px chen giữa, và cuộn khối vào tầm mắt — trả
+   lời câu "tôi có thấy nó không". Phần này trả lời câu còn lại: **thấy rồi thì có nhận ra
+   là nó vừa ĐỔI không.**
+
+   Trước lượt này nó là chữ trần đặt thẳng lên nền trang. Bấm từ Nhà sang Thư viện thì trên
+   màn hình chỉ là chữ đổi thành chữ khác, ở đúng chỗ cũ, trên đúng nền cũ — không có mép
+   nào chạy, không có gì nói rằng vừa có một ngăn khác mở ra. Cho nó một cái nền, một cái
+   viền và một hoạt hình hiện ra thì cú bấm có hậu quả nhìn thấy được ngay cả khi khối đã
+   nằm sẵn giữa màn hình. */
+.shop-panel {
+  margin-bottom: 20px; padding: 14px 16px 4px; border-radius: var(--r-sm);
+  background: var(--panel); border: 1px solid var(--line-soft); box-shadow: var(--shadow-sm);
+}
+/* Hiện ra: mờ dần và nhích lên 6px, 180ms. Ngắn có chủ ý — nó là một lời báo "đây là thứ
+   mới", không phải một màn chuyển cảnh. Chỉ chạy ở lượt vẽ ngay sau cú bấm (xem `arriving`
+   trong `views/pet.js`); mấy lượt vẽ định kỳ 30 giây thì không mang class này. */
+.shop-panel.came { animation: shop-came 0.18s ease-out; }
+@keyframes shop-came { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .shop-panel.came { animation: none; } }
+
 .shop-sec { margin-bottom: 22px; }
-.shop-sec h2 { margin: 0 0 3px; font: 700 15px var(--sans); }
+/* TẤM BIỂN, không phải một dòng tiêu đề — và nó mượn đúng cặp sắc của tấm biển đang sáng
+   trên bản đồ (`.place.here .place-sign`: chữ kem trên nền nâu sẫm). Đó là toàn bộ ý:
+   chỗ vừa bấm đổi biển sang tối, và cái ngăn mở ra ĐEO ĐÚNG tấm biển ấy. Hai đầu của một
+   cú bấm nhận ra nhau bằng hình, không bằng việc người đọc phải so hai chuỗi chữ.
+
+   Sắc CỐ ĐỊNH, không theo theme, cùng lý do đã ghi ở `.place-sign`: cả hai đầu của cặp
+   tương phản này đều do chính nó đặt, nên nó đủ tương phản ở mọi nền. */
+.shop-panel > h2 {
+  display: inline-block; margin: 0 0 8px; padding: 3px 10px 4px;
+  font: 700 13px var(--sans); color: #f2e7d5; background: #3a2410;
+  border: 1px solid rgb(242 231 213 / 0.55); border-radius: 3px;
+  box-shadow: 2px 2px 0 rgb(10 6 24 / 0.22);
+}
 .shop-hint { margin: 0 0 11px; font: 400 12px var(--sans); color: var(--text-3); }
 .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; }
 
@@ -2309,7 +2822,94 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
    thì người ta không biết mình đang cách món đó bao xa — mà đó chính là thứ làm cái giá
    có nghĩa. */
 .shop-item.poor .shop-price { color: var(--text-3); }
+/* Đã mua nhưng chưa bày: viền đứt, để nó đọc ra "cái này của bạn rồi" mà không tranh chỗ
+   với món đang bày. Trước đây `.owned` còn kèm `disabled`, giờ thì không — món đã mua là
+   thứ BẤM ĐƯỢC, bấm để đổi lên. */
 .shop-item.owned { border-style: dashed; }
+/* Đang bày: viền accent liền nét, đúng cái viền mà `:hover` dùng. Trùng là cố ý — nó nói
+   "chỗ này đang chọn cái này", cùng nghĩa với con trỏ đang chỉ vào. Và nó KHÔNG phải chỉ
+   một khác biệt màu: nét liền so với nét đứt là kênh thứ hai, thứ mà theme daltonized đòi
+   (xem luật ở `moodOf`). */
+.shop-item.worn { border-style: solid; border-color: var(--accent); background: var(--accent-weak); }
+.shop-item.worn .shop-price { color: var(--text-3); }
+
+/* ── Bàn thử đồ ───────────────────────────────────────────────────────────────
+
+   Bức tranh bên trái, câu chữ và hai cái nút bên phải. Đứng CẠNH nhau chứ không xếp chồng:
+   lúc quyết thì cả hai phải cùng nằm trong tầm mắt, mà một cái nút nằm dưới một bức tranh
+   cao 94px thì ở màn hẹp nó đã trôi khỏi khung nhìn. Dưới 560px thì hết đường và nó xuống
+   dòng — ở đấy bức tranh vẫn thắng, vì nó mới là thứ người ta tới đây để xem.
+
+   Bề rộng bức tranh KHOÁ CỨNG ở 326px, đúng bề rộng nó sẽ có trong popover 360px (360 trừ
+   hai lề 16 và hai đường viền 1). Không phải một con số làm đẹp: mọi chỗ đứng của đồ trang
+   trí đều neo theo mép bầu trời (`.slot-air` cách phải 58px, `.slot-left` cách trái 8px),
+   nên một bầu trời rộng 600px là mọi món dạt ra hai bên và bức tranh xem trước thôi không
+   còn nói đúng về bức tranh thật. */
+.shop-try {
+  display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px;
+  margin: 0 0 16px; padding: 13px 15px 14px; border-radius: var(--r-sm);
+  background: var(--surface-2); border: 1px solid var(--line-soft);
+}
+.shop-scene { flex: none; width: 326px; max-width: 100%; }
+.shop-scene .mb-sky { border-radius: var(--r-sm); overflow: hidden; border: 1px solid color-mix(in srgb, var(--skin) 26%, transparent); }
+.try-side { flex: 1; min-width: 190px; }
+.try-hint, .try-on { margin: 0; font: 400 12.5px/1.6 var(--sans); color: var(--text-3); }
+.try-on { color: var(--text); font-weight: 500; }
+.try-act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 11px; }
+/* Nút MUA phải nặng hơn nút Cởi ra. `.btn` trong dự án này chỉ có đúng một dáng, và hai cái
+   nút giống hệt nhau đứng cạnh nhau thì cú bấm quyết định 260 xu trông ngang với cú bấm bỏ
+   đi — ở đây thì không được, vì một cái đảo lại được còn một cái thì không. Mượn đúng cặp
+   token mà ô "đang bày" đang dùng, không dựng thêm sắc mới. */
+.try-act .btn.go { background: var(--accent-weak); border-color: color-mix(in srgb, var(--accent) 55%, transparent); color: var(--text); font-weight: 600; }
+/* Thiếu tiền thì nó phải trông như một cái nút đã tắt, không phải một cái nút mời bấm —
+   câu "còn thiếu N xu" ngay dưới mới là chỗ trả lời. */
+.try-act .btn.go:disabled { background: var(--panel-2); border-color: var(--line); color: var(--text-3); font-weight: 400; cursor: default; }
+/* Câu thiếu tiền đứng DƯỚI nút, không nằm trong nút: cái nút đã tắt rồi, và một nút tắt thì
+   không giải thích được vì sao nó tắt. Cùng lý lẽ với `title` trên ô hàng. */
+.try-poor { margin: 9px 0 0; font: 500 12px var(--sans); color: var(--text-2); }
+
+/* ── KHAY của quán ăn ────────────────────────────────────────────────────────────
+
+   Cùng khuôn với bàn thử đồ ngay trên — cùng nền, cùng viền, cùng cặp nút — và đó là chủ
+   ý: từ lượt này cả hai cửa hàng đều chạy hai thì, nên chúng phải trông như một luật chứ
+   không như hai thói quen. Khác đúng một chỗ: bàn thử chở một bức tranh rộng 326px, còn
+   khay chỉ chở một món 40px, nên nó thấp hơn hẳn và không cần xuống dòng ở màn hẹp.
+
+   Nó KHÔNG BAO GIỜ tắt, kể cả lúc chưa chọn gì — lúc ấy nó là một dòng nhắc. Cho nó hiện
+   ra rồi biến đi là đẩy cả cái lưới chín ô lên xuống 60px mỗi cú bấm, mà cái lưới nhảy thì
+   cú bấm tiếp theo rơi vào ô khác với ô mắt đang nhắm. Chiều cao hai trạng thái vì thế
+   phải gần nhau, và `min-height` giữ đúng chuyện đó.
+
+   Đứng TRÊN cái lưới, không dưới — lý do đầy đủ ở `foodTray` trong `views/pet.js`. */
+.shop-pick {
+  display: flex; align-items: center; gap: 13px; min-height: 44px;
+  margin: 0 0 14px; padding: 10px 14px; border-radius: var(--r-sm);
+  background: var(--surface-2); border: 1px solid var(--line-soft);
+}
+/* Chưa chọn thì nét đứt: một cái khung rỗng nét liền đọc thành một khối đang hỏng, còn nét
+   đứt thì đọc thành một chỗ đang chờ được lấp — đúng nghĩa của nó lúc này. Cùng quy ước với
+   `.shop-item.owned`. */
+.shop-pick:not(.on) { border-style: dashed; }
+/* `.shop-art` khai `width: 100%` vì trong ô hàng nó là một tấm nền trải hết bề ngang ô.
+   Ở đây nó là một cái ảnh nhỏ đứng cạnh chữ, nên phải khai bề rộng THẬT — thiếu nó thì
+   `flex: none` giữ nguyên 100% và cụm chữ bên cạnh bị bóp còn một ký tự mỗi dòng. Đã hỏng
+   đúng như thế một lần, và trên màn hình thì nó hiện ngay: một dải tím dài với một bát phở
+   ở giữa. */
+.shop-pick .shop-art { flex: none; width: 72px; height: 42px; }
+.pick-side { flex: 1; min-width: 0; }
+.pick-on { margin: 0; font: 500 12.5px/1.5 var(--sans); color: var(--text); }
+/* Số dư còn lại và câu thiếu tiền chiếm ĐÚNG một chỗ, không bao giờ cùng hiện: một cái là
+   "trả được, còn ngần này", cái kia là "chưa trả được". Nhạt hơn `pick-on` vì nó là hệ quả
+   của quyết định, không phải chính quyết định. */
+.pick-left { margin: 7px 0 0; font: 400 12px var(--sans); color: var(--text-3); }
+.shop-pick .try-act { margin-top: 8px; }
+
+/* Một khe trong khung trời: tiêu đề nói chỗ nào, rồi nói đang bày gì. Tên món nghiêng và
+   nhạt hơn để hai vế đọc ra là "chỗ · nội dung" chứ không đọc ra hai tiêu đề. */
+.shop-slot { margin-bottom: 14px; }
+.shop-slot:last-child { margin-bottom: 0; }
+.shop-slot h3 { margin: 0 0 7px; font: 600 12.5px var(--sans); color: var(--text-2); }
+.shop-slot h3 em { font: 400 12px var(--sans); font-style: italic; color: var(--text-3); }
 
 /* Bệ đặt món: dựng lại đúng mặt của khung trời popover, để một món ở hai nơi vẫn là một
    món. Cố định qua cả hai theme — nó là tranh, không phải nền. */
@@ -2326,6 +2926,507 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
 .shop-name { font: 600 12.5px var(--sans); }
 .shop-price { font: 700 12px var(--mono); color: var(--accent-ink, var(--accent)); }
 .shop-fill { font: 500 10.5px var(--mono); color: var(--text-3); }
+/* Tím, đúng sắc thanh tập trung — dòng này và cái thanh ấy phải nối được với nhau bằng
+   mắt, nếu không thì "+40% tập trung" là một hiệu ứng không biết nó chạy vào đâu. */
+.shop-fill.wake { color: #b061ad; }
+
+/* ── Nghỉ ngắn ────────────────────────────────────────────────────────────────
+
+   Năm động tác miễn phí, và chúng DÙNG LẠI ô hàng hoá — điều mà bản trước cố ý không làm.
+   Lý do cũ đã ghi ở đây và nó có thật: một cái nút trông y hệt ô hàng thì mắt đọc nó là
+   "món giá 0", tức một món khuyến mãi, trong khi thứ nó nói thì ngược lại — đây là đường
+   DUY NHẤT về đầy 100%, còn mấy ô có giá kia thì mãi mãi không tới được đó.
+
+   Cái trả lời được lo ngại ấy là DÒNG THỜI GIAN, và nó chỉ có từ lượt này. Ô miễn phí bày
+   "3 phút" ở đúng cỡ chữ và đúng chỗ mà ô đồ ăn bày "+25% no", nên nó không đọc thành hàng
+   khuyến mãi — nó đọc thành một món trả bằng đơn vị khác. Và đổi lại, phép so giữa hai bên
+   mới thành thật: cùng một thanh tập trung, một bên lấy 1,85 xu để kéo 40%, một bên lấy 0
+   xu và 5 phút để về đầy. Bản thẻ chữ cũ không so được, vì hai bên khác nhau cả hình dáng
+   lẫn chỗ đứng — mà cái phải so thì chỉ có một con số. */
+.shop-rest { padding: 13px 15px 15px; border-radius: var(--r-sm); background: var(--surface-2); border: 1px solid var(--line-soft); }
+.shop-rest h2 { font-size: 14px; }
+/* Ô rộng hơn ô hàng hoá (158 so với 112) vì nó chở thêm câu bằng chứng. Câu ấy KHÔNG rút
+   được vào tooltip: nó là điều kiện để một động tác được đứng trong bảng (xem `MOVES`), và
+   một điều kiện chỉ đọc được khi rê chuột thì nó không có trên trang. */
+.shop-grid.wide { grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); }
+/* Khối động tác nghỉ, giờ có ở HAI chỗ: trong Nhà (ba việc làm ngay tại bàn) và ở Công viên
+   (hai việc phải ra khỏi cửa). Nó có bệ riêng vì ở trong Nhà nó đứng cạnh một khối khác hẳn
+   — mấy món đang bày — và không có bệ thì hai khối đọc thành một danh sách dài. */
+.shop-moves {
+  margin: 0 0 16px; padding: 13px 15px 15px; border-radius: var(--r-sm);
+  background: var(--surface-2); border: 1px solid var(--line-soft);
+}
+.shop-moves h3 { margin: 0 0 3px; font: 700 13.5px var(--sans); }
+.shop-rest .shop-moves { margin: 0; padding: 0; background: none; border: 0; }
+.shop-why { margin-top: 2px; font: 400 11px/1.5 var(--sans); color: var(--text-3); }
+/* "Miễn phí" KHÔNG lấy sắc accent như mấy con số giá. Accent ở ô hàng đang nói "đây là số
+   tiền"; một chữ không phải số mà mặc cùng màu thì nó giả vờ là một cái giá. */
+.shop-price.free { color: var(--text-2); font-family: var(--sans); font-size: 12.5px; }
+/* Số phút mang sắc chữ thường chứ không nhạt như dòng `+% no`: đây là cái giá thật của mấy
+   món này, nên nó không được nhẹ hơn dòng nói phần thưởng. */
+.shop-fill.cost { color: var(--text-2); }
+/* Gợi ý hợp giờ. Chỉ MỘT ô có nó, và chỉ đổi ở khung 13–16h — xem `moveForHour`. Một nhãn
+   nhảy lung tung mỗi lượt vẽ là một nhãn không ai tin. */
+.shop-item.best { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+/* Ô ĐANG THỬ. Viền nét liền + nền accent, y như ô đang bày (`.worn`) — cố ý dùng lại đúng
+   ngôn ngữ ấy, vì hai trạng thái nói cùng một chuyện: món này đang ở trên người quản gia.
+   Cái tách chúng ra là dòng nhãn bên trong ("đang thử" / "cất đi"), tức chữ, không phải màu.
+   Nét liền so với nét đứt là kênh thứ hai — cùng luật đã ghi ở `.shop-item.worn`. */
+.shop-item.trying { border-style: solid; border-color: var(--accent); background: var(--accent-weak); }
+.rest-best {
+  margin-top: 3px; padding: 1px 7px 2px; border-radius: 99px;
+  font: 600 10px var(--sans); color: var(--accent-ink, var(--accent));
+  background: var(--accent-weak);
+}
+
+/* ── Dải "đang làm" ───────────────────────────────────────────────────────────
+
+   Nó đứng NGOÀI mọi khối, ngay dưới hai cái thanh, vì nó khoá mọi nút mua trên cả màn
+   hình. Một cú bấm bị từ chối mà lời giải thích nằm ở một chỗ khác trong thị trấn là một
+   cú bấm hỏng; đứng cạnh cái ví thì nó trả lời đúng câu vừa được hỏi.
+
+   Bệ đặt món chép nguyên `.shop-art` — cùng một mặt tối, cùng một món. Món ở đây đang VƠI
+   DẦN, và nó vơi cùng nhịp với món trong tay quản gia ngoài bản đồ vì cả hai nhận đúng một
+   `leftMs`. */
+.doing-now {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin: 0 0 16px; padding: 10px 14px 11px; border-radius: var(--r-sm);
+  background: var(--surface-2); border: 1px solid var(--line-soft);
+}
+.doing-art {
+  flex: none; display: flex; align-items: flex-end; justify-content: center;
+  width: 56px; height: 46px; border-radius: 6px; overflow: hidden; padding-bottom: 4px;
+  background: linear-gradient(180deg, #2a1b4d 0%, #48294c 100%);
+  border: 1px solid rgb(167 139 250 / 0.26);
+}
+.doing-art .pet-art { flex: none; filter: drop-shadow(2px 2px 0 rgb(10 6 24 / 0.42)); }
+.doing-say { flex: 1 1 220px; display: flex; flex-direction: column; gap: 2px; }
+.doing-say b { font: 700 13px var(--sans); }
+.doing-say span { font: 400 11.5px/1.5 var(--sans); color: var(--text-2); }
+.doing-clock { flex: none; font: 800 28px/1 var(--mono); color: var(--accent-ink, var(--accent)); font-variant-numeric: tabular-nums; }
+
+/* Kết quả quãng vừa chốt. Hai ca dùng hai màu, nhưng KHÔNG chỉ dùng màu: câu chữ tự nói
+   ra kết quả, nên màu ở đây chỉ là kênh thứ hai — luật daltonized. Không mượn `--crit`:
+   trượt một quãng nghỉ không phải một sự cố, và bốn màu băng đang chở nghĩa khác. */
+.shop-verdict { margin: 0 0 11px; padding: 8px 12px; border-radius: var(--r-sm); font: 500 12.5px/1.5 var(--sans); background: var(--panel); border: 1px solid var(--line-soft); }
+.shop-verdict.ok { color: var(--text); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.shop-verdict.no { color: var(--text-2); }
+
+/* ── Thư viện: cách tính ──────────────────────────────────────────────────────
+
+   Trước 5/8 nó là một khối `<details>` gập ở chân trang, gập lại vì bung sẵn thì bảy khối
+   chữ đẩy cửa hàng xuống dưới mép màn hình. Từ lúc có bản đồ thì cái gập ấy thừa: khối này
+   có toà nhà riêng và chỉ hiện ra khi người ta bấm vào nó, nên nó vừa mở sẵn vừa không
+   chen chỗ của ai — cùng một hiệu quả, ít hơn một cơ chế.
+
+   Nó KHÔNG được là một chú thích chân trang cỡ 10px: mọi con số của trò chơi này khai
+   nguồn gốc ở đây, và đó là điều kiện để cái thanh tím được phép đưa ra lời khuyên. */
+.shop-how { padding: 0 0 2px; border-radius: var(--r-sm); background: var(--panel); border: 1px solid var(--line-soft); }
+.shop-how > h2 { padding: 12px 15px 0; }
+.shop-how > .shop-hint { margin: 4px 15px 11px; }
+.how-row { padding: 11px 15px 12px; border-top: 1px solid var(--line-soft); }
+.how-row h3 { margin: 0 0 5px; font: 700 12.5px var(--sans); }
+/* Công thức bằng MONO trên nền lõm — nó là một dòng để đọc chính xác, không phải một câu
+   để lướt. Cho phép cuộn ngang: dòng dài nhất là 52 ký tự, vẫn tràn ở màn hẹp, và tràn ra
+   ngoài body thì cả trang cuộn ngang. */
+.how-row code {
+  display: block; overflow-x: auto; margin: 0 0 7px; padding: 6px 9px; border-radius: 5px;
+  font: 600 11.5px/1.5 var(--mono); color: var(--text); white-space: pre;
+  background: var(--surface-2); border: 1px solid var(--line-soft);
+}
+.how-row p { margin: 0; font: 400 12.5px/1.62 var(--sans); color: var(--text-2); }
+.how-src { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; padding: 11px 15px 13px; border-top: 1px solid var(--line-soft); font: 400 11.5px/1.6 var(--sans); color: var(--text-3); }
+.how-src b { font-weight: 700; color: var(--text-2); }
+.how-src a { color: var(--text-3); }
+.how-src a:hover { color: var(--accent-ink, var(--accent)); }
 
 .shop-foot { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-top: 6px; border-top: 1px solid var(--line-soft); }
 .shop-tally { flex: 1; font: 500 11.5px var(--mono); color: var(--text-3); }
+
+/* ── Thị trấn ─────────────────────────────────────────────────────────────────
+
+   Một BỨC TRANH nhìn từ trên cao, đúng nghĩa mà `.mb-sky` đã tự khai: mặt đất giữ nguyên
+   sắc qua cả hai theme, vì một bãi cỏ lật màu theo nền giao diện thì nó thôi không còn là
+   bãi cỏ.
+
+   ## Mặt đất vẽ bằng gradient, không vẽ bằng pixel
+
+   Hai dải kẻ lặp ở ĐÚNG hai hướng của lưới đẳng cự — 26,57°, tức arctan(0,5), viết ra
+   thành 206,57° và 153,43° theo cách CSS đo góc. Nên cái hoạ tiết dưới chân mấy toà nhà là
+   chính cái lưới chúng đang đứng lên, không phải một hoạ tiết đặt cạnh chúng: mắt đọc ra
+   mặt phẳng trước khi kịp đọc từng ô.
+
+   Vì sao không vẽ bằng pixel như mọi thứ khác trong khung này — và đây là một con số ĐO
+   ĐƯỢC, không phải một linh cảm: cả màn Cửa hàng hiện đang là 4710 ô pixel, 245KB HTML,
+   46ms một lượt dựng lại (đo trên máy này 5/8, sau lượt phóng to nhà cửa; trước đó là
+   4085 ô / 213KB / 28ms, và trước lượt nới rộng đầu tiên là 1792 ô / 97KB / 4,8ms). Một
+   mặt đất phủ kín 680×478px ở lưới 4px thêm vào hơn HAI MƯƠI NGHÌN ô nữa —
+   gấp năm lần cả màn hình, cho một thứ không ai bấm vào, và cái giá ấy phải trả MỖI GIÂY
+   trong lúc có việc đang chạy. Đường xá cũng vậy, và cũng vì thế (xem `.town-road`).
+
+   Cái đổi lại là hai đường chéo được khử răng cưa đứng cạnh mấy cạnh pixel cứng. Chấp nhận
+   được vì chúng là NỀN, mờ dưới 8%, không phải một vật; luật "bo trơn cạnh răng cưa" nói
+   về hai VẬT đứng cạnh nhau.
+
+   Ban ngày chứ không theo giờ như popover, và đó là chủ ý: popover mở ra chín lần một ngày
+   nên buổi của nó là một tin thật; màn này mở ra khi người ta muốn mua sắm, và một thị trấn
+   tối om lúc 11 giờ đêm chỉ làm mấy cái biển khó đọc hơn. */
+/* ── Cái KHUNG: dải thông số, bản đồ, dải nhắc ────────────────────────────────
+
+   Ba thứ, một cái viền, một cái bóng — vì chúng là MỘT màn hình, không phải ba khối xếp
+   chồng. Cả ba con số ở dải trên và cả câu nhắc ở dải dưới đều nói về đúng cái thị trấn
+   nằm giữa; đóng chung một khung là nói ra điều đó bằng hình, và trả lại được toàn bộ
+   khoảng cách mà ba cái viền riêng vẫn tính tiền.
+
+   Bốn biến `--town-*` do `views/pet.js` gán lên `.shop`, tức lên cả CỘT — xem khối ấy để
+   biết vì sao. Chúng chảy xuống tới đây và tới `.town` bên trong, nên khung chỉ cần rộng
+   bằng cột và không phải nhắc lại con số nào.
+
+   `container-type` để hai cái dải hỏi được bề rộng CỦA KHUNG — xem `.town-hud`. */
+.town-shell {
+  margin: 0 0 12px; border-radius: var(--r-sm); overflow: hidden;
+  border: 1px solid rgb(167 139 250 / 0.26); box-shadow: var(--shadow-sm);
+  container-type: inline-size; container-name: town;
+}
+.town {
+  position: relative; overflow: hidden;
+  /* Chiều cao đúng bằng bức tranh SAU KHI co. Thiếu phép nhân này thì khung giữ nguyên cỡ
+     gốc và mọc ra một dải cỏ trống bằng đúng phần vừa co đi. */
+  height: calc(var(--town-h) * var(--town-k, 1));
+  background:
+    radial-gradient(124% 96% at 50% 118%, rgb(22 42 16 / 0.36) 0%, transparent 62%),
+    repeating-linear-gradient(206.57deg, rgb(255 255 255 / 0.06) 0 2px, transparent 2px 55px),
+    repeating-linear-gradient(153.43deg, rgb(18 38 14 / 0.08) 0 2px, transparent 2px 55px),
+    linear-gradient(180deg, #8cb972 0%, #6da155 56%, #5a8b46 100%);
+}
+/* ── Bản đồ CO ĐƯỢC ───────────────────────────────────────────────────────────
+
+   Bề rộng, chiều cao và gốc toạ độ đến từ `TOWN_BOX` bên `lib/town.js`, tính ra từ chính
+   những thứ đang đứng trên bản đồ. Trước 5/8 chúng là ba con số viết cứng ở đây
+   (`height: 440px`, `min-width: 760px`, `top: 230px`) kèm một chú thích nói chúng đo từ
+   đâu — đúng vào ngày viết, sai từ lượt sau. Lượt phóng to này làm cả ba cùng chết một
+   lúc: nhà nở 8 ô, cửa hàng nở 4 ô, bước lưới 152 → 172, hai ô đất biến mất.
+
+   Và `min-width` là chỗ hỏng người dùng chỉ ra: nó KHOÁ CỨNG bề rộng, nên khung hẹp lại
+   thì bản đồ đứng nguyên và thò ra ngoài — trên khung 700px là mất hẳn tiệm trang trí.
+   Một bản đồ phải cuộn ngang mới thấy hết thì nó thôi không còn là bản đồ. `scale` thì
+   thu cả bức tranh, giữ nguyên mọi tỉ lệ, và `--town-k` do `fitTown()` đặt (xem
+   `views/pet.js`) — CSS không tự chia được bề rộng khung cho bề rộng tranh.
+
+   `transform-origin: 0 0` để bức tranh co về góc trên-trái, chỗ nó đang bắt đầu. Co về tâm
+   thì phải bù lại bằng một phép dịch, tức là một con số thứ hai phải khớp với con số thứ
+   nhất. */
+.town-map {
+  position: relative; width: var(--town-w); height: var(--town-h);
+  transform-origin: 0 0; scale: var(--town-k, 1);
+}
+
+/* ── Đường xá ─────────────────────────────────────────────────────────────────
+
+   MỘT thẻ cho một đoạn đường, không phải một mảng ô pixel. Bốn đoạn phủ 1696×40px; ở lưới
+   4px đó là hơn bốn nghìn thẻ `<i>` nữa — gấp đôi toàn bộ số ô đang có trên màn hình — cho
+   một thứ không ai bấm vào, và cái giá ấy phải trả mỗi giây trong lúc có việc đang chạy.
+   Đường là MẶT ĐẤT, và mặt đất ở màn này vốn đã vẽ bằng gradient theo đúng lý lẽ ấy — xem
+   khối `.town` bên trên.
+
+   Độ dốc do `skewY(26,565°)` chở, tức arctan(0,5), tức đúng độ dốc 2:1 của mọi hình trong
+   `lib/town.js`. Lệch thẻ chứ không xoay: xoay thì bề dày con đường co lại theo cos, còn
+   lệch thì mọi khoảng cách DỌC giữ nguyên — mà chính khoảng cách dọc là thứ mắt đọc ra
+   thành "con đường này rộng chừng này".
+
+   Vạch giữa là một dải gạch ngang nằm chính giữa; nó bị lệch cùng cả thẻ nên nó tự chạy dọc
+   theo đường mà không phải khai góc lần thứ hai. */
+.town-road {
+  position: absolute; left: var(--town-ox); top: var(--town-oy); translate: var(--x) var(--y);
+  z-index: 1; pointer-events: none; border-radius: 4px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 14px, rgb(255 250 235 / 0.42) 14px 30px) center / 100% 4px no-repeat,
+    linear-gradient(180deg, #b09a79 0%, #9a8663 62%, #8a7757 100%);
+  box-shadow: inset 0 0 0 2px rgb(52 34 16 / 0.16);
+}
+.town-road.dir-a { transform: skewY(26.565deg); }
+.town-road.dir-b { transform: skewY(-26.565deg); }
+
+/* Mỗi chỗ là một cái GHIM không kích thước, đặt đúng mắt lưới; hình và biển tên treo quanh
+   nó. Làm ngược lại — cho `.place` có bề rộng thật rồi căn giữa — thì cái ghim trượt theo
+   độ dài của biển tên, và bản tiếng Anh sẽ dựng một thị trấn khác bản tiếng Việt. */
+.place {
+  position: absolute; left: var(--town-ox); top: var(--town-oy); width: 0; height: 0;
+  padding: 0; background: none; border: 0; font: inherit; color: inherit;
+  cursor: pointer; translate: var(--x) var(--y);
+}
+/* Neo ĐÁY-GIỮA: mọi sprite trong `lib/town.js` đều có đỉnh dưới của mặt nền nằm ở chính
+   giữa hàng cuối, nên chỗ này không phải biết gì về từng hình. Đó là điều kiện để năm toà
+   nhà cao thấp khác nhau vẫn đứng trên cùng một mặt đất. */
+.place-art {
+  position: absolute; left: 0; bottom: 0; translate: -50% 0;
+  filter: drop-shadow(3px 2px 0 rgb(10 6 24 / 0.3));
+  transition: translate 0.12s;
+}
+.place:hover:not(.lot) .place-art { translate: -50% -3px; }
+/* Biển hiệu: một tấm ván sáng chữ tối, sắc CỐ ĐỊNH. Nó nằm trong bức tranh chứ không nằm
+   trên giao diện — một cái biển đổi màu theo theme thì nó là một cái nhãn, không phải một
+   cái biển. Cặp sắc này tương phản đủ ở mọi nền vì cả hai đầu đều do nó tự đặt. */
+.place-sign {
+  position: absolute; left: 0; top: 4px; translate: -50% 0;
+  padding: 2px 8px 3px; border-radius: 3px; white-space: nowrap;
+  font: 700 11px var(--sans); color: #3a2410; background: #f2e7d5;
+  border: 1px solid rgb(58 36 16 / 0.5); box-shadow: 2px 2px 0 rgb(10 6 24 / 0.3);
+}
+/* Chỗ đang mở nhận HAI kênh: viền accent (giao diện, lật theo theme) và tấm biển đảo
+   sáng-tối (bức tranh, cố định). Theme daltonized làm cái viền hết phân biệt được, và lúc
+   ấy tấm biển đen chữ trắng vẫn đọc ra ngay giữa một hàng biển trắng chữ đen. */
+.place.here .place-art { outline: 2px solid var(--accent); outline-offset: 0; border-radius: 2px; }
+.place.here .place-sign { color: #f2e7d5; background: #3a2410; border-color: #f2e7d5; }
+/* Ô đất: không bấm được, và nó nói điều đó bằng con trỏ, bằng độ mờ, và bằng cái biển chữ
+   thường không viền. Ba kênh cho một câu, vì câu ấy phải hiểu được trước khi ai đó thử
+   bấm — một cú bấm không có phản hồi là cách tệ nhất để biết một thứ chưa mở. */
+.place.lot { cursor: default; }
+.place.lot .place-art { opacity: 0.8; }
+/* Cây cối quanh phố: không tên, không bấm, không nhấc lên khi rê chuột. Chúng là PHONG
+   CẢNH, và một cái cây phản ứng với con trỏ là một cái cây mời người ta bấm thử. */
+.place.scene { cursor: default; pointer-events: none; }
+.place.lot .place-sign {
+  font-weight: 500; font-style: italic; color: #f2e7d5;
+  background: rgb(58 36 16 / 0.55); border-color: rgb(242 231 213 / 0.4); box-shadow: none;
+}
+
+/* ── Quản gia trong nhà ───────────────────────────────────────────────────────
+
+   Tên class là `resident`, KHÔNG phải `butler` — và đó là một lỗi đã gặp thật, không phải
+   một sự thận trọng. `.butler` đã có chủ từ lâu: nó là cả cái thẻ tóm tắt ở đầu dashboard
+   (xem dòng 368 và `index.html`). Đặt trùng tên thì dòng `position: absolute` ngay dưới
+   đây bốc luôn cái thẻ ấy ra khỏi luồng và cả trang đầu vỡ — mà màn hình đang mở lại là
+   màn Cửa hàng, nên không ai thấy gì cho tới lần bấm sang màn khác.
+
+   Chỗ đứng do `lib/town.js` tính ra từ chính mấy hằng số dựng nên căn phòng và gửi sang
+   bằng `style`, nên ở đây không có một toạ độ nào — chép lại chúng vào CSS là dựng bản thứ
+   hai của một con số, và lần nới rộng căn phòng tiếp theo là quản gia đứng xuyên tường.
+
+   `pointer-events: none` vì cả toà nhà LÀ cái nút; một nhân vật nuốt mất cú bấm ở đúng
+   giữa nhà thì chỗ dễ bấm nhất lại là chỗ không bấm được. */
+.resident { position: absolute; pointer-events: none; }
+.resident .mini { position: absolute; left: 0; top: 0; }
+/* Quản gia mang SẮC CỦA CHÍNH MÌNH, không mang bảng màu của cái bàn ăn.
+   Anh ta vẽ trên nền `.pet-art` (đó là chỗ bảng `--art-*` treo, và mọi toà nhà trong thị
+   trấn đều đứng dưới nó), mà ở đấy một ô `.px` trơn là màu kem của bát đĩa. Không có mấy
+   dòng này thì nhân vật ra một khối kem — hoặc, nếu gán tay cho anh ta một cái tên màu
+   trong bảng kia, thì ra một nhân vật ĐỎ TÍM khác hẳn nhân vật tím nhạt ở popover. Cả hai
+   đều là "hai nhân vật", đúng cái lỗi lượt này vừa sửa ở phần hình.
+   Khoanh trong `.mini` chứ không trong `.resident`: món đồ anh ta đang cầm cũng nằm trong
+   `.resident` và nó PHẢI giữ bảng màu đồ ăn — một bát phở màu tím là một bát phở hỏng.
+   `.pet-art.mini` chứ không `.mini` trơn, để thắng `.pet-art .px` bằng độ đặc hiệu chứ
+   không bằng thứ tự dòng trong file. */
+.pet-art.mini .px { background: var(--skin); }
+.pet-art.mini .px.face { background: var(--mb-face); }
+.pet-art.mini .px.eye { background: var(--mb-eye); }
+.pet-art.mini .px.eye.spark { background: #fffdf7; }
+.pet-art.mini .px.eye.shut { background: var(--mb-lash); }
+.pet-art.mini .px.tie { background: var(--sun); }
+.mini-frame { position: absolute; left: 0; top: 0; display: block; }
+/* Đi lại: hai khung hình luân phiên, và cả cụm trượt dọc theo MỘT trục của sàn — 22px
+   ngang ứng với 11px dọc, đúng độ dốc 2:1 của căn phòng. Trượt theo trục khác là đi xuyên
+   qua tường trong khi trông vẫn như đang đi trên sàn.
+
+   `steps(14)` chứ không mượt: cả bức tranh là lưới 4px, và một nhân vật trượt nửa pixel
+   bên cạnh mấy cạnh răng cưa thì cái nhoè đọc thành lỗi render — cùng luật đã ghi cho
+   phần chuyển động ở `menubar-view.js`. Mười bốn bậc cho 56px là đúng 4px một bậc, tức
+   đúng một ô.
+
+   Chín giây một vòng, và `animation-delay` âm do JS gửi sang giữ cho vòng ấy sống sót qua
+   mọi lượt vẽ lại — kể cả nhịp một giây lúc có việc đang chạy. Thiếu nó thì quản gia giật
+   về đầu phòng mỗi giây. */
+.resident.pacing { animation: town-pace 11s steps(8, end) infinite; }
+@keyframes town-pace {
+  0%, 6% { translate: -32px 16px; }
+  44%, 56% { translate: 32px -16px; }
+  94%, 100% { translate: -32px 16px; }
+}
+/* Ở công viên thì bãi cỏ chỉ rộng 128px so với 208px của sàn nhà, nên vòng đi ngắn lại —
+   cùng một bước 8×4px, ít bước hơn. Chép cả bộ keyframes chứ không vặn một biến: hai vòng
+   đi khác nhau ở CẢ biên độ lẫn số bậc, và hai con số ấy phải khớp nhau (mỗi bậc đúng một ô
+   nền) — buộc chúng vào cùng một chỗ thì lần sửa sau không tách chúng ra được. */
+.resident.at-park.pacing { animation: park-pace 11s steps(6, end) infinite; }
+@keyframes park-pace {
+  0%, 6% { translate: -24px 12px; }
+  44%, 56% { translate: 24px -12px; }
+  94%, 100% { translate: -24px 12px; }
+}
+.mini-frame.a { animation: mini-a 0.6s linear infinite; }
+.mini-frame.b { animation: mini-b 0.6s linear infinite; }
+@keyframes mini-a { 0%, 49.9% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes mini-b { 0%, 49.9% { opacity: 0; } 50%, 100% { opacity: 1; } }
+/* Đang làm việc thì ĐỨNG YÊN, và món đồ mới là thứ chuyển động. Hai chuyển động cùng lúc
+   trong một khung 144px thì không cái nào được nhìn. */
+/* Món đồ neo vào đúng BÀN TAY, và toạ độ đến từ chính mấy hàng pixel của tư thế `hold` —
+   xem `BUTLER_HAND` trong `lib/pet.js`, nên ở đây không có con số nào. Bản trước neo vào
+   mép phải sprite (`left: 100%`) với `bottom` cố định, và nó đứng được đúng một lần: bàn
+   tay giơ cao nằm THỤT VÀO hai ô so với mép khung, nên món đồ lơ lửng cách tay 8px, còn
+   một món cao hơn cốc nước thì tụt hẳn xuống ngang hông.
+   Neo theo `top` chứ không `bottom`: cái treo vào bàn tay phải rủ XUỐNG từ tay, nên món
+   càng to càng dài xuống dưới — không phải càng to càng trèo lên khỏi đầu. */
+.resident-item { position: absolute; }
+
+
+/* ── Nhà ──────────────────────────────────────────────────────────────────────
+   Ô ở đây KHÔNG mượn `.shop-item`: nó không bấm được, và một ô trông y hệt ô hàng hoá mà
+   bấm không ra gì là một ô hỏng. Cùng cỡ, cùng bệ, khác ở chỗ không có giá và không có
+   con trỏ tay. */
+.home-worn { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; margin-bottom: 15px; }
+.home-piece {
+  display: flex; flex-direction: column; align-items: center; gap: 5px; text-align: center;
+  padding: 10px 8px 11px; border-radius: var(--r-sm);
+  background: var(--panel); border: 1px solid var(--line-soft);
+}
+.home-piece b { font: 600 12.5px var(--sans); }
+.home-piece em { font: 400 11px var(--sans); font-style: italic; color: var(--text-3); }
+.home-foot { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-top: 13px; border-top: 1px solid var(--line-soft); }
+
+/* ── Ví nảy lên ───────────────────────────────────────────────────────────────
+
+   Con số nhích lên rồi rơi về, và phần vừa cộng bay lên bên cạnh rồi tan. Đây là chỗ duy
+   nhất trong cả sản phẩm dùng chuyển động để chở một TIN chứ không để trang trí, nên nó
+   phải ngắn: 0,5 giây cho cú nảy, 1,6 giây cho dòng bay — hết rồi thì màn hình đứng yên
+   như cũ, không có gì nhấp nháy nền.
+
+   `steps(3)` cho cú nảy, cùng luật với quản gia thở: cả cụm ví có một sprite lưới 4px
+   đứng cạnh, và một con số trượt mượt bên cạnh một vật nhảy từng bậc thì hai thứ lạc nhau. */
+.pet-wallet { position: relative; }
+.pet-wallet.bumped b { display: inline-block; animation: coin-pop 0.5s steps(3, end); }
+@keyframes coin-pop { 0%, 100% { translate: 0 0; } 45% { translate: 0 -4px; } }
+/* Bay LÊN TRÊN con số, không bay sang phải — và chỗ này đã phải sửa sau khi nhìn màn hình
+   thật. Trên popover cái ví nằm sát mép phải của dải chân (`margin-left: auto`), mà
+   `.mb-stage` thì `overflow: hidden`: đặt dòng bay ở `left: 100%` là nó rơi trọn ra ngoài
+   khung và bị cắt sạch — đo được, còn đúng 4px trong 36px lọt vào trong. Bay lên thì phía
+   trên nó là bầu trời, chỗ rộng nhất và tối nhất của cả khung.
+
+   Căn giữa bằng `left/right: 0` cộng `text-align`, KHÔNG bằng `translateX(-50%)`: cái
+   `translate` phải để trống cho hoạt hình, và một phép căn giữa nằm trong keyframes là một
+   con số phải chép lại ở từng khung hình — quên một khung là chữ nhảy ngang. */
+.pet-bump {
+  position: absolute; left: 0; right: 0; bottom: 100%; margin-bottom: 3px;
+  pointer-events: none; text-align: center;
+  font: 800 12px var(--mono); font-style: normal; white-space: nowrap;
+  /* VÀNG, không phải sắc accent — ở popover dòng này bay lên trên bầu TRỜI, và trên nền
+     lam giữa trưa thì tím nhạt của accent gần như biến mất. Vàng là sắc của chính đồng xu
+     nó đang cộng thêm, nên nó vừa nổi vừa nói đúng nó là cái gì. Viền tối bao quanh để nó
+     đọc được cả trên trời trưa lẫn trời đêm — cùng một chữ đi qua bốn buổi. */
+  color: #ffd45e;
+  text-shadow: 0 0 3px rgb(10 6 24 / 0.9), 0 1px 0 rgb(10 6 24 / 0.7);
+  animation: coin-rise 1.6s ease-out forwards;
+}
+/* Ở cửa hàng thì phía trên con số là cái nhãn "Ví", nên dòng bay dạt sang phải — thẻ rộng
+   220px còn cụm ví chỉ chiếm nửa, chỗ ấy trống và không bị khung nào cắt. */
+/* Ở cửa hàng thì nó đứng trên MẶT GIAO DIỆN, không trên bức tranh — nên nó lấy sắc accent
+   như mọi con số khác của thẻ, và bỏ cái viền tối vốn chỉ để chống lại bầu trời. */
+.shop-wallet .pet-bump {
+  left: 100%; right: auto; bottom: 18%; margin: 0 0 0 10px; text-align: left;
+  font-size: 13px; color: var(--accent-ink, var(--accent)); text-shadow: none;
+}
+@keyframes coin-rise {
+  0% { opacity: 0; translate: 0 5px; }
+  16% { opacity: 1; translate: 0 0; }
+  62% { opacity: 1; translate: 0 -7px; }
+  100% { opacity: 0; translate: 0 -15px; }
+}
+/* Giảm chuyển động: cú nảy bỏ hẳn, dòng bay ẨN chứ không đứng yên. Luật chung ở đầu file
+   rút mọi hoạt hình về 0,01ms, mà `forwards` thì giữ khung cuối — dòng bay sẽ tàng hình
+   nhưng vẫn chiếm chỗ, còn `animation: none` thì nó nằm lại đó vĩnh viễn. Ẩn là ca đúng:
+   con số trong ví đã là tin, dòng bay chỉ là cách nói nó to hơn. */
+@media (prefers-reduced-motion: reduce) {
+  .pet-bump { display: none; }
+  .pet-wallet.bumped b { animation: none; }
+}
+
+/* ── Món đang dùng: vơi dần ───────────────────────────────────────────────────
+
+   Bát phở hết trong một phút, cốc nước cạn trong ba. Cắt từ TRÊN XUỐNG bằng `clip-path`,
+   và số bậc bằng đúng số HÀNG PIXEL đang vơi — JS gửi sang trong `--eat-step` (xem
+   `drawArt`). Trước là `steps(8)` cứng cho mọi món, và trên một cái ruột cao bốn hàng thì
+   tám bậc là hai bậc cho một hàng: một nửa số bậc không gạt đi gì cả.
+
+   Vì sao là hoạt hình CSS chứ không phải vẽ lại ít hàng đi mỗi lượt: màn hình dựng lại mỗi
+   30 giây (và mỗi giây khi có việc chạy), còn popover thì KHÔNG dựng lại lần nào sau lượt
+   đầu. Vẽ lại theo phần trăm thì ở popover món ăn đứng nguyên cho tới lúc đóng cửa sổ.
+
+   `--eat` và `--eat-lag` âm do JS gửi sang: thẻ mới dựng thì hoạt hình bắt đầu từ 0, nên
+   phải nói cho nó biết nó đã chạy được bao lâu. Qua một BIẾN chứ không qua `animation-delay`
+   thẳng, vì lớp ruột nằm trong một thẻ CON — biến CSS di truyền xuống, `animation-delay`
+   thì không.
+
+   ## Hai kiểu vơi
+
+   **Cầm tay** (`.eating`, không có `.sipping`) — thanh sô-cô-la, ổ bánh mì, nắm xôi, que
+   kem, và mấy món đồ nghề. Cả vật ngắn dần từ trên xuống rồi tan.
+
+   **Có vỏ** (`.sipping`) — cốc, ly, bát. Cái VỎ đứng nguyên và chỉ tan ở đoạn cuối, còn
+   `.art-fill` là mực nước tụt xuống. Một cái cốc bị gặm mất dần từ miệng xuống thì đọc
+   thành lỗi render, không đọc thành đang uống — mà đó đúng là thứ bản trước đang vẽ.
+
+   Hai hoạt hình chứ không một, ở cả hai kiểu: `steps()` giữ khung cuối ở (n−1)/n, tức còn
+   một lát mỏng nằm lại tới lượt hỏi sau. Dải mờ ở 6% cuối dọn nốt chỗ ấy, và nó chạy
+   `linear` vì một cái tan dần theo bậc thì đọc thành nhấp nháy. */
+.pet-art.eating:not(.sipping) {
+  animation: eat-cut var(--eat) var(--eat-lag) forwards, eat-gone var(--eat) var(--eat-lag) linear forwards;
+  animation-timing-function: var(--eat-step, steps(8, end)), linear;
+}
+/* Cái vỏ: không cắt, chỉ tan ở đoạn cuối. Nó phải sống tới hết quãng — cái đang nói
+   "còn bao nhiêu" là mực nước bên trong nó, mà một cái mực nước không có thành cốc để đo
+   vào thì không còn là mực nước. */
+.pet-art.eating.sipping { animation: eat-gone var(--eat) var(--eat-lag) linear forwards; }
+/* Khung ôm sát ruột, chỗ đứng và chiều cao do JS đặt từ chính lưới sprite — clip-path đo
+   phần trăm trên hộp của thẻ, nên một cái khung rộng bằng cả sprite sẽ cắt phần lớn thời
+   gian vào chỗ trống. */
+.pet-art .art-fill { position: absolute; left: 0; width: 100%; }
+.pet-art.eating.sipping .art-fill {
+  animation: eat-cut var(--eat) var(--eat-lag) forwards;
+  animation-timing-function: var(--eat-step, steps(8, end));
+}
+@keyframes eat-cut {
+  from { clip-path: inset(0 0 0 0); }
+  to { clip-path: inset(100% 0 0 0); }
+}
+@keyframes eat-gone {
+  0%, 94% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── Thanh đang hồi ───────────────────────────────────────────────────────────
+
+   Con số đã tự đúng rồi — giữa quãng ăn, số ô sáng chính là chỗ cái thanh đã bò tới (xem
+   `ramped` trong `lib/petmath.js`). Cái nhịp sáng này trả lời một câu KHÁC: vì sao nó đang
+   nhích. Không có nó thì một cái thanh tự dài ra trông y hệt một cái thanh vừa được nạp
+   một phát rồi vẽ lại, mà hai chuyện ấy khác nhau ở chỗ còn phải bấm gì nữa không.
+
+   Đổi ĐỘ SÁNG chứ không đổi màu: hai sắc lấp (lục cho no, tím cho tập trung) đang chở một
+   phần việc phân biệt, và mượn thêm một màu thứ ba ở đây là dựng một thang mới. Sáng lên
+   rồi tối lại thì kênh chuyển động gánh, không kênh nào phải nhường chỗ.
+
+   Viền theo sắc lấp là kênh thứ hai, cho ai không bắt được nhịp nhấp nháy. Đồng hồ cát
+   không có viền để đổi, nên nó chỉ có kênh nhịp sáng — và cũng không cần kênh thứ hai:
+   cát đang dồn ngược lên bầu trên rõ hơn nhiều so với một cái thanh dài thêm vài pixel. */
+.pet-bar.rising { border-color: color-mix(in srgb, var(--fill) 58%, transparent); }
+.pet-bar.rising i.on, .pet-glass.rising .px.sand { animation: bar-rise 1s ease-in-out infinite; }
+@keyframes bar-rise {
+  0%, 100% { filter: none; }
+  50% { filter: brightness(1.4); }
+}
+
+/* Giảm chuyển động. Ba thứ, ba cách xử khác nhau — vì chúng chở ba lượng tin khác nhau:
+
+   - Quản gia đi lại và nhịp đổi khung: TẮT hẳn. Nó thuần trang trí; đứng yên trong nhà
+     mình vẫn là đang ở nhà mình.
+   - Nhịp sáng của thanh: TẮT. Số ô sáng đã nói đủ, nhịp chỉ là cách nói to hơn.
+   - Món đang vơi: GIỮ, nhưng bỏ bậc và bỏ dải mờ — nó là thứ duy nhất trong ba cái CHỞ TIN
+     (còn bao lâu nữa thì xong), và luật chung ở đầu file rút mọi hoạt hình về 0,01ms sẽ
+     nhảy thẳng tới khung cuối, tức món ăn biến mất ngay giây đầu. Khai lại thời lượng thật
+     ở đây là ca hiếm mà `prefers-reduced-motion` phải BẬT một hoạt hình chứ không tắt:
+     `linear` không có bậc nào giật, và nó chậm đúng bằng việc nó đang mô tả. */
+@media (prefers-reduced-motion: reduce) {
+  .resident.pacing, .resident.at-park.pacing, .mini-frame.a, .mini-frame.b,
+  .pet-bar.rising i.on, .pet-glass.rising .px.sand { animation: none; }
+  .mini-frame.b { opacity: 0; }
+  .pet-art.eating:not(.sipping) { animation: eat-cut var(--eat) var(--eat-lag) linear forwards; }
+  .pet-art.eating.sipping { animation: none; }
+  .pet-art.eating.sipping .art-fill { animation: eat-cut var(--eat) var(--eat-lag) linear forwards; }
+}

@@ -44,6 +44,23 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { DATA_DIR } from './config.js';
+import {
+  BREAK_MS, EAT_MS, FOCUS_MS, FULL_MS, MOVES, MOVE_IDS, REST_RAMP_MS,
+  clamp01, doingOf, focusAt, focusMoodOf, fullnessAt, moodOf, satMinAt,
+} from '../public/lib/petmath.js';
+
+/**
+ * Hằng số và phép suy của mô hình sống ở `public/lib/petmath.js`, không ở đây.
+ *
+ * Chiều nhập ngược đời (server nhập từ thư mục của trình duyệt) là CỐ Ý: trình duyệt
+ * không nạp được `src/`, còn cả hai bên thì phải dùng ĐÚNG một công thức — từ lúc popover
+ * vẽ từ bản nhớ trong `localStorage`, trình duyệt buộc phải tự tính lại độ no và độ tập
+ * trung theo đồng hồ của nó. Xem khối đầu của `petmath.js`.
+ *
+ * Bày lại ra đây để mọi chỗ đang nhập từ `src/pet.js` không phải đổi, và để file này vẫn
+ * là một cửa duy nhất cho phía server.
+ */
+export { BREAK_MS, EAT_MS, FOCUS_MS, FULL_MS, MOVES, MOVE_IDS, REST_RAMP_MS, doingOf, focusMoodOf, moodOf };
 
 export const PET_FILE = path.join(DATA_DIR, 'pet.json');
 
@@ -56,14 +73,111 @@ export const PET_FILE = path.join(DATA_DIR, 'pet.json');
  * ngày mở sổ. Không có gì để học thuộc.
  *
  * Giá hàng hoá vì thế phải neo theo nhịp tiêu thật, không neo theo cảm giác. Đo trên máy
- * này 5/8: $50/ngày, $963/tuần — nên một món ăn 6–26 xu là chuyện trong ngày, còn một
- * món trang trí 70–320 xu là chuyện vài ngày tới một tuần.
+ * này 5/8: $50/ngày, $963/tuần — nên một món ăn 1–4,5 xu là chuyện trong buổi, còn một
+ * món trang trí 60–320 xu là chuyện vài ngày tới vài tuần. Xem `COIN_PER_HOUR` để biết
+ * bên đồ ăn con số ấy suy ra từ đâu.
  */
 export const RATE = 1;
 
-/** No căng → đói hẳn. 20 giờ: đủ để một ngày làm việc bình thường chỉ phải cho ăn một
- *  lần, và đủ để sáng hôm sau mở popover ra thì thấy nó đang đói thật. */
-export const FULL_MS = 20 * 3600 * 1000;
+/**
+ * Làm tròn tới hai chữ số thập phân — cùng độ mịn mà màn hình bày ra.
+ *
+ * Đi vòng qua `toFixed(6)` chứ không nhân-làm tròn-chia thẳng, vì phép nhân 100 tự nó đã
+ * lệch: `0.29 * 100` ra `28.999999999999996`, và `Math.floor` của số đó là 28 — một xu bốc
+ * hơi mỗi lần bày ra màn hình. Cắt phần đuôi rác ở chữ số thứ sáu rồi mới làm tròn thì
+ * không còn ca nào như thế.
+ */
+const at2 = (n, round) => round(Number((n * 100).toFixed(6))) / 100;
+export const round2 = (n) => at2(n, Math.round);
+/**
+ * Làm tròn XUỐNG, và chiều làm tròn ở đây là một quyết định chứ không phải sở thích.
+ *
+ * Ví bày ra màn hình phải KHÔNG BAO GIỜ lớn hơn ví thật. Làm tròn gần nhất thì một sổ có
+ * 11,996 xu hiện thành "12,00" ngay cạnh một món giá 12 — người ta bấm, `buy()` so số thật
+ * và từ chối, còn màn hình thì vẫn đang nói họ có vừa đủ. Làm tròn xuống thì phía trình
+ * duyệt luôn khắt khe hơn hoặc bằng server, và ca "nhìn thấy đủ mà bấm không được" không
+ * tồn tại.
+ */
+export const floor2 = (n) => at2(n, Math.floor);
+
+/**
+ * Giá đồ ăn = **số GIỜ nó mua cho bạn**, ở tỉ giá 1 xu một giờ.
+ *
+ * ## Vì sao có công thức thay vì chín con số chọn tay
+ *
+ * Bảng cũ là chín con số đặt bằng cảm giác (6, 7, 9, 9, 10, 12, 14, 16, 26), và một bảng
+ * như thế thì không kiểm được: nó đã lọt hai ca một món ĐÈ BẸP món khác — cà phê 6 xu vừa
+ * rẻ hơn vừa hơn sô-cô-la 7 xu ở cả no lẫn tỉnh táo, còn trà xanh 9 xu thì hơn hẳn kem 9
+ * xu mà cùng giá. Không ai phát hiện ra vì chẳng có luật nào để đối chiếu.
+ *
+ * Suy từ công thức thì hai ca ấy không dựng lên được: trả nhiều hơn là nhận nhiều hơn,
+ * theo đúng nghĩa đen. Và nó hợp luật lớn nhất của dự án hơn hẳn — giá không còn là chín
+ * trọng số bịa, nó là một phép đổi đơn vị.
+ *
+ * ## Tỉ giá
+ *
+ * `FULL_MS` là 5 giờ và một thanh no đầy giá 5 xu, nên **1 xu mua đúng 1 giờ no**. Ghép
+ * với `RATE` (1 xu = $1) thì cả trò chơi rút về một câu: *$1 token đổi được một giờ no.*
+ * Không có con số thứ hai nào phải nhớ.
+ *
+ * Tập trung tính cùng tỉ giá ấy trên `FOCUS_MS` — một chu kỳ 90 phút là 1,5 giờ, nên đầy
+ * một thanh tập trung đắt bằng 1,5 xu. Nó RẺ HƠN thanh no và đúng là phải thế: thứ đắt
+ * tiền là cái bụng, còn sự tỉnh táo thì có một đường miễn phí về đầy (xem `MOVES`), nên
+ * không món bán nào được định giá như thể nó là đường duy nhất.
+ *
+ * ## Vì sao phải hạ giá
+ *
+ * Bảng cũ đặt hồi `FULL_MS` còn là 20 giờ — cho ăn mỗi ngày một lần. Đồng hồ đói sau đó
+ * nhanh lên gấp bốn (20 → 10 → 5 giờ) mà bảng giá đứng yên, nên tiền ăn một ngày lặng lẽ
+ * tăng gấp bốn: giữ cho no suốt một ngày làm việc 10 tiếng tốn 50–60 xu, đúng bằng TRỌN
+ * thu nhập của một ngày nhẹ (đo trên máy này: $50/ngày nhẹ, $120/ngày nặng). Cửa hàng
+ * trang trí vì thế thành thứ không bao giờ với tới.
+ *
+ * Ở tỉ giá mới, một ngày 10 tiếng ăn hết 10 xu — 20% của một ngày nhẹ, 8% của một ngày
+ * nặng. Đồ trang trí giữ nguyên 60–320 xu và đó là chủ ý: chúng không mua thứ gì đo được
+ * nên không có công thức nào để định giá chúng, và chúng là cái đích dài hạn — vài ngày
+ * cho món rẻ nhất, vài tuần cho cả bộ.
+ */
+export const COIN_PER_HOUR = 1;
+const priceOf = ({ fill = 0, wake = 0 }) =>
+  round2(((fill * FULL_MS + wake * FOCUS_MS) / 3600000) * COIN_PER_HOUR);
+
+/**
+ * Món ăn — khai bằng thứ chúng CHO, giá tự suy ra.
+ *
+ * `fill` = phần thanh đói được lấp lại, 0..1.
+ *
+ * ## `wake` — và cái trần cố ý của nó
+ *
+ * `wake` = phần TẬP TRUNG lấy lại. Caffeine chẹn thụ thể adenosine nên nó hoãn cảm giác
+ * mệt thật — hoãn, không xoá. Vì thế cà phê là 0,4 chứ không phải 1: một ly kéo lại chừng
+ * 35 phút của chu kỳ 90 phút, còn muốn về đầy thì phải đứng dậy. Cho nó bằng 1 là dựng
+ * một cái nút "bấm để hết mệt", tức là dạy đúng thói quen mà cả lớp chỉ số này sinh ra để
+ * cản.
+ *
+ * Từ lúc có nhiều món tỉnh táo thì cái trần ấy thành một LUẬT, không còn là một ca lẻ:
+ * **không món bán nào được `wake` quá 0,5.** Ba món hiện có là 0,40 / 0,25 / 0,15, và
+ * chúng cộng dồn được — nhưng chúng cũng lấp thanh đói cùng lúc, nên uống ba ly liên tiếp
+ * là no căng chứ không phải tỉnh táo. Đường duy nhất về đầy 100% là đứng dậy (xem `MOVES`
+ * trong `petmath.js`), và đường ấy miễn phí. Cửa hàng phải nói được điều đó bằng chính
+ * bảng giá của nó, không phải bằng một câu khẩu hiệu ở chân trang.
+ *
+ * Cả ba đều có nền, không phải chọn cho vui:
+ * - **Cà phê 0,40** — caffeine, tác dụng rõ nhất và cũng ngắn nhất.
+ * - **Trà xanh 0,25** — L-theanine đi cùng caffeine, tỉnh êm hơn, ít trồi sụt hơn.
+ * - **Sô-cô-la 0,15** — theobromine cộng một ít caffeine; nhẹ, và trung thực là nhẹ.
+ */
+const FOOD_SPEC = {
+  coffee: { fill: 0.25, wake: 0.4 }, //  1,85 xu
+  socola: { fill: 0.15, wake: 0.15 }, // 0,98
+  tea: { fill: 0.2, wake: 0.25 }, //     1,38
+  kem: { fill: 0.2 }, //                 1,00
+  che: { fill: 0.35 }, //                1,75
+  beer: { fill: 0.3 }, //                1,50
+  banhmi: { fill: 0.5 }, //              2,50
+  xoi: { fill: 0.6 }, //                 3,00
+  pho: { fill: 0.9 }, //                 4,50
+};
 
 /**
  * Bảng hàng hoá — **giá sống ở server**, không sống ở trình duyệt.
@@ -72,37 +186,74 @@ export const FULL_MS = 20 * 3600 * 1000;
  * DevTools đều mua được cái mũ 320 xu với giá 0, và lúc ấy cửa hàng không còn là cửa
  * hàng. Đây cũng là lý do `buy()` tra giá từ bảng này chứ không tin gì từ đầu vào.
  *
- * `fill` (món ăn) = phần thanh đói được lấp lại, 0..1. `slot` (đồ trang trí) = chỗ đứng
- * trong khung trời của popover; mỗi chỗ chứa đúng một món nên không món nào đè món nào.
+ * `slot` (đồ trang trí) = CHỖ ĐỨNG trong khung trời của popover.
  */
 export const ITEMS = {
-  // ── Ăn uống: mua là ăn luôn, không có kho ────────────────────────────────
-  coffee: { kind: 'food', price: 6, fill: 0.25 },
-  che: { kind: 'food', price: 10, fill: 0.35 },
-  beer: { kind: 'food', price: 12, fill: 0.3 },
-  banhmi: { kind: 'food', price: 14, fill: 0.5 },
-  pho: { kind: 'food', price: 26, fill: 0.9 },
+  // ── Ăn uống: mua là ăn luôn, không có kho. Giá SUY RA, xem `priceOf` ─────
+  ...Object.fromEntries(
+    Object.entries(FOOD_SPEC).map(([id, spec]) => [id, { kind: 'food', price: priceOf(spec), ...spec }]),
+  ),
 
   // ── Trang trí: mua một lần, ở lại vĩnh viễn ──────────────────────────────
+  // Giá đặt TAY, và đó là chỗ khác đồ ăn một cách có chủ ý: mấy món này không cho lại
+  // thứ gì đo được, nên không có đại lượng nào để đổi ra xu. Một công thức bịa cho chúng
+  // còn tệ hơn một con số thừa nhận mình là do người chọn.
+  //
+  // Nhiều món CHUNG một chỗ đứng, và đó là điểm đổi so với bản đầu: chỗ đứng giờ là một
+  // cái khe thay được, không phải một ô cố định của đúng một món. Xem `SLOTS`.
+  beanie: { kind: 'decor', price: 60, slot: 'head' },
   hat: { kind: 'decor', price: 70, slot: 'head' },
+  crown: { kind: 'decor', price: 260, slot: 'head' },
+
+  cactus: { kind: 'decor', price: 80, slot: 'left' },
   plant: { kind: 'decor', price: 90, slot: 'left' },
-  balloon: { kind: 'decor', price: 130, slot: 'air' },
-  bunting: { kind: 'decor', price: 170, slot: 'top' },
+  bonsai: { kind: 'decor', price: 200, slot: 'left' },
+
+  mushroom: { kind: 'decor', price: 110, slot: 'right' },
+  dog: { kind: 'decor', price: 220, slot: 'right' },
   cat: { kind: 'decor', price: 240, slot: 'right' },
+
+  balloon: { kind: 'decor', price: 130, slot: 'air' },
+  kite: { kind: 'decor', price: 140, slot: 'air' },
+  lantern: { kind: 'decor', price: 150, slot: 'air' },
+
+  bunting: { kind: 'decor', price: 170, slot: 'top' },
+  lights: { kind: 'decor', price: 190, slot: 'top' },
+
+  hills: { kind: 'decor', price: 210, slot: 'back' },
   rainbow: { kind: 'decor', price: 320, slot: 'back' },
 };
+
+/**
+ * Sáu chỗ đứng trong khung trời, theo THỨ TỰ ĐỌC của cửa hàng — trên đầu trước, nền trời
+ * sau cùng.
+ *
+ * Tên chỗ là tên VỊ TRÍ chứ không phải tên loại đồ ("head", không phải "hat"). Đặt theo
+ * loại thì cái khe bên trái vĩnh viễn chỉ nhận được cây, và ngày muốn đặt một cái đèn bàn
+ * xuống đấy là phải đổi cả bảng. Vị trí thì đúng với thứ người xem thấy: mỗi khe là một
+ * CHỖ trong bức tranh, ai đứng vào cũng được.
+ */
+export const SLOTS = ['head', 'left', 'right', 'air', 'top', 'back'];
 
 export const FOODS = Object.keys(ITEMS).filter((k) => ITEMS[k].kind === 'food');
 export const DECORS = Object.keys(ITEMS).filter((k) => ITEMS[k].kind === 'decor');
 
-/** Món ăn còn nằm cạnh nhân vật bao lâu sau khi ăn. Chỉ để nhìn, không cộng gì thêm. */
-export const MEAL_SHOW_MS = 45 * 60 * 1000;
+/*
+ * `MEAL_SHOW_MS` đã bỏ. Trước 5/8 nó là 45 phút và chỉ để nhìn — món ăn nằm cạnh nhân vật
+ * lâu hơn hẳn quãng ăn. Hai con số tách nhau ra là ngay lập tức có một bát phở nằm trên
+ * bàn 44 phút sau khi ăn xong, và cái hình thôi không còn nói "đang ăn" nữa, nó chỉ còn
+ * nói "có một bát phở ở đây". Giờ chỉ còn `EAT_MS`: món ăn vơi dần rồi biến mất đúng lúc
+ * quán mở cửa lại, nên chính nó là cái đồng hồ đếm ngược. Một con số, một cái tên.
+ */
+
+/** Kết quả quãng nghỉ vừa chốt còn được bày ra bao lâu. Hai phút — đủ để quay lại bàn và
+ *  đọc nó, ngắn hơn hẳn quãng nghỉ ngắn nhất nên không bao giờ có hai câu trả lời chồng
+ *  nhau trên màn hình. */
+export const BREAK_RESULT_MS = 2 * 60 * 1000;
 
 /** Giữ lại ngần này ngày trong `credited`. Lớn hơn cửa sổ sổ token (45) để một ngày còn
  *  trong `series` không bao giờ bị dọn khỏi đây rồi được cộng tiền lần hai. */
 const KEEP_DAYS = 120;
-
-const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 /**
  * Sổ mới — và đây là chỗ dễ sai nhất của cả file.
@@ -131,10 +282,28 @@ export function emptyLedger(series = [], today = null, nowMs = Date.now()) {
     spent: 0,
     credited,
     fedAt: new Date(nowMs).toISOString(),
+    // Sổ mới bắt đầu ở trạng thái ĐÃ NGHỈ, không phải đã ngồi 90 phút. Bật trò chơi lên
+    // mà lời nhắc sức khoẻ nổ ngay giây đầu thì nó là một cái pop-up quảng cáo, không
+    // phải một quan sát.
+    restedAt: new Date(nowMs).toISOString(),
     owned: [],
+    // Món đang ĐEO ở từng chỗ đứng: `{ head: 'hat', left: 'plant', … }`. Tách khỏi `owned`
+    // vì từ lúc nhiều món chung một chỗ, "đã mua" và "đang bày" là hai câu hỏi khác nhau —
+    // suy cái sau từ cái trước thì mua cái nón thứ hai là mất cái thứ nhất khỏi màn hình
+    // vĩnh viễn, không có đường quay lại.
+    worn: {},
     lastMeal: null,
     lastMealAt: null,
     meals: 0,
+    // Đoạn hồi đang chạy — xem `ramped` trong `petmath.js`. `null` là "không hồi gì", và
+    // mọi phép tính rơi thẳng về đường tụt thường khi gặp nó.
+    ramp: null,
+    // Quãng nghỉ đang chạy (`null` khi không có) và sổ đếm. Xem `startBreak`.
+    breakKind: null,
+    breakAt: null,
+    breakMs: null,
+    lastBreak: null,
+    breaks: 0,
   };
 }
 
@@ -180,24 +349,239 @@ function dayBefore(today, n) {
   return new Date(ms - n * 86400000).toISOString().slice(0, 10);
 }
 
-/** Độ no, 0..1. Chỉ là hiệu hai mốc đồng hồ chia cho `FULL_MS` — không có gì hơn. */
-export function fullnessOf(ledger, nowMs = Date.now()) {
-  const fed = Date.parse(ledger.fedAt ?? '');
-  if (Number.isNaN(fed)) return 0;
-  return clamp01(1 - (nowMs - fed) / FULL_MS);
+/**
+ * Độ no và độ tập trung — hai lớp vỏ mỏng bọc quanh cùng một phép trong `petmath.js`.
+ *
+ * Phần "0 khi thiếu mốc ăn, 1 khi thiếu mốc nghỉ" nằm ở đây chứ không ở trong hạt nhân,
+ * vì nó là quy ước của SỔ NÀY: sổ chưa từng cho ăn thì đói là đúng, còn sổ đời cũ chưa có
+ * mốc nghỉ thì chưa đo được, mà chưa đo được thì im — một lời nhắc sức khoẻ dựng trên một
+ * con số chưa từng tồn tại còn tệ hơn không nhắc.
+ */
+export const fullnessOf = (ledger, nowMs = Date.now()) =>
+  fullnessAt(ledger.fedAt, nowMs, FULL_MS, ledger.ramp);
+export const focusOf = (ledger, nowMs = Date.now()) =>
+  focusAt(ledger.restedAt, nowMs, FOCUS_MS, ledger.ramp);
+
+/**
+ * Đoạn hồi hiện tại còn hiệu lực không — dùng để dọn, không dùng để tính.
+ *
+ * Phép tính đã tự rơi về đúng giá trị đích khi hết đoạn (xem `ramped`), nên hàm này chỉ
+ * phục vụ việc bỏ một `ramp` chết ra khỏi sổ trên đĩa. Giữ nguyên rác trong một file người
+ * ta mở ra đọc là một cách rẻ tiền để làm nó khó đọc.
+ */
+const liveRamp = (ramp, nowMs) => {
+  const at = Date.parse(ramp?.at ?? '');
+  return !Number.isNaN(at) && nowMs < at + (Number(ramp.ms) || 0) ? ramp : null;
+};
+
+/** Việc đang làm, đọc từ chính sổ này. Vỏ mỏng để phía server khỏi nhớ tên trường nào. */
+export const doingIn = (ledger, nowMs = Date.now()) => doingOf(ledger, nowMs, EAT_MS);
+
+/** Nghỉ liên tục thì bao lâu mới chịu ghi lại sổ một lần. Xem `observeRest`. */
+const REST_WRITE_MS = 60 * 1000;
+
+/**
+ * Ghi nhận một quãng nghỉ — hàm THUẦN, trả sổ mới, không ghi đĩa.
+ *
+ * `idleMs` là khoảng lặng của phiên Claude Code hoạt động gần nhất (`null` khi không có
+ * phiên nào sống — cũng tính là nghỉ: máy không thấy bạn làm gì với Claude Code thì nó
+ * không có cơ sở nào để nói bạn đang cắm mặt).
+ *
+ * Đang LÀM thì hàm này không đụng vào sổ, nên suốt một mạch làm việc dài không có lượt
+ * ghi đĩa nào. Đang NGHỈ thì `restedAt` phải bám theo hiện tại — tập trung mới đầy — mà
+ * bám sát từng lượt quét là ghi lại một file y hệt 2880 lần mỗi ngày. Vì thế có mốc
+ * `REST_WRITE_MS`: trong lúc nghỉ, `restedAt` chỉ cũ tối đa một phút, tức lệch dưới 1,2%
+ * của chu kỳ 90 phút — không đủ để đổi lấy dù chỉ một ô trên thanh mười ô.
+ *
+ * Trả về CHÍNH sổ cũ khi không có gì đổi, để chỗ gọi so tham chiếu mà biết có cần ghi
+ * đĩa hay không.
+ */
+export function observeRest(ledger, idleMs, nowMs = Date.now()) {
+  const prev = Date.parse(ledger.restedAt ?? '');
+  // Sổ đời cũ chưa có mốc nào: GIEO NGAY, kể cả khi đang làm. Không có nhánh này thì hàm
+  // chỉ chạm vào sổ lúc nghỉ, mà một máy dùng liên tục cả ngày có thể mất nhiều giờ mới
+  // tới quãng nghỉ đầu tiên — suốt quãng ấy thanh đứng đầy, tức là câm đúng lúc cần nói.
+  // Gieo bằng `nowMs` chứ không lùi về quá khứ: không ai biết mạch đang chạy bắt đầu từ
+  // đâu, và đoán một mốc cũ là bịa ra một con số để bắn một lời nhắc.
+  if (Number.isNaN(prev)) return { ...ledger, restedAt: new Date(nowMs).toISOString(), ramp: noRest(ledger.ramp) };
+  if (idleMs != null && idleMs < BREAK_MS) return ledger;
+  if (nowMs - prev < REST_WRITE_MS) return ledger;
+  return { ...ledger, restedAt: new Date(nowMs).toISOString(), ramp: noRest(ledger.ramp) };
 }
 
 /**
- * Tâm trạng — suy từ độ no, và nó phải nói được bằng HÌNH chứ không chỉ bằng màu.
+ * Gỡ phần TẬP TRUNG ra khỏi đoạn hồi, giữ nguyên phần độ no.
  *
- * Cùng lý do đã ghi cho cặp mắt mở/nhắm trong `lib/menubar-view.js`: theme daltonized
- * không được dựa vào mỗi một khác biệt màu.
+ * Mọi chỗ tự tay dời `restedAt` phải gọi nó. Đoạn hồi trộn từ `restedFrom` tới `restedAt`
+ * (xem `ramped`), nên một mốc mới ghi đè giữa chừng biến cái đích thành một chỗ khác hẳn
+ * chỗ lúc đoạn hồi bắt đầu — và cái thanh sẽ bò tới một con số chưa ai hứa. Bỏ mốc gốc đi
+ * thì phép trộn tắt và chỉ số nhảy thẳng về giá trị thật, đúng cái đã xảy ra: bạn vừa
+ * đứng dậy thật, không cần một đoạn hồi nào cả.
+ *
+ * Chỉ gỡ nửa mình, không xoá cả `ramp`: một lượt quét bắt được khoảng lặng trong lúc đang
+ * ăn dở là chuyện thường (làm gì có ai gọi Claude Code lúc đang húp phở), và xoá cả cụm ở
+ * đó là bát phở đang ăn dở bỗng no đủ ngay lập tức.
  */
-export function moodOf(full) {
-  if (full <= 0.12) return 'starving';
-  if (full <= 0.35) return 'hungry';
-  if (full >= 0.85) return 'stuffed';
-  return 'fine';
+const noRest = (ramp) => (ramp?.restedFrom ? { ...ramp, restedFrom: null } : (ramp ?? null));
+
+/* ── Quãng nghỉ khai trước ─────────────────────────────────────────────────── */
+
+/**
+ * Bắt đầu một quãng nghỉ. Hàm THUẦN — trả `{ ledger, error }`.
+ *
+ * Không tốn xu và không thu xu: nguồn tiền duy nhất là hoá đơn token đã tiêu (xem `RATE`),
+ * và mở một nguồn thứ hai — kể cả một nguồn "lành mạnh" — là đúng chỗ mà mọi trò chơi hoá
+ * bắt đầu nói dối. Phần thưởng của việc đứng dậy là thanh tập trung đầy lại, hết.
+ *
+ * Đang có một quãng chạy dở thì từ chối chứ không lặng lẽ khởi động lại: bấm hai lần rồi
+ * đi mất, quay lại thấy đồng hồ nhảy về đầu là mất trắng ba phút vừa nghỉ thật.
+ */
+export function startBreak(ledger, kind, nowMs = Date.now()) {
+  const move = Object.hasOwn(MOVES, kind) ? MOVES[kind] : null;
+  if (!move) return { ledger, error: 'không có động tác này' };
+  if (ledger.breakAt) return { ledger, error: 'đang nghỉ rồi' };
+  // MỘT việc một lúc, cùng cửa với `buy`. Xem khối chú thích ở đó — cửa này là nửa còn
+  // lại của cùng một luật, và thiếu nó thì "một lúc một việc" chỉ đúng theo một chiều.
+  if (doingIn(ledger, nowMs)) return { ledger, error: 'đang ăn dở' };
+  return {
+    ledger: { ...ledger, breakKind: kind, breakAt: new Date(nowMs).toISOString(), breakMs: move.ms },
+    error: null,
+  };
+}
+
+/** Bỏ dở. Không phạt gì — bỏ dở một quãng nghỉ chỉ có nghĩa là nó không được tính. */
+export function cancelBreak(ledger) {
+  if (!ledger.breakAt) return { ledger, error: null };
+  return { ledger: { ...ledger, breakKind: null, breakAt: null, breakMs: null }, error: null };
+}
+
+/**
+ * Chốt một quãng nghỉ đã hết giờ — **chỗ duy nhất của cả file này thực sự KIỂM** thay vì
+ * tin lời khai. Hàm THUẦN; trả chính sổ cũ khi chưa tới giờ, để chỗ gọi so tham chiếu.
+ *
+ * Phép kiểm chỉ có một dòng và nó là toàn bộ luận điểm: `awayMs >= breakMs` nghĩa là suốt
+ * trọn quãng vừa khai, bạn không gõ gì cho Claude Code cả. `null` (không đọc được) cũng
+ * đạt — máy không thấy gì thì nó không có cơ sở nói bạn đang ngồi.
+ *
+ * ## `awayMs` đo BẠN, không đo cái máy — và đây là chỗ sửa 5/8
+ *
+ * Bản trước nhận `idleMs`: khoảng lặng của Claude Code, tức mtime transcript, tức lượt
+ * GHI cuối cùng của máy. Sai ngay ở ca thường gặp nhất: một lượt chạy dài ghi liên tục
+ * suốt vài phút, mà đúng quãng ấy mới là quãng người ta rảnh để đứng dậy. Đi bộ thật một
+ * phút trong lúc Claude đang chạy thì `idleMs` quanh 0 và quãng nghỉ bị huỷ — càng làm
+ * đúng càng chắc chắn trượt. Người dùng báo đúng lỗi này, và đúng ở động tác đắt nhất:
+ * đi dạo ngoài công viên.
+ *
+ * Giờ nó nhận `awayMs` — khoảng lặng tính từ lượt GÕ cuối của người (xem `awayOf` bên
+ * `server.js`). Phép kiểm không đổi một chữ; chỉ có câu hỏi là đổi, từ "máy có bận
+ * không" sang "bạn có ở đây không".
+ *
+ * Ca sai còn lại, và nó lệch về phía RỘNG RÃI chứ không còn về phía từ chối oan: ngồi
+ * yên nhìn Claude chạy đúng một phút mà không gõ gì thì quãng nghỉ ấy vẫn được tính.
+ * Chấp nhận, vì cái giá của "gian" bằng đúng cái giá của thật — một phút ngồi không —
+ * còn cái mất của chiều kia là huỷ oan một việc người ta vừa làm thật.
+ *
+ * Lúc trượt thì không phạt gì cả — không trừ xu, không đụng vào `restedAt`, chỉ nói "lần
+ * này không tính" và mời bấm lại. Một phép kiểm biết mình có thể sai thì không được phép
+ * ra hình phạt.
+ *
+ * Phần thưởng thì VẶN NGƯỢC đồng hồ ngồi chứ không đặt nó về hiện tại — xem `back` trong
+ * `MOVES`, nơi mỗi động tác khai ra mình gỡ được bao nhiêu phút.
+ */
+export function resolveBreak(ledger, awayMs, nowMs = Date.now()) {
+  const at = Date.parse(ledger.breakAt ?? '');
+  const span = Number(ledger.breakMs) || 0;
+  if (Number.isNaN(at) || !span) return ledger;
+  if (nowMs < at + span) return ledger;
+
+  const kept = awayMs == null || awayMs >= span;
+  const done = {
+    ...ledger,
+    breakKind: null,
+    breakAt: null,
+    breakMs: null,
+    lastBreak: { kind: ledger.breakKind, at: new Date(nowMs).toISOString(), ok: kept },
+  };
+  if (!kept) return done;
+  // Cộng dồn, có trần — không gán. Uống nước lúc còn tỉnh 80% mà đặt thẳng `restedAt = now`
+  // thì đúng; uống nước lúc đã ngồi hai tiếng mà cũng đặt về `now` là trả về đầy, tức cái
+  // bậc thang vừa dựng lên không tồn tại. `Math.min` là trần: không mốc nghỉ nào được rơi
+  // vào tương lai, vì `satMinAt` sẽ đọc ra một số phút ÂM.
+  //
+  // `floor` là chỗ quan trọng thứ hai, và thiếu nó thì bậc trên cùng hỏng hẳn: `focusAt`
+  // kẹp giá trị về 0, nên ngồi liền 3 giờ và ngồi liền 90 phút là CÙNG MỘT con số trên
+  // thanh. Không kẹp ở đây thì người ngồi 3 giờ vặn ngược trọn 90 phút vẫn ra 0 — tức đi bộ
+  // xong không được gì, trong khi cửa hàng vừa hứa "về đầy". Phần thưởng không được phép
+  // phụ thuộc vào một món nợ mà cái thanh từ chối bày ra.
+  const back = Number(MOVES[ledger.breakKind]?.back) || FOCUS_MS;
+  const prev = Date.parse(ledger.restedAt ?? '');
+  const from = Number.isNaN(prev) ? nowMs : Math.max(prev, nowMs - FOCUS_MS);
+  const wound = Math.min(nowMs, from + back);
+  return {
+    ...done,
+    restedAt: new Date(wound).toISOString(),
+    breaks: (ledger.breaks ?? 0) + 1,
+    // Đoạn hồi bắt đầu Ở ĐÂY, không phải lúc bấm — xem `REST_RAMP_MS`. Mốc gốc là chỗ
+    // thanh tập trung đang đứng ngay trước khi quãng nghỉ được tính, nên hai mươi giây tới
+    // nó bò từ đúng chỗ ấy lên chỗ mới — xa hay gần là tuỳ động tác, và đó chính là thứ
+    // đoạn hồi này bày ra cho mắt thấy. Đè lên đoạn hồi cũ nếu có: không thể vừa ăn vừa nghỉ
+    // (`startBreak` chặn), nên chỗ này không bao giờ giẫm lên một bữa đang dở.
+    ramp: { at: new Date(nowMs).toISOString(), ms: REST_RAMP_MS, fedFrom: null, restedFrom: ledger.restedAt ?? null },
+  };
+}
+
+/* ── Đeo đồ ───────────────────────────────────────────────────────────────── */
+
+/**
+ * Đổi món đang bày ở một chỗ đứng. `id` là `null` nghĩa là dọn trống chỗ đó.
+ *
+ * Kiểm cả BA điều kiện chứ không chỉ "có mã này không": món phải là đồ trang trí, phải
+ * ĐÃ MUA, và phải đúng chỗ của nó. Điều kiện thứ hai là hàng rào tiền thật — thiếu nó thì
+ * một request tay không mua gì cũng đeo được cái vương miện 260 xu. Điều kiện thứ ba giữ
+ * cho bảng `ITEMS` là nguồn duy nhất nói món nào đứng đâu: cho trình duyệt chọn chỗ thì
+ * cái nón rơi xuống chân và cái cầu vồng leo lên đầu.
+ */
+export function wear(ledger, slot, id) {
+  if (!SLOTS.includes(slot)) return { ledger, error: 'không có chỗ này' };
+  if (id == null) {
+    if (!ledger.worn?.[slot]) return { ledger, error: null };
+    const worn = { ...ledger.worn };
+    delete worn[slot];
+    return { ledger: { ...ledger, worn }, error: null };
+  }
+  const item = Object.hasOwn(ITEMS, id) ? ITEMS[id] : null;
+  if (!item || item.kind !== 'decor') return { ledger, error: 'không có món này' };
+  if (item.slot !== slot) return { ledger, error: 'món này không đứng chỗ đó' };
+  if (!ledger.owned.includes(id)) return { ledger, error: 'chưa mua món này' };
+  if (ledger.worn?.[slot] === id) return { ledger, error: null };
+  return { ledger: { ...ledger, worn: { ...ledger.worn, [slot]: id } }, error: null };
+}
+
+/**
+ * Dựng lại bảng đang đeo từ một sổ có thể đã cũ hoặc đã bị chép tay.
+ *
+ * Hai việc trong một hàm vì chúng là cùng một câu hỏi ("chỗ này đang bày gì cho hợp lệ"):
+ * - **Sổ đời cũ** không có `worn` — bản đầu suy chỗ đứng thẳng từ `owned`. Dựng lại từ
+ *   `owned` giữ nguyên màn hình cho người đã mua đồ từ trước; không có nhánh này thì bản
+ *   mới lên là khung trời trống trơn dù ví đã tiêu 800 xu.
+ * - **Sổ bị sửa tay** có thể trỏ vào món chưa mua, món không tồn tại, hay sai chỗ. Lọc ở
+ *   cửa đọc chứ không ở chỗ vẽ, cùng lý do đã ghi cho `owned`: chỗ vẽ mà gặp mã lạ thì nó
+ *   ném giữa lượt render và cả trang trắng.
+ */
+export function normWorn(raw, owned) {
+  const out = {};
+  for (const slot of SLOTS) {
+    const id = raw?.[slot];
+    if (typeof id === 'string' && owned.includes(id) && ITEMS[id]?.slot === slot) out[slot] = id;
+  }
+  // Chưa có bảng nào (sổ đời cũ): mỗi chỗ lấy món đã mua đầu tiên đứng được ở đó.
+  if (raw == null || typeof raw !== 'object') {
+    for (const id of owned) {
+      const slot = ITEMS[id]?.slot;
+      if (slot && !out[slot]) out[slot] = id;
+    }
+  }
+  return out;
 }
 
 /**
@@ -218,22 +602,67 @@ export function buy(ledger, id, nowMs = Date.now()) {
   const item = Object.hasOwn(ITEMS, id) ? ITEMS[id] : null;
   if (!item) return { ledger, error: 'không có món này' };
   if (item.kind === 'decor' && ledger.owned.includes(id)) return { ledger, error: 'đã có rồi' };
+  /**
+   * MỘT món một lúc — và cửa này phải đứng TRƯỚC phép trừ tiền.
+   *
+   * Nó chặn đúng hai ca, và cả hai đều là cùng một chuyện: quản gia chỉ có một cái miệng
+   * và một cặp chân. Đang ăn dở thì không nhận món thứ hai (bản trước bấm bốn lần liên
+   * tiếp là bốn món chồng lên nhau trong một giây, thanh no nhảy thẳng lên đầy, và chẳng
+   * món nào kịp hiện ra); đang nghỉ giữa chừng thì cũng không, vì người đang đi bộ ngoài
+   * sân thì không ngồi ăn phở được.
+   *
+   * Chỉ chặn ĐỒ ĂN. Đồ trang trí không phải một việc phải làm — nó là một món đồ đặt vào
+   * khung trời — nên nó mua được bất cứ lúc nào, kể cả trong lúc chờ hết quãng nghỉ.
+   */
+  if (item.kind === 'food' && doingIn(ledger, nowMs)) return { ledger, error: 'đang bận' };
   if (ledger.coins < item.price) return { ledger, error: 'không đủ xu' };
 
-  const next = { ...ledger, coins: ledger.coins - item.price, spent: ledger.spent + item.price };
-  if (item.kind === 'decor') return { ledger: { ...next, owned: [...ledger.owned, id] }, error: null };
+  // `coins` giữ NGUYÊN phần lẻ sâu — nó là hiệu của một khoản tiền thật cộng theo từng
+  // lượt quét, và cắt bớt ở đây là mỗi lần mua đánh rơi một ít tiền chưa tiêu. `spent` thì
+  // ngược lại: nó chỉ cộng dồn mấy con số hai chữ số lẻ, nên làm tròn ngay lúc ghi giữ cho
+  // sổ trên đĩa đọc được — không có `0.30000000000000004` nào nằm trong đó.
+  const next = { ...ledger, coins: ledger.coins - item.price, spent: round2(ledger.spent + item.price) };
+  // Mua đồ trang trí là ĐEO LUÔN, đè lên món cũ ở chỗ đó. Bắt bấm thêm một lần nữa để
+  // thấy thứ mình vừa trả 260 xu là hai cú bấm cho một ý định — và cú thứ hai thì nằm ở
+  // một khối khác trên màn hình, nên nó còn là một lượt đi tìm. Món cũ không mất: nó vẫn
+  // trong `owned` và đổi lại được bằng một cú bấm ở đúng cái khe ấy.
+  if (item.kind === 'decor') {
+    return {
+      ledger: { ...next, owned: [...ledger.owned, id], worn: { ...ledger.worn, [item.slot]: id } },
+      error: null,
+    };
+  }
 
   // Ăn: đẩy mốc `fedAt` về phía trước sao cho độ no tăng đúng `fill`, và KHÔNG vượt quá
   // no căng. Tính ngược từ độ no mong muốn thay vì cộng thẳng vào `fedAt` — cộng thẳng
   // thì ăn lúc đang no sẽ đẩy mốc ra tương lai, và thanh đói đứng đầy nhiều giờ liền.
   const full = clamp01(fullnessOf(ledger, nowMs) + item.fill);
+  // Cà phê kéo lại một phần tập trung, tính NGƯỢC từ mức mong muốn y như `fedAt` — cùng
+  // cái bẫy: cộng thẳng vào `restedAt` thì uống lúc đang tỉnh sẽ đẩy mốc ra tương lai và
+  // lời nhắc câm suốt hai tiếng sau đó.
+  const wake = item.wake ? clamp01(focusOf(ledger, nowMs) + item.wake) : null;
   return {
     ledger: {
       ...next,
       fedAt: new Date(nowMs - (1 - full) * FULL_MS).toISOString(),
+      ...(wake == null ? {} : { restedAt: new Date(nowMs - (1 - wake) * FOCUS_MS).toISOString() }),
       lastMeal: id,
       lastMealAt: new Date(nowMs).toISOString(),
       meals: ledger.meals + 1,
+      // Sổ ghi ngay giá trị CUỐI, còn đoạn hồi giữ hai mốc GỐC để phép tính trộn dần từ
+      // chỗ cũ sang chỗ mới trong đúng một phút (xem `ramped`). Ngược lại — ghi dần vào
+      // `fedAt` theo từng lượt quét — thì phần thưởng của một cú bấm phụ thuộc vào việc có
+      // ai mở trang trong phút đó hay không, và đó là hạng bug không ai dựng lại được.
+      //
+      // `restedFrom` chỉ có ở món CÓ `wake`: một bát phở không đụng gì tới tập trung, và
+      // ghi mốc cũ vào đấy là dựng một đoạn hồi từ X về đúng X — vô hại, nhưng nó bật cờ
+      // "đang hồi tập trung" lên cho một món không hồi gì cả.
+      ramp: {
+        at: new Date(nowMs).toISOString(),
+        ms: EAT_MS,
+        fedFrom: ledger.fedAt ?? null,
+        restedFrom: wake == null ? null : (ledger.restedAt ?? null),
+      },
     },
     error: null,
   };
@@ -242,34 +671,114 @@ export function buy(ledger, id, nowMs = Date.now()) {
 /**
  * Bản gửi ra trình duyệt.
  *
- * `coins` làm tròn XUỐNG. Trong sổ nó là số thực (tiền lẻ của một ngày đang chạy phải
- * được giữ, nếu không thì mỗi lượt quét lại đánh rơi phần thập phân), nhưng đưa ra màn
- * hình thì "213 xu" — không ai đếm tiền tới bốn chữ số sau dấu phẩy.
+ * ## Vì sao ví có HAI chữ số lẻ chứ không phải số nguyên
+ *
+ * Trong sổ nó vốn đã là số thực — tiền lẻ của một ngày đang chạy phải được giữ, nếu không
+ * thì mỗi lượt quét lại đánh rơi phần thập phân. Cái đổi là chỗ CẮT: bản đầu cắt về số
+ * nguyên, và ở nhịp thu thật (đo trên máy này ~$50–120 một ngày, tức 5–12 xu một giờ) thì
+ * con số ấy đứng yên 5 tới 10 phút liền rồi nhảy một bậc. Một cái ví chỉ nhúc nhích mỗi
+ * nửa tiếng thì không ai nối được nó với việc mình vừa làm.
+ *
+ * Hai chữ số lẻ thì mỗi lượt quét 30 giây đều thấy nó nhích, và cái nối "gõ lệnh → tiền
+ * vào ví" hiện ra ngay trên màn hình thay vì phải suy. Đó cũng là điều kiện để popover
+ * nảy được con số lúc mở (xem `wallet` trong `public/lib/pet.js`): không có phần lẻ thì
+ * phần lớn lần mở, hiệu số là 0 và chẳng có gì để nảy.
+ *
+ * Cắt XUỐNG chứ không làm tròn gần nhất — xem `floor2`, chiều làm tròn ở đó là một
+ * quyết định về hành vi, không phải chuyện thẩm mỹ.
  */
 export function petView(ledger, nowMs = Date.now()) {
   const full = fullnessOf(ledger, nowMs);
-  const mealAt = Date.parse(ledger.lastMealAt ?? '');
+  const focus = focusOf(ledger, nowMs);
+  const ramp = liveRamp(ledger.ramp, nowMs);
   return {
     on: ledger.on !== false,
-    coins: Math.floor(ledger.coins),
-    earned: Math.floor(ledger.earned),
-    spent: ledger.spent,
+    coins: floor2(ledger.coins),
+    earned: floor2(ledger.earned),
+    spent: round2(ledger.spent),
     since: ledger.since,
     full,
     mood: moodOf(full),
+    focus,
+    focusMood: focusMoodOf(focus),
+    // Số PHÚT đã ngồi liền, gửi thẳng chứ không bắt trình duyệt tự trừ hai mốc. Câu nhắc
+    // đọc chính con số này ("Đã 78 phút ngồi liền"), và một con số dựng lại ở đầu kia từ
+    // `restedAt` cộng đồng hồ máy khách là một con số thứ hai sẽ lệch.
+    satMin: satMinAt(ledger.restedAt, nowMs),
     fedAt: ledger.fedAt,
+    lastMealAt: ledger.lastMealAt,
+    // Gửi cả hai MỐC GỐC, không chỉ hai con số đã suy. Trình duyệt nhớ bản này trong
+    // `localStorage` để vẽ ngay lúc mở (xem `lib/petcache.js`), mà `full` với `focus` thì
+    // tụt theo đồng hồ — bày lại bản chép của chúng sau ba tiếng là bày một con số SAI,
+    // không phải một con số cũ. Có mốc gốc thì bản nhớ tự tính lại được, bằng đúng phép
+    // của server (`petmath.js`).
+    restedAt: ledger.restedAt,
     owned: ledger.owned,
+    worn: ledger.worn ?? {},
+    slots: SLOTS,
     meals: ledger.meals,
-    // Món vừa ăn chỉ còn đứng cạnh nhân vật một lúc. Hết giờ thì thôi, chứ không để
-    // một bát phở nằm đó ba ngày.
-    holding: !Number.isNaN(mealAt) && nowMs - mealAt < MEAL_SHOW_MS ? ledger.lastMeal : null,
+    breaks: ledger.breaks ?? 0,
+    /**
+     * Việc đang làm — ăn hoặc nghỉ, gộp một trường. Xem `doingOf`.
+     *
+     * Gửi số mili giây CÒN LẠI chứ không gửi mốc bắt đầu. Đồng hồ máy khách lệch đồng hồ
+     * server vài giây là chuyện thường, và một cái đếm ngược lệch vài giây thì lúc nó về 0
+     * mà server bảo "chưa tới giờ" là một cú bấm trượt không giải thích được. Hiệu số thì
+     * không phụ thuộc đồng hồ nào cả.
+     */
+    doing: doingIn(ledger, nowMs),
+    // Kết quả quãng vừa chốt, và nó TỰ HẾT HẠN. Đây là một câu trả lời cho một cú bấm, nên
+    // nó chỉ có nghĩa ngay sau cú bấm ấy; để nó nằm mãi thì mở cửa hàng sáng hôm sau vẫn
+    // thấy "quãng nghỉ đã tính" của tối qua, và người đọc không biết nó đang nói về lúc nào.
+    lastBreak:
+      ledger.lastBreak && nowMs - Date.parse(ledger.lastBreak.at ?? '') < BREAK_RESULT_MS
+        ? ledger.lastBreak
+        : null,
+    moves: Object.fromEntries(Object.entries(MOVES).map(([k, v]) => [k, { ...v }])),
+    /**
+     * Đoạn hồi đang chạy — mốc TUYỆT ĐỐI, khác hẳn `doing` ngay trên. Cố ý, và chỗ khác
+     * nhau là chỗ có hay không có một CÁI VÁCH.
+     *
+     * Cái đếm ngược có vách: nó chạm 0 rồi người ta bấm, và lệch đồng hồ vài giây ở đúng
+     * chỗ ấy là một cú bấm bị từ chối không giải thích được. Hai cái thanh thì không có
+     * vách nào — lệch ba giây trên một đoạn hồi 60 giây là lệch 5% của một ô trên mười ô,
+     * tức không ô nào đổi. Đổi lại, mốc tuyệt đối là thứ `lib/petcache.js` dựng lại được
+     * bằng đúng phép của server, y như `fedAt` với `restedAt` vẫn thế từ đầu.
+     */
+    ramp,
     rate: RATE,
+    // Ba khoảng của mô hình đi kèm bản gửi ra, không viết cứng ở trình duyệt. Bản nhớ
+    // trong `localStorage` tự tính lại ba con số suy từ chúng lúc mở lại (xem
+    // `lib/petcache.js`), và một hằng số chép sang bên kia là một hằng số sẽ lệch ở lần
+    // sửa sau — đúng chỗ mà `petmath.js` sinh ra để khỏi có.
     fullMs: FULL_MS,
+    focusMs: FOCUS_MS,
+    eatMs: EAT_MS,
+    // Tỉ giá của bảng giá đồ ăn, gửi kèm để khối "cách tính" dựng câu công thức từ CHÍNH
+    // con số đang tính tiền — không phải từ một bản chép trong bảng chữ. Đổi nó ở đây là
+    // cả cửa hàng lẫn dòng giải thích đi theo cùng lúc.
+    coinPerHour: COIN_PER_HOUR,
     items: Object.fromEntries(Object.entries(ITEMS).map(([k, v]) => [k, { ...v }])),
   };
 }
 
 /* ── Đĩa ──────────────────────────────────────────────────────────────────── */
+
+/**
+ * Kẹp một đoạn hồi đọc từ đĩa. Sai một chỗ là `null` — không có đoạn hồi thì mọi phép
+ * tính rơi về đường tụt thường, tức về đúng hành vi trước khi có nó.
+ *
+ * Kiểm cả hai mốc gốc chứ không chỉ kiểm `at`: `ramped` cắm chúng thẳng vào `Date.parse`,
+ * và một chuỗi rác ở đó ra `NaN` — mà `NaN` thì trượt qua mọi phép so, nên chỉ số sẽ nhận
+ * giá trị `fallback` (0 với độ no) rồi trộn dần lên. Tức một sổ chép tay làm con vật đói
+ * lả trong một phút mà không có dòng lỗi nào.
+ */
+function normRamp(raw) {
+  const ms = Number(raw?.ms);
+  if (!(ms > 0) || Number.isNaN(Date.parse(raw?.at ?? ''))) return null;
+  const stamp = (v) => (typeof v === 'string' && !Number.isNaN(Date.parse(v)) ? v : null);
+  return { at: raw.at, ms, fedFrom: stamp(raw.fedFrom), restedFrom: stamp(raw.restedFrom) };
+}
 
 /** Đọc sổ. Không có, hỏng, hay sai phiên bản → `null`, để chỗ gọi tự dựng sổ mới. */
 export async function readLedger() {
@@ -278,16 +787,27 @@ export async function readLedger() {
     if (raw?.v !== 1) return null;
     // Vá mấy trường có thể thiếu ở sổ do bản cũ ghi — rẻ hơn một lớp migrate, và sổ này
     // hỏng thì chỉ mất xu chứ không mất số liệu nào.
+    //
+    // Cùng cái bẫy đã ghi ở `buy`: một sổ chép tay có `owned: ["constructor"]` sẽ lọt
+    // qua phép lọc `ITEMS[id]` trơn rồi ném lúc vẽ.
+    const owned = Array.isArray(raw.owned) ? raw.owned.filter((id) => Object.hasOwn(ITEMS, id)) : [];
     return {
       ...raw,
       credited: raw.credited ?? {},
-      // Cùng cái bẫy đã ghi ở `buy`: một sổ chép tay có `owned: ["constructor"]` sẽ lọt
-      // qua phép lọc `ITEMS[id]` trơn rồi ném lúc vẽ.
-      owned: Array.isArray(raw.owned) ? raw.owned.filter((id) => Object.hasOwn(ITEMS, id)) : [],
+      owned,
+      worn: normWorn(raw.worn, owned),
       coins: Number(raw.coins) || 0,
       earned: Number(raw.earned) || 0,
       spent: Number(raw.spent) || 0,
       meals: Number(raw.meals) || 0,
+      breaks: Number(raw.breaks) || 0,
+      // Một quãng nghỉ khai dở mà server tắt giữa chừng thì `breakMs` có thể là bất cứ
+      // thứ gì sau một lượt sửa tay. Kẹp ở cửa đọc: mốc không hợp lệ thì coi như không có
+      // quãng nào, chứ không để `resolveBreak` nhận một con số rác rồi chốt bừa.
+      breakMs: Number(raw.breakMs) > 0 ? Number(raw.breakMs) : null,
+      breakKind: Object.hasOwn(MOVES, raw.breakKind) ? raw.breakKind : null,
+      breakAt: Number(raw.breakMs) > 0 && Object.hasOwn(MOVES, raw.breakKind) ? (raw.breakAt ?? null) : null,
+      ramp: normRamp(raw.ramp),
     };
   } catch {
     return null;

@@ -68,6 +68,99 @@ async function readTitleFromDisk(file, size) {
   }
 }
 
+/* ── Lượt gõ cuối cùng của NGƯỜI ───────────────────────────────────────────────
+
+   ## Vì sao cần con số này bên cạnh mtime
+
+   `lastActivityAt` (mtime) trả lời "Claude Code vừa GHI gì đó lúc nào", và trong một lượt
+   chạy dài thì nó chính là nhịp gõ của **máy**: mỗi khối trả lời, mỗi kết quả công cụ đều
+   là một lượt ghi. Đúng cái quãng ấy lại là quãng người ta RẢNH NHẤT để đứng dậy — máy
+   đang làm việc, không ai phải ngồi nhìn. Lấy mtime làm bằng chứng cho quãng nghỉ khai
+   trước (xem `resolveBreak` trong `src/pet.js`) là kết luận ngược hẳn sự thật: càng đúng
+   lúc rời ghế được thì càng chắc chắn bị từ chối. Đó là lỗi người dùng báo 5/8.
+
+   `humanAt` trả lời câu khác hẳn: **bạn** vừa gõ lúc nào.
+
+   ## Nhận ra một lượt của người
+
+   `type: "user"` KHÔNG đủ, và đây là chỗ dễ sai nhất: kết quả công cụ cũng ghi vào
+   transcript dưới vai `user`. Đo trên máy này, một phiên có 2664 dòng `user` mà chỉ 81
+   dòng là người thật gõ — lấy nhầm thì `humanAt` bằng đúng mtime và cả phép sửa này thành
+   vô nghĩa. Ba dấu hiệu loại chúng ra: có `toolUseResult` (kết quả công cụ), có
+   `isSidechain: true` (câu gửi cho một agent con), và thiếu `userType: "external"`.
+
+   ## Vì sao đọc CHỒNG DẦN chứ không đọc đuôi
+
+   Đọc một khúc đuôi cố định là cách hiển nhiên, và nó hỏng đúng ở ca cần nó nhất. Đo trên
+   máy này: sau hai mươi phút gọi công cụ liên tục, lượt gõ cuối của người nằm cách cuối
+   file **1,3MB** — ngoài tầm một khúc đuôi 512KB. Mà một phiên bận là phiên duy nhất câu
+   hỏi này có nghĩa, nên "đuôi cố định" nghĩa là câm đúng lúc phải nói.
+
+   Nới khúc đuôi lên vài MB thì đọc lại ngần ấy byte mỗi 30 giây cho mỗi phiên. Transcript
+   chỉ NỐI THÊM, nên có cách rẻ hơn hẳn: nhớ đã đọc tới byte nào, lượt sau chỉ đọc phần
+   mới. Một lượt quét khi ấy tốn đúng số byte vừa sinh ra, và `humanAt` không bao giờ cũ đi
+   — nó chỉ được cập nhật khi có lượt mới của người.
+
+   Mốc `scanned` luôn dừng ở một RANH GIỚI DÒNG, không dừng ở `size`: lượt ghi có thể bắt
+   gặp giữa chừng một dòng, và bắt đầu lượt sau từ giữa dòng ấy là bỏ sót trọn một bản ghi.
+*/
+
+/** `file → { at, scanned }`. `at` là lượt gõ cuối đã thấy (null nếu chưa thấy lần nào),
+ *  `scanned` là byte đã đọc tới, luôn rơi đúng sau một dấu xuống dòng. */
+const humanSeen = new Map();
+
+/** Lần đầu gặp một phiên thì đọc lùi ngần này. Bốn MB — gấp ba khoảng cách đo được ở ca
+ *  bận nhất trên máy này, và chỉ trả một lần cho mỗi phiên; từ lượt sau là đọc phần mới. */
+const HUMAN_SEED = 4 * 1024 * 1024;
+
+async function humanTurnAt(file, size) {
+  const prev = humanSeen.get(file);
+  // File nhỏ đi = phiên khác trùng đường dẫn, hoặc transcript bị viết lại. Gieo lại từ đầu
+  // chứ không đọc một khoảng âm.
+  const fresh = !prev || size < prev.scanned;
+  const from = fresh ? Math.max(0, size - HUMAN_SEED) : prev.scanned;
+  if (size <= from) return prev?.at ?? null;
+
+  let fh;
+  try {
+    fh = await fs.open(file, 'r');
+    const buf = Buffer.alloc(size - from);
+    const { bytesRead } = await fh.read(buf, 0, buf.length, from);
+    const text = buf.toString('utf8', 0, bytesRead);
+    // Chỉ nhận phần tới dấu xuống dòng CUỐI: phần sau nó là một dòng đang viết dở.
+    const cut = text.lastIndexOf('\n');
+    const at = lastHumanIn(cut < 0 ? '' : text.slice(0, cut));
+    const seen = { at: at ?? prev?.at ?? null, scanned: cut < 0 ? from : from + Buffer.byteLength(text.slice(0, cut + 1)) };
+    if (humanSeen.size > 400) humanSeen.clear();
+    humanSeen.set(file, seen);
+    return seen.at;
+  } catch {
+    return prev?.at ?? null;
+  } finally {
+    await fh?.close();
+  }
+}
+
+/**
+ * Lúc NGƯỜI gõ câu cuối cùng trong đoạn transcript này — `null` khi không có câu nào.
+ *
+ * Đọc bằng chuỗi con chứ không `JSON.parse` từng dòng: mỗi dòng là một bản ghi có thể tới
+ * vài chục KB, và ta chỉ cần một dấu thời gian. Xuất ra để bài test gọi thẳng — nó là
+ * toàn bộ phần có luật trong khối này.
+ */
+export function lastHumanIn(text) {
+  let last = null;
+  for (const line of text.split('\n')) {
+    if (!line.includes('"type":"user"')) continue;
+    if (line.includes('"toolUseResult"') || line.includes('"isSidechain":true')) continue;
+    if (!line.includes('"userType":"external"')) continue;
+    const m = /"timestamp":"([^"]+)"/.exec(line);
+    const at = m ? Date.parse(m[1]) : NaN;
+    if (!Number.isNaN(at) && (last == null || at > last)) last = at;
+  }
+  return last;
+}
+
 function lastTitleIn(text) {
   let custom = null;
   let ai = null;
@@ -129,12 +222,16 @@ export async function collectSessions() {
     }
 
     const tr = await transcriptInfo(raw.cwd, raw.sessionId);
-    const [title, todos] = await Promise.all([
+    const [title, humanAt, todos] = await Promise.all([
       tr ? readTranscriptTitle(tr.file, tr.size, tr.lastActivityAt) : null,
+      tr ? humanTurnAt(tr.file, tr.size) : null,
       readTodos(raw.sessionId),
     ]);
     const lastActivityAt = tr?.lastActivityAt ?? raw.updatedAt ?? raw.startedAt ?? null;
     const idleMs = lastActivityAt ? now - lastActivityAt : null;
+    // Kẹp về 0: dấu thời gian trong transcript do một máy khác ghi cũng được, nhưng một
+    // con số ÂM thì mọi phép so ở phía dùng đều đọc thành "vừa gõ xong".
+    const humanIdleMs = humanAt ? Math.max(0, now - humanAt) : null;
 
     return {
       id: raw.sessionId,
@@ -164,6 +261,17 @@ export async function collectSessions() {
       startedAt: raw.startedAt ?? null,
       lastActivityAt,
       idleMs,
+      /**
+       * Lúc NGƯỜI gõ câu cuối, và khoảng lặng tính từ đó — hai trường KHÁC hẳn cặp
+       * `lastActivityAt`/`idleMs` ngay trên, dù nghe như đồng nghĩa.
+       *
+       * Cặp trên đo cái MÁY (mtime transcript: mọi khối trả lời, mọi kết quả công cụ);
+       * cặp này đo cái NGƯỜI. Trong một lượt chạy dài chúng lệch nhau hàng chục phút, và
+       * đúng khoảng lệch ấy là lúc người ta rảnh để đứng dậy. `null` khi đuôi transcript
+       * không có lượt nào của người — nghĩa là "không biết", không phải "vừa xong".
+       */
+      humanAt,
+      humanIdleMs,
       sleeping: idleMs != null && idleMs > SESSION_IDLE_MS,
       transcriptBytes: tr?.size ?? 0,
       todos,

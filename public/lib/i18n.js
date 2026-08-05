@@ -209,6 +209,7 @@ const DICT = {
     'pet.wallet': 'Ví',
     'pet.rateNote': '1 xu = $1 tiêu ước tính.',
     'pet.since': (o) => `Tính từ ${o.day}.`,
+    'pet.whyOpen': 'Mấy con số này tính từ đâu?',
     'pet.hunger': 'Độ no',
     'pet.fullAria': (o) => `còn no ${o.pct}%`,
     'pet.starved': 'đói lả rồi',
@@ -218,30 +219,181 @@ const DICT = {
     'pet.mood.hungry': 'Đang đói',
     'pet.mood.fine': 'Ổn',
     'pet.mood.stuffed': 'No căng',
-    'pet.secFood': 'Ăn uống',
-    'pet.secDecor': 'Trang trí',
-    'pet.feedHint': 'Mua là cho ăn luôn, không có kho.',
-    'pet.decorHint': 'Mua một lần, ở lại trên popover thanh menu.',
-    'pet.owned': 'đã có',
+    'pet.focus': 'Tập trung',
+    'pet.focusAria': (o) => `tập trung còn ${o.pct}%`,
+    'pet.focusMood.sharp': 'Đang vào nhịp',
+    'pet.focusMood.dip': 'Sắp hết nhịp',
+    'pet.focusMood.spent': 'Quá nhịp rồi',
+    'pet.satMin': (o) => `đã ngồi ${o.n} phút liền`,
+    'pet.satRested': 'vừa nghỉ xong',
+    // Nhãn phải nói đúng nó ĐO GÌ. Nó không biết bạn có rời ghế hay không, nó chỉ biết
+    // máy im — giấu chỗ đó đi là dán nhãn đo lường lên một phép đoán.
+    'pet.focusNote': 'Đếm từ quãng lặng gần nhất của Claude Code; im trên 10 phút là đầy lại. Một nhịp 90 phút (chu kỳ nghỉ-hoạt động cơ bản).',
+    'pet.nudge.dip': (o) => `Đã ${o.n} phút ngồi liền — hết pha tỉnh của một nhịp 90 phút. Đứng dậy đi lại 3 phút.`,
+    'pet.nudge.spent': (o) => `${o.n} phút rồi. Não đang ở đáy chu kỳ — nghỉ 10 phút rồi quay lại còn nhanh hơn cố ngồi.`,
+    'pet.nudge.afternoon': (o) => `${o.n} phút, mà đầu giờ chiều lại đúng đáy nhịp ngày. Ra chỗ có nắng đi bộ 5 phút — với cú trũng này, ánh sáng ăn đứt cà phê.`,
+    'pet.nudge.night': (o) => `Quá 22h và đã ${o.n} phút ngồi liền. Cái này để mai; ngủ mới là thứ dọn được cái đầu.`,
+    // Bốn động tác nghỉ. Mỗi câu `why` phải nói ra BẰNG CHỨNG của động tác ấy, không nói
+    // ra lợi ích của nó — "uống nước cho tỉnh táo" là một mẩu quảng cáo, còn "mất 1–2%
+    // nước là đã đo được sa sút ở chú ý" là một câu kiểm chứng được. Đó cũng là điều kiện
+    // để một động tác được đứng trong bảng; xem `MOVES` trong `lib/petmath.js`.
+    // Hai khối, vì hai chỗ. Ba việc làm được ngay tại bàn thì đứng ở Nhà; hai việc phải ra
+    // khỏi cửa thì đứng ở Công viên. Gộp cả năm vào một chỗ như bản trước là màn hình đang
+    // nói rằng muốn uống một cốc nước thì phải đi ra công viên.
+    'pet.secFree.home': 'Nghỉ ngắn ngay tại bàn — miễn phí',
+    'pet.secFree.park': 'Nghỉ ngắn ngoài trời — miễn phí',
+    'pet.freeHint.home':
+      'Khai trước, máy kiểm sau: hết giờ mà bạn không gõ gì cho Claude Code trong quãng ấy thì tính. Ba việc này làm được ngay ở bàn — và vì bạn vẫn ngồi nguyên đó, chúng gỡ được ít nhất.',
+    'pet.freeHint.park':
+      'Hai việc bắt bạn bước ra khỏi cửa, nên chúng là hai việc duy nhất kéo tập trung về đầy. Quản gia cũng ra công viên đứng — nhìn bản đồ là biết anh ta đang ở đâu.',
+    'pet.parkHint':
+      'Chỗ duy nhất trong thị trấn không bán gì. Đường rẻ nhất về lại trạng thái tỉnh táo không đi qua cái ví — nó đi qua cái cửa.',
+    'pet.free': 'Miễn phí',
+    'pet.wakesFull': 'về đầy 100% tập trung',
+    'pet.move.water': 'Uống một cốc nước',
+    'pet.move.water.why':
+      'Mất 1–2% nước cơ thể là đã đo được sa sút ở chú ý và tâm trạng. Đi rót nước cũng chính là quãng đứng dậy.',
+    'pet.move.stretch': 'Vươn vai vài động tác',
+    'pet.move.stretch.why':
+      'Ngồi lâu làm cơ gập hông co lại và vai đổ về trước. Vài động tác vươn người gỡ đúng chỗ đó, và nó là quãng rời ghế rẻ nhất về ý chí.',
+    'pet.move.eyes': 'Rời mắt khỏi màn hình',
+    'pet.move.eyes.why':
+      'Nhìn màn hình làm nhịp chớp mắt tụt quá nửa — chỗ đó có bằng chứng. Con số 20-20-20 thì không, nên ở đây chỉ có "rời mắt ra".',
+    'pet.move.walk': 'Đứng dậy đi bộ',
+    'pet.move.walk.why':
+      'Nghiên cứu về ngồi lâu: xen 2–5 phút vận động nhẹ mỗi 20–30 phút thì chỉ số nhận thức đo được khá lên. Đi bộ là dạng vận động nhẹ ít phải nghĩ nhất.',
+    'pet.move.sun': 'Ra chỗ có nắng',
+    'pet.move.sun.why':
+      'Ánh sáng mạnh là thứ có bằng chứng chống lại cú trũng đầu chiều, và với cú trũng ấy nó ăn đứt thêm một ly cà phê.',
+    'pet.moveMin': (o) => `${o.n} phút`,
+    'pet.moveBest': 'hợp lúc này',
+    'pet.breakWatch': 'Rời máy đi. Hết giờ máy mới tính — bạn gõ cho Claude Code trong quãng này thì không tính. Claude tự chạy thì không sao.',
+    'pet.breakStop': 'Bỏ dở',
+    'pet.breakOk': (o) => `Tính rồi — tập trung +${o.pct}%.`,
+    'pet.breakOkFull': 'Tính rồi — tập trung về đầy.',
+    // Câu từ chối KHÔNG được trách người đọc, và từ 5/8 nó nói được ĐÚNG chuyện đã xảy ra:
+    // phép kiểm đo lượt gõ của NGƯỜI, nên trượt nghĩa là bạn có gõ thật. Bản trước phải
+    // xin lỗi hộ chính nó ("một tác vụ nền chạy xong cũng đủ") vì nó đo nhầm thứ.
+    'pet.breakBusy':
+      'Trong quãng đó bạn còn gõ cho Claude Code, nên lần này không tính. Không mất gì cả — bấm lại rồi rời máy trọn một phút. Claude tự chạy trong lúc bạn đi thì không ảnh hưởng.',
+
+    // ── Thị trấn ───────────────────────────────────────────────────────────
+    // Tên toà nhà là tên CHỖ, không phải tên chức năng ("Quán ăn", không phải "Ăn uống").
+    // Cái biển treo trên một toà nhà phải đọc như một cái biển; một danh từ trừu tượng gắn
+    // lên mái nhà thì bức tranh hết là bức tranh.
+    'town.park': 'Công viên',
+    'town.food': 'Quán ăn',
+    'town.home': 'Nhà mình',
+    'town.decor': 'Tiệm trang trí',
+    'town.library': 'Thư viện',
+    'town.lot': 'chưa mở',
+    'town.lotNote':
+      'Đất trống. Thị trấn rộng thêm khi dashboard có thêm việc đáng một toà nhà — không phải một món sắp bán.',
+
+    'pet.homeHint': 'Quản gia sống ở đây — nhà bỏ mái nên nhìn được vào trong, và anh ta đi lại trên sàn khi rảnh. Ba việc nghỉ ngay tại bàn cũng bấm từ đây.',
+    'pet.homeBare': 'Khung trời đang trống trơn. Ghé tiệm trang trí đi.',
+    'pet.noMoves': 'Server bản này chưa có bảng động tác nghỉ.',
+
+    'pet.feedHint': 'Không có kho: mua là cho ăn luôn, và trả rồi thì không lấy lại được. Nên bấm một món là CHỌN, xu chỉ ra khỏi ví ở cú bấm thứ hai trên khay. Ăn hết một món mất một phút, trong phút ấy quán đóng cửa và độ no bò lên dần chứ không nhảy một phát.',
+    'pet.pickHint': 'Bấm một món ở dưới để xem trước. Cú bấm đó chưa tiêu xu nào.',
+    'pet.pickOn': (o) => `${o.name} — ăn xong độ no lên ${o.pct}%.`,
+    'pet.pickBuy': (o) => `Mua và cho ăn · ${o.n} xu`,
+    'pet.pickOff': 'Bỏ chọn',
+    'pet.pickLeft': (o) => `Trả xong ví còn ${o.n} xu.`,
+    'pet.oneAtATime': 'Quản gia đang bận — mỗi lúc một việc thôi.',
+    'pet.eatingNote': 'Đang ăn uống. Xong bữa thì quán mở lại.',
+    'pet.decorHint': 'Mua một lần, ở lại vĩnh viễn. Bấm một món chưa có để MẶC THỬ lên bức tranh trên kia trước; mua hay không thì quyết sau. Món đã mua thì bấm là đổi sang hoặc cất đi luôn.',
+    'pet.trying': 'đang thử',
+    'pet.tryOn': (o) => `Đang thử: ${o.name} — chỗ ${o.slot}.`,
+    'pet.tryBuy': (o) => `Mua · ${o.n} xu`,
+    'pet.tryOff': 'Cởi ra',
+    'pet.tryHint': 'Đây là đúng bức tranh sẽ hiện trên popover. Bấm một món chưa có ở dưới để mặc thử lên người quản gia.',
+    // Tên chỗ đứng là tên VỊ TRÍ, không phải tên loại đồ: cái khe bên trái nhận cây hôm
+    // nay và có thể nhận thứ khác ngày mai. Xem `SLOTS` trong `src/pet.js`.
+    'pet.slot.head': 'Trên đầu',
+    'pet.slot.left': 'Góc trái',
+    'pet.slot.right': 'Góc phải',
+    'pet.slot.air': 'Lơ lửng',
+    'pet.slot.top': 'Treo cao',
+    'pet.slot.back': 'Nền trời',
+    'pet.slotEmpty': 'đang để trống',
+    'pet.wear': 'đổi sang',
+    'pet.wearOff': 'cất đi',
     'pet.tooPoor': (o) => `còn thiếu ${o.n} xu`,
     'pet.fills': (o) => `+${o.pct}% no`,
+    'pet.wakes': (o) => `+${o.pct}% tập trung`,
     'pet.off': 'Trò chơi đang tắt',
     'pet.offNote': 'Popover trở lại đúng bản nghiêm túc. Xu và đồ đã mua vẫn còn nguyên trong sổ.',
     'pet.turnOn': 'Bật trò chơi',
     'pet.turnOff': 'Tắt trò chơi',
     'pet.openShop': 'Mở cửa hàng trên dashboard',
     'pet.loading': 'Đang mở sổ…',
-    'pet.tally': (o) => `${o.earned} xu đã vào ví · ${o.spent} xu đã tiêu · ${o.meals} bữa`,
+    'pet.tally': (o) => `${o.earned} xu đã vào ví · ${o.spent} xu đã tiêu · ${o.meals} bữa · ${o.breaks} quãng nghỉ`,
+
+    // ── Cách tính ──────────────────────────────────────────────────────────
+    // Khối duy nhất của cả sản phẩm nói ra nguồn gốc từng con số của trò chơi. Nó phải có
+    // vì lớp chỉ số sức khoẻ đưa ra LỜI KHUYÊN, mà một lời khuyên không khai được nền của
+    // nó thì là một mẹo trên mạng có thêm hoạt hình.
+    'pet.how': 'Cách tính mấy con số này',
+    'pet.howHint':
+      'Không con số nào ở màn này là một trọng số chọn cho "cảm giác đúng". Đây là chỗ khai ra từng cái một, kể cả thứ đã cố ý bỏ đi.',
+    'pet.how.coin.t': 'Xu',
+    'pet.how.coin.f': 'xu = đô-la ước tính đã tiêu, cộng theo TỪNG NGÀY',
+    'pet.how.coin.p':
+      'Tỉ giá đúng bằng 1, nên ví xu đọc ra chính hoá đơn: 213 xu nghĩa là $213 kể từ ngày mở sổ. Cộng theo ngày chứ không theo tổng, vì Claude Code tự xoá transcript cũ nên tổng lịch sử TỤT xuống theo thời gian — khoá theo ngày thì mỗi ngày tự chốt sổ của nó và một ngày rơi khỏi sổ token không kéo ai theo.',
+    'pet.how.full.t': 'Độ no',
+    'pet.how.full.f': 'no = 1 − (bây giờ − lần ăn cuối) ÷ 5 giờ',
+    'pet.how.full.p':
+      '5 giờ là khoảng cách giữa hai bữa của người — sáng, trưa, tối. Con vật vì thế đói cùng lúc với bạn, và cái thanh ấy kiêm luôn việc nhắc đến giờ ăn. Cho ăn thì mốc được đẩy về trước sao cho độ no tăng đúng phần của món và không vượt quá no căng; cộng thẳng vào mốc thì ăn lúc đang no sẽ khoá thanh ở mức đầy nhiều giờ liền.',
+    'pet.how.focus.t': 'Tập trung',
+    'pet.how.focus.f': 'tập trung = 1 − (bây giờ − mốc nghỉ cuối) ÷ 90 phút',
+    'pet.how.focus.p':
+      'Chu kỳ nghỉ-hoạt động cơ bản (Kleitman, 1963): nhịp ~90 phút của giấc ngủ không tắt khi ta thức, nó chạy tiếp cả ngày thành một sóng tỉnh táo. 60–70 phút đầu là pha tỉnh, ~20 phút cuối là pha trũng. Lời nhắc rơi ở mức 22%, tức khoảng phút thứ 70 — đúng chỗ pha trũng bắt đầu.',
+    'pet.how.price.t': 'Giá đồ ăn',
+    'pet.how.price.f': (o) => `giá = số GIỜ món ấy mua cho bạn × ${o.n} xu/giờ`,
+    'pet.how.price.p':
+      'Thanh no kéo 5 giờ và một thanh no đầy giá 5 xu, nên 1 xu mua đúng 1 giờ no — ghép với tỉ giá 1 xu = $1 thì cả cửa hàng rút về một câu: $1 token đổi được một giờ no. Tập trung tính cùng tỉ giá ấy trên chu kỳ 90 phút, nên nó rẻ hơn, và đúng là phải rẻ hơn: sự tỉnh táo có một đường miễn phí về đầy, cái bụng thì không. Bảng giá cũ là chín con số đặt tay và nó đã lọt hai ca một món đè bẹp món khác — cà phê vừa rẻ hơn vừa hơn sô-cô-la ở cả hai mặt. Suy từ công thức thì ca ấy không dựng lên được: trả nhiều hơn là nhận nhiều hơn, theo nghĩa đen.',
+    'pet.how.rest.t': 'Mốc nghỉ đến từ đâu',
+    'pet.how.rest.p':
+      'Ba đường: Claude Code im trên 10 phút, một quãng nghỉ khai trước rồi được kiểm, hoặc một phần từ đồ uống có caffeine. Đường thứ nhất là ƯỚC LƯỢNG và nó sai được hai kiểu — cả hai đều nhắc hụt chứ không nhắc oan: cắm mặt vào editor cả tiếng mà không gọi Claude thì máy tưởng bạn nghỉ; để một phiên chạy dài rồi bỏ đi thì máy tưởng bạn vẫn ngồi. Quãng nghỉ khai trước không dính hai ca đó, vì ở đấy ý định là do bạn nói ra chứ không do máy đoán. Nó kiểm bằng lượt GÕ CỦA BẠN, không bằng lượt ghi của Claude: một lượt chạy dài ghi vào transcript liên tục, mà đúng quãng ấy mới là quãng bạn rảnh để đứng dậy — đo nhầm chỗ đó thì càng làm đúng càng chắc chắn bị huỷ.',
+    'pet.how.dip.t': 'Cú trũng đầu giờ chiều',
+    'pet.how.dip.p':
+      'Từ 13h đến 16h lời nhắc đổi giọng. Cú trũng ấy KHÔNG phải do ăn no — thí nghiệm tách bữa ăn ra vẫn thấy nó, nó là một hoạ ba của đồng hồ sinh học. Thứ có bằng chứng chống lại nó là chợp mắt ngắn và ánh sáng mạnh, nên câu nhắc trong khung giờ đó đẩy bạn ra chỗ có nắng chứ không đẩy thêm một ly cà phê.',
+    'pet.how.wake.t': 'Vì sao không món bán nào quá 50% tỉnh táo',
+    'pet.how.wake.p':
+      'Caffeine chẹn thụ thể adenosine — nó HOÃN cảm giác mệt chứ không xoá. Cà phê +40%, trà xanh +25%, sô-cô-la +15%; cộng dồn được, nhưng chúng lấp thanh đói cùng lúc nên ba ly liên tiếp là no căng chứ không phải tỉnh táo. Đường duy nhất về đầy 100% là đứng dậy, và đường ấy miễn phí. Cho một món bằng 100% là dựng cái nút "bấm để hết mệt", tức dạy đúng thói quen mà cả lớp chỉ số này sinh ra để cản.',
+    'pet.how.eat.t': 'Vì sao ăn mất một phút',
+    'pet.how.eat.p':
+      'Mua là ăn, nhưng ăn hết thì mất một phút, và trong phút ấy không gọi thêm món nào được. Ba lý do, cùng một gốc — phải có gì đó ĐANG diễn ra: cái thanh mười ô phải bò lên thì mắt mới thấy nó lên (nhảy một phát thì phần thưởng của cú bấm chỉ đọc được bằng cách so trí nhớ); món ăn phải vơi rồi hết thì nó mới nói "vừa ăn" thay vì "có một bát phở ở đây"; và phải có một quãng bận thì mới có câu hỏi "đang rảnh chưa". Con số độ no trong phút ấy là số THẬT: sổ trộn dần từ mốc cũ sang mốc mới, chứ không phải một hoạt hình chạy trên một giá trị đã cộng xong từ giây đầu.',
+    'pet.how.no.t': 'Thứ cố ý KHÔNG dùng',
+    'pet.how.no.p':
+      'Luật 20-20-20 — cứ 20 phút thì nhìn xa 20 feet trong 20 giây — được các hội nhãn khoa nhắc khắp nơi, nhưng tra kỹ thì nó ra đời như một câu cho dễ nhớ, và thử nghiệm có đối chứng không thấy khác biệt ở các chỉ số thị giác. Cái CÓ bằng chứng là nhịp chớp mắt tụt hơn nửa khi nhìn màn hình, nên ở đây chỉ có "rời mắt ra", không có ba con số 20.',
+    'pet.howSrc': 'Nguồn:',
+
     'pet.item.coffee': 'Cà phê',
+    'pet.item.socola': 'Sô-cô-la',
+    'pet.item.tea': 'Trà xanh',
+    'pet.item.kem': 'Kem que',
     'pet.item.che': 'Chè',
     'pet.item.beer': 'Bia',
     'pet.item.banhmi': 'Bánh mì',
+    'pet.item.xoi': 'Xôi',
     'pet.item.pho': 'Phở',
+    'pet.item.beanie': 'Mũ len',
     'pet.item.hat': 'Nón chóp',
+    'pet.item.crown': 'Vương miện',
+    'pet.item.cactus': 'Xương rồng',
     'pet.item.plant': 'Chậu cây',
-    'pet.item.balloon': 'Bóng bay',
-    'pet.item.bunting': 'Dây cờ',
+    'pet.item.bonsai': 'Bonsai',
+    'pet.item.mushroom': 'Cây nấm',
+    'pet.item.dog': 'Con chó',
     'pet.item.cat': 'Con mèo',
+    'pet.item.balloon': 'Bóng bay',
+    'pet.item.kite': 'Con diều',
+    'pet.item.lantern': 'Đèn lồng',
+    'pet.item.bunting': 'Dây cờ',
+    'pet.item.lights': 'Đèn nháy',
+    'pet.item.hills': 'Dãy đồi',
     'pet.item.rainbow': 'Cầu vồng',
 
     // Ngôn ngữ
@@ -1669,6 +1821,7 @@ const DICT = {
     'pet.wallet': 'Wallet',
     'pet.rateNote': '1 coin = $1 of estimated spend.',
     'pet.since': (o) => `Counting from ${o.day}.`,
+    'pet.whyOpen': 'Where do these numbers come from?',
     'pet.hunger': 'Fullness',
     'pet.fullAria': (o) => `${o.pct}% full`,
     'pet.starved': 'starving',
@@ -1678,30 +1831,159 @@ const DICT = {
     'pet.mood.hungry': 'Hungry',
     'pet.mood.fine': 'Fine',
     'pet.mood.stuffed': 'Stuffed',
-    'pet.secFood': 'Food and drink',
-    'pet.secDecor': 'Decorations',
-    'pet.feedHint': 'Buying feeds it straight away — there is no inventory.',
-    'pet.decorHint': 'Bought once, stays on the menu-bar popover.',
-    'pet.owned': 'owned',
+    'pet.focus': 'Focus',
+    'pet.focusAria': (o) => `${o.pct}% focus left`,
+    'pet.focusMood.sharp': 'In the groove',
+    'pet.focusMood.dip': 'Cycle running out',
+    'pet.focusMood.spent': 'Past the cycle',
+    'pet.satMin': (o) => `${o.n} min at the desk`,
+    'pet.satRested': 'just back from a break',
+    'pet.focusNote': 'Counted from the last quiet spell in Claude Code; over 10 minutes quiet refills it. One 90-minute basic rest–activity cycle.',
+    'pet.nudge.dip': (o) => `${o.n} minutes straight — that is the alert phase of a 90-minute cycle used up. Stand up and move for 3 minutes.`,
+    'pet.nudge.spent': (o) => `${o.n} minutes. Your brain is at the bottom of the cycle — a 10-minute break beats pushing through.`,
+    'pet.nudge.afternoon': (o) => `${o.n} minutes, and early afternoon is the daily trough. Walk outside for 5 minutes — for this dip, bright light beats coffee.`,
+    'pet.nudge.night': (o) => `Past 10pm and ${o.n} minutes straight. Leave it for tomorrow; sleep is what actually clears your head.`,
+    'pet.secFree.home': 'Short breaks at your desk — free',
+    'pet.secFree.park': 'Short breaks outdoors — free',
+    'pet.freeHint.home':
+      'Declare first, the machine checks after: if you type nothing to Claude Code during the window, it counts. These three you can do right at the desk — and because you never leave the chair, they buy back the least.',
+    'pet.freeHint.park':
+      'These two mean walking out the door, which makes them the only two that take focus all the way back to full. The butler heads to the park too — one look at the map tells you where he is.',
+    'pet.parkHint':
+      'The one place in town that sells nothing. The cheapest road back to a clear head does not run through your wallet — it runs through the door.',
+    'pet.free': 'Free',
+    'pet.wakesFull': 'back to 100% focus',
+    'pet.move.water': 'Drink a glass of water',
+    'pet.move.water.why':
+      'Losing 1–2% of body water already shows up as measurable drops in attention and mood. Going to fill the glass is the break.',
+    'pet.move.stretch': 'Stretch it out',
+    'pet.move.stretch.why':
+      'Sitting shortens the hip flexors and rounds the shoulders. A few stretches undo exactly that, and it is the cheapest way out of the chair.',
+    'pet.move.eyes': 'Look away from the screen',
+    'pet.move.eyes.why':
+      'Screen work cuts your blink rate by more than half — that part is well evidenced. The 20-20-20 numbers are not, so this is just "look away".',
+    'pet.move.walk': 'Get up and walk',
+    'pet.move.walk.why':
+      'Sedentary-break research: 2–5 minutes of light activity every 20–30 minutes measurably lifts cognitive scores. Walking is the least demanding form of it.',
+    'pet.move.sun': 'Get into daylight',
+    'pet.move.sun.why':
+      'Bright light is what the evidence supports against the early-afternoon dip, and for that dip it beats another coffee.',
+    'pet.moveMin': (o) => `${o.n} min`,
+    'pet.moveBest': 'fits right now',
+    'pet.breakWatch': 'Leave the machine. It only counts at the end — type anything to Claude Code during the window and it does not. Claude working on its own is fine.',
+    'pet.breakStop': 'Give up',
+    'pet.breakOk': (o) => `Counted — focus +${o.pct}%.`,
+    'pet.breakOkFull': 'Counted — focus is back to full.',
+    'pet.breakBusy':
+      'You were still typing to Claude Code during that window, so this one does not count. Nothing lost — start it again and stay away for the full minute. Claude running on its own while you are gone makes no difference.',
+
+    'town.park': 'The park',
+    'town.food': 'The diner',
+    'town.home': 'Home',
+    'town.decor': 'The trinket shop',
+    'town.library': 'The library',
+    'town.lot': 'not open yet',
+    'town.lotNote':
+      'An empty lot. The town grows when the dashboard gains something worth a building of its own — not when something new goes on sale.',
+
+    'pet.homeHint': 'The butler lives here — the roof is off so you can see inside, and he paces the floor when idle. The three at-your-desk breaks start from here too.',
+    'pet.homeBare': 'The sky is bare. Go have a look at the trinket shop.',
+    'pet.noMoves': 'This server build has no break table yet.',
+
+    'pet.feedHint': 'There is no inventory: buying feeds it straight away, and coins spent do not come back. So the first click only PICKS a dish — money leaves the wallet on the second click, up on the tray. A meal takes a minute to finish and the diner is shut during it, so the bar climbs rather than jumps.',
+    'pet.pickHint': 'Click a dish below to look it over. That click costs nothing.',
+    'pet.pickOn': (o) => `${o.name} — takes fullness to ${o.pct}%.`,
+    'pet.pickBuy': (o) => `Buy and feed · ${o.n} coins`,
+    'pet.pickOff': 'Never mind',
+    'pet.pickLeft': (o) => `Leaves ${o.n} coins in the wallet.`,
+    'pet.oneAtATime': 'The butler is busy — one thing at a time.',
+    'pet.eatingNote': 'Tucking in. The diner reopens when this is done.',
+    'pet.decorHint': 'Bought once, kept forever. Click anything you do not own yet to TRY IT ON in the picture above; decide about buying afterwards. Things you already own swap in or come down on the first click.',
+    'pet.trying': 'trying it on',
+    'pet.tryOn': (o) => `Trying on: ${o.name} — ${o.slot} spot.`,
+    'pet.tryBuy': (o) => `Buy · ${o.n} coins`,
+    'pet.tryOff': 'Take it off',
+    'pet.tryHint': 'This is the exact picture the popover will show. Click anything below you do not own yet to try it on the butler.',
+    'pet.slot.head': 'On the head',
+    'pet.slot.left': 'Left corner',
+    'pet.slot.right': 'Right corner',
+    'pet.slot.air': 'Up in the air',
+    'pet.slot.top': 'Strung along the top',
+    'pet.slot.back': 'Backdrop',
+    'pet.slotEmpty': 'empty right now',
+    'pet.wear': 'put this up',
+    'pet.wearOff': 'take it down',
     'pet.tooPoor': (o) => `${o.n} coins short`,
     'pet.fills': (o) => `+${o.pct}% full`,
+    'pet.wakes': (o) => `+${o.pct}% focus`,
     'pet.off': 'The game is off',
     'pet.offNote': 'The popover is back to the plain version. Coins and anything bought stay in the ledger.',
     'pet.turnOn': 'Turn the game on',
     'pet.turnOff': 'Turn the game off',
     'pet.openShop': 'Open the shop on the dashboard',
     'pet.loading': 'Opening the ledger…',
-    'pet.tally': (o) => `${o.earned} coins in · ${o.spent} coins spent · ${o.meals} meals`,
+    'pet.tally': (o) => `${o.earned} coins in · ${o.spent} coins spent · ${o.meals} meals · ${o.breaks} breaks`,
+
+    'pet.how': 'How these numbers work',
+    'pet.howHint':
+      'Nothing on this screen is a weight picked because it felt right. This is where each one is spelled out — including what was deliberately left out.',
+    'pet.how.coin.t': 'Coins',
+    'pet.how.coin.f': 'coins = estimated dollars spent, credited PER DAY',
+    'pet.how.coin.p':
+      'The rate is exactly 1, so the wallet reads back your bill: 213 coins means $213 since the ledger opened. Credited per day rather than against a running total, because Claude Code prunes old transcripts, so the historical total DROPS over time — keyed by day, each day settles on its own and a day falling out of the token ledger drags nobody with it.',
+    'pet.how.full.t': 'Fullness',
+    'pet.how.full.f': 'full = 1 − (now − last fed) ÷ 5 hours',
+    'pet.how.full.p':
+      'Five hours is the gap between human meals — breakfast, lunch, dinner. So the pet gets hungry when you do, and the bar doubles as a reminder that it is meal time. Feeding moves the mark forward so fullness rises by exactly the item and never past stuffed; adding to the mark directly would pin the bar at full for hours if you ate while already fed.',
+    'pet.how.focus.t': 'Focus',
+    'pet.how.focus.f': 'focus = 1 − (now − last rest) ÷ 90 minutes',
+    'pet.how.focus.p':
+      'The basic rest–activity cycle (Kleitman, 1963): the ~90-minute rhythm of sleep does not switch off when you wake, it keeps running all day as a wave of alertness. The first 60–70 minutes are the alert phase, the last ~20 are the trough. The nudge fires at 22%, roughly minute 70 — right where the trough begins.',
+    'pet.how.price.t': 'What food costs',
+    'pet.how.price.f': (o) => `price = the HOURS it buys you × ${o.n} coin/hour`,
+    'pet.how.price.p':
+      'A full hunger bar lasts 5 hours and costs 5 coins, so 1 coin buys exactly 1 hour of being fed — and with 1 coin = $1, the whole shop collapses into one sentence: $1 of tokens buys an hour. Focus is priced at the same rate over the 90-minute cycle, so it comes out cheaper, and it should: alertness has a free road back to full, a stomach does not. The old price list was nine hand-picked numbers, and two of them were strictly dominated — coffee was both cheaper than chocolate and better on every axis. Derived prices cannot do that: paying more gets you more, literally.',
+    'pet.how.rest.t': 'Where the rest mark comes from',
+    'pet.how.rest.p':
+      'Three ways: Claude Code quiet for over 10 minutes, a declared break that then gets checked, or partially from a caffeinated drink. The first is an ESTIMATE and it fails two ways — both of which under-nudge rather than nag: an hour heads-down in the editor without calling Claude looks like rest; a long-running session left behind looks like work. A declared break avoids both, because there the intent is stated rather than guessed. It is checked against YOUR typing, not against Claude writing: a long run writes to the transcript continuously, and that is exactly the stretch when you are free to get up — measure the wrong one and doing it right guarantees a rejection.',
+    'pet.how.dip.t': 'The early-afternoon dip',
+    'pet.how.dip.p':
+      'Between 1pm and 4pm the nudge changes its tune. That dip is NOT caused by eating — studies that separate out the meal still find it; it is a harmonic of the circadian clock. What the evidence supports against it is a short nap and bright light, so the nudge in that window sends you outside rather than to another coffee.',
+    'pet.how.wake.t': 'Why nothing on sale gives more than 50% focus',
+    'pet.how.wake.p':
+      'Caffeine blocks adenosine receptors — it DELAYS tiredness, it does not erase it. Coffee +40%, green tea +25%, chocolate +15%; they stack, but they also fill the hunger bar, so three in a row makes you stuffed rather than sharp. The only route back to 100% is standing up, and that route is free. Setting any item to 100% would build a "click to stop being tired" button — exactly the habit this whole layer exists to push against.',
+    'pet.how.eat.t': 'Why a meal takes a minute',
+    'pet.how.eat.p':
+      'Buying feeds it, but finishing takes a minute, and nothing else can be ordered during it. Three reasons with one root — something has to be HAPPENING: a ten-cell bar has to climb for the eye to see it climb (jump it and the reward for the click is only readable by comparing memories); the food has to drain and vanish for it to say "just ate" rather than "there is a bowl here"; and there has to be a busy stretch for "am I free yet" to be a question at all. The fullness number during that minute is the REAL one: the ledger blends from the old mark to the new one, rather than animating over a value that was credited in full at second zero.',
+    'pet.how.no.t': 'What was deliberately left out',
+    'pet.how.no.p':
+      'The 20-20-20 rule — every 20 minutes look 20 feet away for 20 seconds — is repeated everywhere by the optometry bodies, but dig in and it started life as a memorable phrase, and controlled trials find no difference across visual measures. What IS evidenced is that screen work halves your blink rate, so what survives here is "look away", not the three twenties.',
+    'pet.howSrc': 'Sources:',
+
     'pet.item.coffee': 'Coffee',
+    'pet.item.socola': 'Chocolate',
+    'pet.item.tea': 'Green tea',
+    'pet.item.kem': 'Ice lolly',
     'pet.item.che': 'Chè',
     'pet.item.beer': 'Beer',
     'pet.item.banhmi': 'Bánh mì',
+    'pet.item.xoi': 'Xôi',
     'pet.item.pho': 'Phở',
+    'pet.item.beanie': 'Bobble hat',
     'pet.item.hat': 'Top hat',
+    'pet.item.crown': 'Crown',
+    'pet.item.cactus': 'Cactus',
     'pet.item.plant': 'Potted plant',
-    'pet.item.balloon': 'Balloon',
-    'pet.item.bunting': 'Bunting',
+    'pet.item.bonsai': 'Bonsai',
+    'pet.item.mushroom': 'Mushroom',
+    'pet.item.dog': 'Dog',
     'pet.item.cat': 'Cat',
+    'pet.item.balloon': 'Balloon',
+    'pet.item.kite': 'Kite',
+    'pet.item.lantern': 'Lantern',
+    'pet.item.bunting': 'Bunting',
+    'pet.item.lights': 'Fairy lights',
+    'pet.item.hills': 'Rolling hills',
     'pet.item.rainbow': 'Rainbow',
 
     // Language

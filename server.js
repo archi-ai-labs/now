@@ -8,7 +8,10 @@ import { execFile } from 'node:child_process';
 import { PORT, SESSIONS_DIR, TASKS_DIR } from './src/config.js';
 import { buildState } from './src/state.js';
 import { badgeOf } from './src/badge.js';
-import { accrue, buy, emptyLedger, petView, readLedger, writeLedger, ITEMS } from './src/pet.js';
+import {
+  accrue, buy, cancelBreak, emptyLedger, observeRest, petView, readLedger, resolveBreak,
+  startBreak, wear, writeLedger, ITEMS, MOVES, SLOTS,
+} from './src/pet.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(ROOT, 'public');
@@ -305,9 +308,87 @@ async function withPet(action) {
   // một khoản tiền lúc không đọc được hoá đơn là kiểu bịa mà cả file `pet.js` tránh.
   if (series.length) ledger = accrue(ledger, series, today);
 
+  // Quãng nghỉ, cùng lý lẽ với phép cộng tiền ngay trên: nó là thứ quan sát được theo
+  // LƯỢT QUÉT chứ không theo cú bấm, nên nó phải chạy ở mọi lượt đọc sổ.
+  //
+  // Nhưng khác phép cộng tiền ở chỗ ghi đĩa: `accrue` dựng lại được từ `credited` cộng
+  // `series` nên bỏ qua một lượt ghi không mất gì, còn `restedAt` thì không có nguồn nào
+  // dựng lại — không ghi là mất. Vì thế nó có cờ riêng chứ không đi nhờ phép so
+  // `out.ledger !== ledger` bên dưới (phép ấy so với sổ SAU khi đã quan sát, nên một lượt
+  // chỉ đọc sẽ luôn ra "không đổi" và mốc nghỉ chẳng bao giờ xuống đĩa).
+  const beforeRest = ledger;
+  const idle = idleOf(state);
+  // Chốt quãng nghỉ TRƯỚC khi quan sát khoảng lặng. Hai thứ này cùng viết vào `restedAt`,
+  // và nếu đảo thứ tự thì một quãng nghỉ 5 phút vừa đạt sẽ bị `observeRest` ghi đè bằng
+  // đúng cái mốc nó vừa đặt — vô hại hôm nay, nhưng nó làm thứ tự thành một chi tiết ngầm
+  // mà lần sửa sau sẽ đạp phải. Chốt trước thì `observeRest` chỉ còn việc bám theo, đúng
+  // vai của nó.
+  // Hai phép này nhận HAI con số khác nhau, và đó là chỗ sửa chính của lượt 5/8.
+  //
+  // `observeRest` là phép quan sát THỤ ĐỘNG — nó tặng lại tập trung mà không ai khai gì
+  // — nên nó phải dè dặt: hễ Claude Code còn có lượt thì coi như bạn đang ngồi. `idle`
+  // đúng vai ấy.
+  //
+  // `resolveBreak` chốt một quãng bạn ĐÃ KHAI và đã trả bằng một phút chờ, nên nó được
+  // hỏi một câu hẹp hơn và đúng hơn: nãy giờ BẠN có gõ gì không. Xem `awayOf`.
+  ledger = resolveBreak(ledger, awayOf(state), Date.now());
+  ledger = observeRest(ledger, idle, Date.now());
+  const rested = ledger !== beforeRest;
+
   const out = action ? action(ledger) : { ledger, error: null };
-  if (out.ledger !== ledger || fresh) await writeLedger(out.ledger);
+  if (out.ledger !== ledger || fresh || rested) await writeLedger(out.ledger);
   return { view: petView(out.ledger), error: out.error ?? null };
+}
+
+/**
+ * Khoảng lặng của phiên Claude Code hoạt động gần nhất — `null` khi không có phiên nào.
+ *
+ * Lấy MIN chứ không phải max hay trung bình: câu hỏi là "bạn có đang làm gì không", nên
+ * một phiên vừa có lượt cách đây 30 giây đã đủ trả lời, kể cả khi năm phiên khác ngủ từ
+ * sáng. Lấy max thì mở sẵn một tab cũ là tập trung không bao giờ cạn.
+ */
+function idleOf(state) {
+  const live = (state.sessions ?? []).map((s) => s.idleMs).filter((n) => Number.isFinite(n));
+  return live.length ? Math.min(...live) : null;
+}
+
+/**
+ * Bạn rời bàn phím bao lâu rồi — con số dùng để CHỐT một quãng nghỉ đã khai.
+ *
+ * ## Vì sao không dùng lại `idleOf`
+ *
+ * `idleOf` đo khoảng lặng của Claude Code, tức là **mtime transcript**, tức là lượt ghi
+ * cuối cùng của cái MÁY. Trong một lượt chạy dài — agent, build, một chuỗi công cụ —
+ * máy ghi liên tục, nên `idleOf` đứng quanh 0 suốt. Mà đúng cái quãng ấy là quãng người
+ * ta rảnh nhất để đứng dậy: máy đang làm việc, không ai phải ngồi nhìn.
+ *
+ * Hệ quả đo được, và nó chính là lỗi người dùng báo 5/8: bấm "đi dạo", đi thật một phút,
+ * quay lại thì quãng nghỉ bị huỷ — vì trong phút ấy Claude vẫn đang gõ. Càng làm đúng
+ * càng chắc chắn trượt.
+ *
+ * ## Con số này đo gì
+ *
+ * `humanIdleMs` (xem `lastHumanIn` trong `collect/sessions.js`) là khoảng lặng tính từ
+ * lượt gõ cuối của NGƯỜI, lọc sạch kết quả công cụ và lượt của agent con. Lấy MIN qua
+ * các phiên, cùng lý lẽ với `idleOf`: một phiên vừa nhận câu hỏi cách đây 20 giây đã đủ
+ * nói bạn đang ở bàn.
+ *
+ * Chỗ rơi về phải tính TỪNG PHIÊN, không tính cho cả đám — và đây là một cái bẫy đã sập
+ * một lần trong lượt này. Cách hiển nhiên là "lấy min của mọi `humanIdleMs` đọc được, đọc
+ * không được thì rơi về `idleOf`", nhưng nó bỏ RA NGOÀI đúng cái phiên không đọc được. Đo
+ * trên máy này: phiên đang chạy trả `null` (transcript 89MB, chưa gieo xong), ba phiên ngủ
+ * quên trả 730 giây — min ra 730 giây, tức mọi quãng nghỉ đều đạt, dựa trên một phiên
+ * không ai đụng vào từ trưa. Đọc không được một phiên nghĩa là KHÔNG BIẾT phiên ấy, và
+ * không biết thì phải giữ nguyên phép cũ cho chính nó.
+ *
+ * Phép này chỉ NỚI ra chứ không siết vào, và điều đó chứng minh được: một lượt gõ của
+ * người cũng là một lượt ghi vào transcript, nên `humanIdleMs >= idleMs` luôn đúng.
+ */
+function awayOf(state) {
+  const live = (state.sessions ?? [])
+    .map((s) => (Number.isFinite(s.humanIdleMs) ? s.humanIdleMs : s.idleMs))
+    .filter((n) => Number.isFinite(n));
+  return live.length ? Math.min(...live) : null;
 }
 
 function petHandler(req, res, url) {
@@ -331,10 +412,10 @@ function petHandler(req, res, url) {
   req.on('end', () =>
     petLock(async () => {
       try {
-        const { action, id, on } = JSON.parse(body);
-        // Chỉ ba việc, và mỗi việc kiểm kiểu ngay tại cửa. `id` không bao giờ được dùng
-        // để tra một đường dẫn hay dựng một lệnh — nó chỉ tra vào `ITEMS`, một bảng
-        // đóng — nên phép kiểm này là toàn bộ hàng rào cần có.
+        const { action, id, on, slot, kind } = JSON.parse(body);
+        // Mỗi việc kiểm kiểu ngay tại cửa. Không mã nào trong đám này được dùng để tra một
+        // đường dẫn hay dựng một lệnh — chúng chỉ tra vào `ITEMS`, `SLOTS`, `MOVES`, ba
+        // bảng ĐÓNG — nên mấy phép kiểm này là toàn bộ hàng rào cần có.
         if (action === 'buy') {
           if (typeof id !== 'string' || !Object.hasOwn(ITEMS, id)) {
             return json(res, 400, { error: 'mã món không hợp lệ' });
@@ -344,12 +425,35 @@ function petHandler(req, res, url) {
           // phải lỗi hệ thống — nên vẫn 200 và vẫn trả ví mới nhất về để màn hình đúng.
           return json(res, 200, { ok: !error, error, pet: view });
         }
+        if (action === 'wear') {
+          if (typeof slot !== 'string' || !SLOTS.includes(slot)) {
+            return json(res, 400, { error: 'chỗ đứng không hợp lệ' });
+          }
+          // `null` là dọn trống chỗ — một việc thật, không phải một đầu vào thiếu. Nên
+          // chỉ `undefined` mới là lỗi, và phép kiểm phải phân biệt được hai thứ đó.
+          if (id != null && (typeof id !== 'string' || !Object.hasOwn(ITEMS, id))) {
+            return json(res, 400, { error: 'mã món không hợp lệ' });
+          }
+          const { view, error } = await withPet((l) => wear(l, slot, id ?? null));
+          return json(res, 200, { ok: !error, error, pet: view });
+        }
+        if (action === 'break') {
+          if (typeof kind !== 'string' || !Object.hasOwn(MOVES, kind)) {
+            return json(res, 400, { error: 'động tác không hợp lệ' });
+          }
+          const { view, error } = await withPet((l) => startBreak(l, kind));
+          return json(res, 200, { ok: !error, error, pet: view });
+        }
+        if (action === 'breakOff') {
+          const { view, error } = await withPet((l) => cancelBreak(l));
+          return json(res, 200, { ok: !error, error, pet: view });
+        }
         if (action === 'toggle') {
           if (typeof on !== 'boolean') return json(res, 400, { error: 'cần {on: true|false}' });
           const { view } = await withPet((l) => ({ ledger: { ...l, on }, error: null }));
           return json(res, 200, { ok: true, pet: view });
         }
-        return json(res, 400, { error: 'action phải là buy hoặc toggle' });
+        return json(res, 400, { error: 'action lạ' });
       } catch (err) {
         return json(res, 400, { error: err.message });
       }
@@ -569,4 +673,12 @@ setInterval(async () => {
   const s = await getState({ force: true });
   await installWatchers(s);
   broadcast(s);
+  // Mốc nghỉ phải chạy ở NHỊP NỀN, không chỉ lúc ai đó mở popover. Nếu chỉ quan sát
+  // trong `/api/pet` thì cắm mặt làm ba tiếng không mở popover lần nào sẽ không sinh
+  // được lượt quan sát nào, và tới lúc mở ra thanh tập trung vẫn đầy — tức lời nhắc câm
+  // đúng vào ca nó cần lên tiếng nhất.
+  //
+  // Nuốt lỗi: sổ hỏng hay đĩa đầy thì dashboard vẫn phải chạy. Cả lớp trò chơi này là
+  // phần thêm, không được phép kéo theo phần số liệu.
+  await petLock(() => withPet(null)).catch(() => {});
 }, 30000).unref?.();

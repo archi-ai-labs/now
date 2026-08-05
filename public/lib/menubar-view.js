@@ -13,7 +13,8 @@
 import { html, ago } from './dom.js';
 import { t } from './i18n.js';
 import { pixels } from './pixel.js';
-import { itemArt, hungerBar } from './pet.js';
+import { BUTLER_CHARS, butlerHand, butlerRows, poseOf, itemArt, doingArt, hungerBar, focusGlass, nudgeText, wallet } from './pet.js';
+import { whereOf } from './petmath.js';
 import { briefing, toolWindows } from './butler.js';
 import {
   windowsOf,
@@ -41,61 +42,13 @@ import {
  */
 export const DEFAULTS = { tab: 'work', tall: true, inline: false, width: 360, hero: true, est: 'mid' };
 
-/**
- * QUẢN GIA — nhân vật của popover, vẽ bằng pixel.
- *
- * Đầu nó LÀ cái mark `◈` — một viên kim cương, và thứ nằm trong lòng viên ấy, chỗ icon
- * app đặt một viên nhỏ, ở đây là hai con mắt. Nên nhân vật không phải một con vật dán
- * thêm cho vui; nó là chính cái logo mở mắt ra.
- *
- * Viên có VIỀN TÍM và LÒNG TỐI — đúng hình cái mark: viên ngoài, viên trong. Lòng tối là
- * cái mặt, và hai con mắt sáng nằm trên đó. Bản để lòng rỗng cho trời lọt qua đã vẽ rồi
- * và bỏ: cái đầu tan vào khung. Bản tô đặc nguyên viên cũng bỏ: mắt tối trên mặt tím
- * sáng thì cả cái mặt chỉ còn là hai vệt, không ra khối.
- *
- * Nó KHÔNG chỉ để ngắm, và đó là điều kiện để nó được chiếm 76px của một cửa sổ đang bị
- * ép cho gọn: **nó ngủ gật đúng lúc tiền nằm không**. Băng bỏ phí lớn (`crit`, `warn`)
- * thì mắt nhắm và có "z" bay lên; nhịp đã bám đích hoặc đang tiêu mạnh (`ok`, `cheer`,
- * `over`) thì mắt mở. Hình dáng vì thế là kênh thứ hai bên cạnh sắc — theme daltonized
- * không được dựa vào mỗi một khác biệt màu.
- *
- * Sắc của nó là TÍM cố định, không đổi theo băng bỏ phí. Nó là nhân vật chứ không phải
- * cái đồng hồ đo: một nhân vật đổi màu áo theo số liệu thì mỗi lần mở popover lại là một
- * con khác. Băng vẫn nói đủ to bằng ba chỗ khác — mắt (mở/nhắm), chấm nhịp dưới câu, và
- * chính mấy cái thanh ngay bên dưới.
- *
- * `.` trống · `#` thân · `:` mặt · `o` mắt · `O` đốm nắng trong mắt · `-` mắt nhắm ·
- * `*` nơ cổ
- */
-const BUTLER = [
-  '.......##.......',
-  '......####......',
-  '.....#::::#.....',
-  '....#::::::#....',
-  '...#::::::::#...',
-  '....#::::::#....',
-  '.....#::::#.....',
-  '......####......',
-  '.......##.......',
-  '......####......',
-  '....###**###....',
-  '...##########...',
-  '...#.######.#...',
-  '...#.######.#...',
-  '.....######.....',
-  '.....##..##.....',
-];
+/* QUẢN GIA — nhân vật của popover. Hình của nó nằm ở `lib/pet.js`, không ở đây, vì thị
+   trấn cũng vẽ đúng nhân vật ấy trong nhà; xem khối chú thích ở đầu file kia. Chỗ này chỉ
+   còn giữ đúng phần mà popover có quyền quyết: mắt mở hay nhắm.
 
-/**
- * Hai hàng mắt, thay nguyên cặp để đổi giữa thức và ngủ gật.
- *
- * Mắt cao HAI ô chứ không phải một: một ô là 4px, mà 4px ở cỡ thật thì hai con mắt và
- * hai vết bẩn trông y hệt nhau. Lúc nhắm thì hàng trên trả về thân và chỉ còn hàng dưới
- * là gạch — đó mới là mí sụp xuống, chứ không phải mắt bị xoá.
- */
-const EYE_ROW = 3;
-const EYES_OPEN = ['....#Oo::Oo#....', '...#:oo::oo:#...'];
-const EYES_SHUT = ['....#::::::#....', '...#:--::--:#...'];
+   Băng bỏ phí lớn (`crit`, `warn`) thì mắt nhắm và có "z" bay lên; nhịp đã bám đích hoặc
+   đang tiêu mạnh (`ok`, `cheer`, `over`) thì mắt mở. Băng vẫn nói đủ to bằng ba chỗ khác —
+   mắt (mở/nhắm), chấm nhịp dưới câu, và chính mấy cái thanh ngay bên dưới. */
 
 /** Mặt trời và một đám mây — cùng lưới 4px với quản gia. Vẽ bằng pixel chứ không phải
  *  một vòng tròn CSS mượt: một vật bo trơn đứng cạnh một vật răng cưa thì cái răng cưa
@@ -149,8 +102,6 @@ const STARS = [
   [19, 41], [30, 54], [70, 49], [97, 55], [9, 62],
 ];
 
-const BODY_CHARS = { ':': 'face', o: 'eye', O: 'eye spark', '-': 'eye shut', '*': 'tie' };
-
 export const TABS = ['work', 'token'];
 
 /** Giọng của quản gia → băng màu của thang bỏ phí. Cùng bảng màu, cùng nghĩa. */
@@ -176,16 +127,44 @@ const WORK_TONE = { alert: 'crit', warn: 'warn', calm: 'ok', mute: 'later' };
  * HƯỚNG NẮNG thì đứng yên ở trên-trái suốt cả bốn buổi. Cho mặt trời chạy vòng cung thì
  * phải xoay lại toàn bộ phép chấm sắc độ trong `shadeOf`, và một nhân vật đổi hướng đổ
  * bóng bốn lần một ngày là bốn lần người xem phải nhận lại cái hình.
+ *
+ * ## Luật của phần CHUYỂN ĐỘNG
+ *
+ * Khung cảnh thở — sao lấp lánh, mây trôi, quầng nắng phập phồng, quản gia hít vào thở ra
+ * và thỉnh thoảng chớp mắt. Ba điều kiện, và cả ba đều là điều kiện để nó được phép động:
+ *
+ * 1. **Không chuyển động nào chở tin.** Cái chở tin là mắt MỞ hay NHẮM, không phải nhịp
+ *    chớp; là có chữ "z" hay không, không phải chữ z bay nhanh hay chậm. Ai đó sau này
+ *    muốn gắn tốc độ vào một con số thì đó là lúc dựng một cái đồng hồ đo thứ hai ngay
+ *    trong bức tranh — đúng thứ mà luật "khung cảnh không đổi màu theo băng" đã cấm.
+ * 2. **Không vật nào đổi CHỖ ĐỨNG.** Sao lấp lánh bằng độ mờ chứ không nhảy chỗ, mây đi
+ *    ra rồi về đúng chỗ cũ. Popover tải lại mỗi lần mở nên mọi nhịp đều bắt đầu từ 0 —
+ *    tức là mở lần nào cũng thấy đúng một bức tranh, không phải một khung hình ngẫu nhiên
+ *    của nó. Đây là chính cái lý lẽ đã ghim toạ độ `STARS` xuống cứng.
+ * 3. **Chạy trong mọi nhịp đều là VÒNG LẶP, không có màn dạo đầu.** Cửa sổ này mở chín
+ *    lần một ngày; một hiệu ứng "hiện dần lúc mở" là chín lần bắt người ta chờ tranh
+ *    dựng xong mới đọc được số.
+ *
+ * Cỡ dịch chuyển đều là SỐ NGUYÊN pixel và đi bằng `steps()`. Trượt mượt nửa pixel trên
+ * một cái sprite lưới 4px thì cạnh nào cũng nhoè, và cái nhoè ấy đọc thành lỗi render
+ * chứ không đọc thành chuyển động — cùng lý lẽ với ghi chú "bo trơn cạnh răng cưa" ở SUN.
+ *
+ * `prefers-reduced-motion` tắt sạch, xem khối cuối phần khung cảnh trong `styles.css`.
  */
 /**
  * Chỗ đứng của từng món trang trí trong khung trời.
  *
- * `head` nằm TRONG `.mb-sprite` chứ không nằm trong `.mb-sky`: cái mũ phải đi theo cái
- * đầu, mà `.mb-sprite` là thứ duy nhất biết cái đầu đang ở đâu (nó căn `left:50%` rồi
- * dịch lại một nửa). Đặt mũ vào bầu trời thì mỗi lần đổi bề rộng popover là mũ trượt
- * khỏi đầu — và bề rộng thì bàn chỉnh vặn được.
+ * Bảng ánh xạ món→chỗ từng nằm ở đây và đã DỌN ĐI: server gửi thẳng `pet.worn` — một bảng
+ * chỗ→món đã lọc sạch (đã mua, đúng chỗ, mã có thật; xem `normWorn` trong `src/pet.js`).
+ * Giữ lại bản ở đây thì từ lúc nhiều món chung một chỗ nó thành bản thứ hai của cùng một
+ * quyết định, và bản thứ hai là bản sẽ lệch.
+ *
+ * `head` vẫn nằm TRONG `.mb-sprite` chứ không nằm trong `.mb-sky`, và đó là lý do khung
+ * cảnh không thể vẽ sáu chỗ bằng một vòng lặp: cái mũ phải đi theo cái đầu, mà `.mb-sprite`
+ * là thứ duy nhất biết cái đầu đang ở đâu (nó căn `left:50%` rồi dịch lại một nửa). Đặt mũ
+ * vào bầu trời thì mỗi lần đổi bề rộng popover là mũ trượt khỏi đầu — và bề rộng thì bàn
+ * chỉnh vặn được.
  */
-const SLOT = { rainbow: 'back', bunting: 'top', plant: 'left', cat: 'right', balloon: 'air' };
 
 /**
  * Băng của cửa sổ đang quyết — MỘT chỗ suy ra, hai chỗ dùng.
@@ -197,20 +176,107 @@ const SLOT = { rainbow: 'back', bunting: 'top', plant: 'left', cat: 'right', bal
  */
 const toneOf = (b) => b.quota.binding?.tone ?? 'mute';
 
-function scene(b, phase, pet) {
+/* ── Khung cảnh CÔNG VIÊN ──────────────────────────────────────────────────────
+
+   Lúc quản gia đang đi bộ hay đang ra nắng thì anh ta KHÔNG ở nhà, và cái khung này nói
+   điều đó ra: một vạt cỏ mọc lên dưới chân, hai tán cây và một cái ghế đá hiện sau lưng.
+
+   Vì sao phải nói ra: hai động tác ấy khác ba động tác kia đúng ở chỗ chúng đòi bạn bước ra
+   khỏi cửa (xem `where` trong `MOVES`), mà cái đòi hỏi ấy là toàn bộ giá của chúng. Một cái
+   đếm ngược ba phút trong đúng khung cảnh phòng khách thì "ra nắng" chỉ là một cái nhãn dán
+   lên một cái đồng hồ. Đổi cả khung cảnh thì màn hình đang kể lại việc bạn vừa nhận làm.
+
+   Vẽ NHÌN NGANG chứ không đẳng cự, khác hẳn mấy cái cây trên bản đồ thị trấn: khung này là
+   một bức tranh nhìn ngang (mặt trời, đám mây, quản gia đứng thẳng), và một tán cây đẳng cự
+   thả vào đây là vật duy nhất trong khung không theo phối cảnh của nó. Hai bộ hình cho hai
+   phối cảnh không phải là nhân bản — nhân bản là khi hai bản trả lời CÙNG một câu hỏi.
+
+   `L` lá sáng · `P` lá khuất · `b` thân · `f` mặt ghế · `k` chân ghế */
+const PARK_TREE = [
+  '...LLLL...',
+  '..LLLLLL..',
+  '.LLLLLLPP.',
+  'LLLLLLPPPP',
+  'LLLLLPPPPP',
+  '.LLLLPPPP.',
+  '..LLPPPP..',
+  '....bb....',
+  '....bb....',
+  '....bb....',
+  '...bbbb...',
+];
+
+const PARK_BENCH = [
+  'ffffffffffff',
+  'k..........k',
+  'ffffffffffff',
+  'k..........k',
+  'k..........k',
+];
+
+const PARK_CHARS = { L: 'leaf', P: 'pine', b: 'broth', f: 'foam', k: 'ink' };
+
+const parkArt = (rows, cls) => html`<span class="pet-art ${cls}" aria-hidden="true"
+  style="width:${rows[0].length * 4}px;height:${rows.length * 4}px"
+  >${pixels(rows, PARK_CHARS, false)}</span
+>`;
+
+/** Quản gia có đang ở ngoài công viên không. Một cửa duy nhất, và nó đọc đúng cái trường
+ *  mà bản đồ thị trấn đang đọc để quyết chỗ anh ta đứng — hai bề mặt, một câu trả lời. */
+const inPark = (pet) => Boolean(pet?.on) && whereOf(pet.doing) === 'park';
+
+/**
+ * Quản gia đang ở trạng thái nào — và từ 5/8 câu này do CON VẬT trả lời, không do hạn mức.
+ *
+ * ## Chỗ hỏng
+ *
+ * Bản trước: `dozing = tone === 'crit' || 'warn' || 'mute'`, tức là ngủ khi tiền nằm
+ * không. Trên máy này `tone` gần như luôn là `mute` (không có cửa sổ hạn mức nào đang
+ * quyết) hoặc `warn` — nên quản gia NGỦ QUANH NĂM. Người dùng báo đúng chuyện đó: "toàn
+ * thấy ngủ thôi". Và cái ngủ ấy không chỉ nhàm, nó nuốt luôn mọi thứ khác: cú chớp mắt chỉ
+ * chạy khi thức (mắt đã nhắm sẵn thì một cái mí cụp xuống chẳng che được gì), nên bản
+ * trước không ai từng thấy nó bao giờ.
+ *
+ * ## Vì sao con vật thắng
+ *
+ * Từ lúc có lớp chỉ số sức khoẻ, nhân vật này có ĐỜI RIÊNG: nó đói, nó cạn tập trung, nó
+ * đang ăn hoặc đang đi bộ. Một nhân vật ngủ vì một cửa sổ hạn mức đang rảnh, ngay bên cạnh
+ * hai cái thanh nói về chính nó, là một nhân vật đang trả lời câu hỏi của người khác.
+ *
+ * Ba trạng thái, và mỗi cái nói một điều đọc được:
+ * - **Đang làm gì đó** → thức, và ĐỔI TƯ THẾ theo việc (`poseOf`, chung bảng với bức tranh
+ *   trong nhà). Đây là thứ đổi thường xuyên nhất, vì ăn và nghỉ là hai việc người ta bấm
+ *   mỗi ngày.
+ * - **Quá nhịp hoặc đói lả** → ngủ gật, mắt nhắm, ba chữ z. Đúng lúc lời nhắc sức khoẻ
+ *   ngay dưới đang nói cùng một câu, nên hai thứ cộng lại chứ không cãi nhau.
+ * - **Còn lại** → thức, thở, thỉnh thoảng chớp mắt. Trạng thái mặc định giờ là thức, đúng
+ *   như một con vật đang khoẻ.
+ *
+ * Băng hạn mức vẫn còn HAI kênh — chấm nhịp và mấy cái thanh ở nửa dưới — nên nó không mất
+ * tiếng nói, chỉ mất chỗ mượn. Và khi trò chơi TẮT thì đôi mắt trả lại cho băng: lúc ấy
+ * không có con vật nào để nói về, mà cái khung vẫn phải nói được một điều gì đó.
+ */
+function moodOfScene(pet, tone) {
+  if (!pet?.on) return { pose: 'stand', dozing: tone === 'crit' || tone === 'warn' || tone === 'mute' };
+  if (pet.doing) return { pose: poseOf(pet.doing), dozing: false };
+  return { pose: 'stand', dozing: pet.focusMood === 'spent' || pet.mood === 'starving' };
+}
+
+function scene(b, phase, pet, bump = 0) {
   const tone = toneOf(b);
-  // Ngủ gật khi tiền nằm không. `crit` và `warn` là hai băng BỎ PHÍ; `ok`, `cheer`,
-  // `over` là nhịp đã bám đích trở lên — lúc ấy quản gia đang làm việc.
-  const dozing = tone === 'crit' || tone === 'warn' || tone === 'mute';
-  const eyes = dozing ? EYES_SHUT : EYES_OPEN;
-  const rows = BUTLER.map((r, i) => eyes[i - EYE_ROW] ?? r);
+  const { pose, dozing } = moodOfScene(pet, tone);
+  const rows = butlerRows(pose, dozing ? 'shut' : 'open');
   const night = phase === 'night';
   // Trò chơi tắt, hoặc chưa hỏi được sổ → khung cảnh y như trước khi có nó. Không có
   // nhánh nào bày một cái thanh rỗng hay một ô xám chờ dữ liệu: popover mở ra trong vài
   // giây, và một chỗ trống đang chờ thì tệ hơn hẳn một chỗ không có gì.
   const on = Boolean(pet?.on);
-  const owned = on ? pet.owned : [];
-  const deco = (slot) => owned.filter((id) => SLOT[id] === slot).map((id) => itemArt(id));
+  const worn = on ? (pet.worn ?? {}) : {};
+  // Trả thẳng cả cái thẻ chỗ đứng, không trả mảng hình: chỗ nào cũng đúng một món (bảng
+  // `worn` khoá theo chỗ), nên nhánh "có món thì bọc, không thì thôi" lặp lại y hệt ở sáu
+  // chỗ — sáu bản chép của một câu `if` là sáu chỗ để quên một cái.
+  const deco = (slot) =>
+    worn[slot] ? html`<div class="pet-slot slot-${slot}">${itemArt(worn[slot])}</div>` : '';
 
   return html`<div class="mb-scene tone-${tone}">
     <!-- Bức tranh và hàng trò chơi nằm trong MỘT cái khung. Trước đây chúng là hai khối
@@ -226,25 +292,51 @@ function scene(b, phase, pet) {
           ? html`<div class="mb-moon">${pixels(MOON, { o: 'core' }, false)}</div>`
           : html`<div class="mb-sun">${pixels(SUN, { o: 'core' }, false)}</div>`}
         <div class="mb-cloud">${pixels(CLOUD, {}, false)}</div>
+        ${inPark(pet)
+          ? html`<div class="mb-park">
+              ${parkArt(PARK_TREE, 'park-tree t1')}${parkArt(PARK_TREE, 'park-tree t2')}
+              ${parkArt(PARK_BENCH, 'park-bench')}
+            </div>`
+          : ''}
         <!-- Cầu vồng vẽ TRƯỚC quản gia để nó nằm dưới; mấy chỗ còn lại vẽ sau. Thứ tự trong
              DOM là toàn bộ thứ tự lớp ở đây, không có z-index nào — thêm z-index vào một
              khung cảnh chỉ có sáu vật là dựng một hệ thứ hai để nói điều thứ tự đã nói. -->
-        ${deco('back').length ? html`<div class="pet-slot slot-back">${deco('back')}</div>` : ''}
-        ${deco('top').length ? html`<div class="pet-slot slot-top">${deco('top')}</div>` : ''}
-        <div class="mb-sprite">
-          ${pixels(rows, BODY_CHARS)}
-          ${deco('head').length || owned.includes('hat') ? html`<div class="pet-slot slot-head">${itemArt('hat')}</div>` : ''}
-          ${dozing ? html`<span class="mb-zzz">z</span>` : ''}
+        ${deco('back')}${deco('top')}
+        <div class="mb-sprite ${dozing ? 'dozing' : ''}">
+          ${pixels(rows, BUTLER_CHARS)}
+          <!-- MÍ MẮT: hai mảng che đúng hai ô mắt, cụp xuống rồi mở ra.
+               Nó không vẽ lại sprite. Chớp mắt bằng cách hoán hai hàng pixel là một lượt
+               dựng DOM cho một việc kéo 200ms, và cái hẹn giờ chạy nó thì phải sống suốt
+               thời gian popover mở — đắt gấp bội một mảng CSS cao 8px.
+               Chỉ có khi đang THỨC. Lúc ngủ gật mắt đã nhắm sẵn trong chính sprite
+               (hàng mắt nhắm), nên một cái mí cụp lên đôi mắt đang nhắm thì không che
+               được gì, mà lại xoá mất đúng cái dấu gạch đang nói "nó đang ngủ". -->
+          ${dozing ? '' : html`<i class="mb-lid lid-l"></i><i class="mb-lid lid-r"></i>`}
+          ${deco('head')}
+          <!-- BA chữ z, không phải một. Một chữ nhấp nháy tại chỗ đọc thành một cái đèn
+               báo; ba chữ so le nhau thì cái mắt đọc ra hướng đi lên, và hướng ấy mới là
+               thứ nói "đang ngủ". Chúng bay ra ngoài khung 64px của sprite — sang phải và
+               lên trên — nên chỗ đứng của chúng là chỗ trống, không đè lên cái đầu. -->
+          ${dozing ? html`<span class="mb-zzz zz1">z</span><span class="mb-zzz zz2">z</span><span class="mb-zzz zz3">z</span>` : ''}
+          <!-- Thứ quản gia đang dùng — món ăn, cốc nước, cái tạ — và nó VƠI DẦN rồi biến
+               mất đúng lúc việc ấy xong (doing do server tính, xem doingOf). Nó là phần
+               thưởng cho cú bấm mua: không có nó thì mua đồ ăn chỉ là một con số tụt đi và
+               một cái thanh dài ra.
+               Nó nằm TRONG mb-sprite và neo vào BÀN TAY của đúng tư thế đang vẽ, y như
+               resident-item ngoài bản đồ. Bản trước nó đứng trong bầu trời ở một toạ độ
+               cố định, đúng cho mỗi tư thế đứng — mà từ lượt này tư thế đổi theo việc, nên
+               một toạ độ cố định là cái tạ lơ lửng cách bàn tay đang giơ hai ô.
+               Popover không có nhịp vẽ lại nào, nên cái vơi ở đây chạy trọn vẹn bằng CSS
+               từ lượt vẽ đầu — xem animation-delay âm trong drawArt.
+               Chữ trần, không quote: backtick trong comment HTML nằm trong template
+               literal sẽ ĐÓNG LUÔN chuỗi — CLAUDE.md điều 3. -->
+          ${on && pet.doing
+            ? html`<div class="pet-slot slot-meal" style="left:${butlerHand(pose).x}px;top:${butlerHand(pose).y}px">
+                ${doingArt(pet.doing)}
+              </div>`
+            : ''}
         </div>
-        ${deco('left').length ? html`<div class="pet-slot slot-left">${deco('left')}</div>` : ''}
-        ${deco('right').length ? html`<div class="pet-slot slot-right">${deco('right')}</div>` : ''}
-        ${deco('air').length ? html`<div class="pet-slot slot-air">${deco('air')}</div>` : ''}
-        <!-- Món vừa ăn đứng cạnh nhân vật một lúc rồi biến mất (holding do server tính, xem
-             MEAL_SHOW_MS). Nó là phần thưởng cho cú bấm mua — không có nó thì mua đồ ăn chỉ
-             là một con số tụt đi và một cái thanh dài ra.
-             Chữ trần, không quote: backtick trong comment HTML nằm trong template literal
-             sẽ ĐÓNG LUÔN chuỗi — CLAUDE.md điều 3, và nó vừa lọt thêm một lần ở đây. -->
-        ${on && pet.holding ? html`<div class="pet-slot slot-meal">${itemArt(pet.holding)}</div>` : ''}
+        ${deco('left')}${deco('right')}${deco('air')}
       </div>
       <!-- Dải chân của khung: thanh đói và ví. Nó ở TRONG khung chứ không đứng dưới khung
            vì cơn đói với cái ví là trạng thái của chính con vật vừa vẽ ở trên — tách ra
@@ -252,12 +344,19 @@ function scene(b, phase, pet) {
            vào đây, và đó là điều kiện để cả cái khung được phép vui. -->
       ${on
         ? html`<a class="mb-pet mood-${pet.mood}" href="now://open?view=pet" title="${t('pet.openShop')}">
-            <!-- Viết trọn chữ "xu", không dùng ký hiệu. Bản đầu rút gọn thành một dấu nhân
-                 và "1002⨯" đọc thành một phép nhân dở dang chứ không đọc thành số tiền —
-                 mà chỗ này rộng tới 360pt, thừa sức chứa hai chữ. -->
-            ${hungerBar(pet)}<span class="mb-pet-coins">${t('pet.coins', { n: pet.coins })}</span>
+            <!-- Độ no LUÔN bên trái, tập trung luôn bên phải. Chỗ đứng TỪNG là một trong
+                 ba kênh phân biệt hai chỉ số; từ 5/8 nó chỉ còn là thói quen đọc, vì một
+                 cái thanh nằm ngang cạnh một cái đồng hồ cát đứng thì không lẫn được nữa
+                 dù đứng đâu. Đồng hồ cát vẽ đúng MỘT cỡ ở cả hai bề mặt — xem focusGlass
+                 trong lib/pet.js để biết vì sao không thu nhỏ nó cho vừa dải này. -->
+            ${hungerBar(pet)}${focusGlass(pet)}${wallet(pet, bump)}
           </a>`
         : ''}
+      <!-- Lời nhắc sức khoẻ. Nó nằm TRONG cái khung của con vật chứ không đứng riêng, vì
+           nó nói về đúng cái thanh tím ngay trên nó. Và nó là dòng DUY NHẤT trong popover
+           nói về người dùng chứ không nói về số liệu — nên nó cũng là dòng duy nhất được
+           phép biến mất hoàn toàn khi không có việc gì để nói. -->
+      ${on && nudgeText(pet) ? html`<p class="mb-nudge focus-${pet.focusMood}">${nudgeText(pet)}</p>` : ''}
     </div>
   </div>`;
 }
@@ -496,7 +595,7 @@ export function popoverView(s, opts = {}) {
          theo tab, nên một hàng tab ngay trên nó mời người đọc hiểu rằng nó có đổi. Dời
          xuống dưới thì tab đứng ngay trên đúng thứ nó điều khiển, và ranh giới giữa hai
          nửa rơi đúng chỗ nó vốn phải rơi: hết trò chơi, sang hoá đơn. -->
-    ${o.hero ? scene(b, phase, o.pet) : ''}
+    ${o.hero ? scene(b, phase, o.pet, o.bump) : ''}
 
     <div class="mb-data">
       ${saying(b)}

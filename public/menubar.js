@@ -10,6 +10,8 @@
  */
 import { mount } from './lib/dom.js';
 import { popoverView, errorView, TABS, DEFAULTS } from './lib/menubar-view.js';
+import { loadPet as cachedPet, savePet } from './lib/petcache.js';
+import { livePet } from './lib/petmath.js';
 
 const root = document.getElementById('mb');
 const TAB_KEY = 'now-mb-tab';
@@ -33,11 +35,44 @@ function readTab() {
 }
 
 let state = null;
-let pet = null;
+/**
+ * Sổ khởi đầu từ BẢN NHỚ, không từ `null`.
+ *
+ * Cửa sổ này tải lại mỗi lần mở, nên trước đây nhịp vẽ đầu tiên luôn không có con vật:
+ * bức tranh hiện ra trống chỗ rồi mấy cái thanh nhảy vào sau. Bản nhớ giữ mốc gốc và tính
+ * lại theo đồng hồ (xem `lib/petcache.js`), nên nó không phải một cái ảnh chụp cũ — thứ
+ * lượt hỏi thật đem về chủ yếu là con số ví.
+ *
+ * `null` khi chưa từng mở, khác ngày, hay `localStorage` bị chặn — và cả ba ca ấy rơi về
+ * đúng hành vi cũ, không rơi vào một nhánh mới nào.
+ */
+let pet = cachedPet();
 let tab = readTab();
+/**
+ * Phần xu vừa vào ví kể từ lần mở trước — số để NẢY, không phải số để bày.
+ *
+ * Popover chỉ hỏi sổ đúng một lần mỗi lần mở, nên trong một phiên nó không có nhịp nào để
+ * đếm lên. Cái nhảy duy nhất có thật là chỗ này: bản nhớ vẽ ra con số của lần mở trước, rồi
+ * lượt mạng đè lên bằng con số bây giờ. Hiệu hai số ấy đúng bằng số token đã tiêu từ lần
+ * liếc trước — nên nó đáng được nhìn thấy chứ không đáng bị thay lặng lẽ.
+ *
+ * `painted` là điều kiện để cái nảy không nói dối: lượt mạng có thể về TRƯỚC cả lượt vẽ đầu
+ * (hai `fetch` chạy song song), và lúc ấy con số cũ chưa từng lên màn hình — diễn lại một
+ * thay đổi không ai thấy thì cái nảy là trang trí, không phải thông tin.
+ */
+let bump = 0;
+let painted = false;
 
 function render() {
-  mount(root, popoverView(state, { tab, pet }));
+  // Vặn sổ về đúng giây đang vẽ, y như cửa hàng — xem `livePet`. Ở đây nó còn cần hơn: màn
+  // này chỉ hỏi sổ MỘT lần lúc mở, rồi vẽ lại theo nhịp SSE của dashboard. Không vặn thì
+  // một popover mở sẵn nửa tiếng đang bày độ no của nửa tiếng trước.
+  mount(root, popoverView(state, { tab, pet: livePet(pet), bump }));
+  // Tiêu ngay sau một lượt vẽ. Cái nảy là hoạt hình CSS chạy trên một thẻ vừa dựng, nên nó
+  // tự diễn đúng một lần; không xoá thì mỗi lần đổi tab lại dựng thẻ mới và nó diễn lại một
+  // khoản tiền đã cũ.
+  bump = 0;
+  painted = true;
   reportSize();
 }
 
@@ -53,7 +88,17 @@ async function loadPet() {
   try {
     const res = await fetch('/api/pet');
     if (!res.ok) return;
-    pet = (await res.json()).pet ?? null;
+    const fresh = (await res.json()).pet ?? null;
+    // Bản cũ trên màn hình còn hơn không có gì: server bản cũ không có endpoint này, hay
+    // sổ hỏng, thì giữ nguyên thứ bản nhớ vừa vẽ ra thay vì xoá nó đi.
+    if (!fresh) return;
+    // Hiệu số tính TRƯỚC khi thay `pet`, và chỉ khi bản cũ đã lên màn hình. Xem `bump`.
+    // `>= 0.005` chứ không `> 0`: hai số đã cắt hai chữ số lẻ ở server, nên hiệu thật luôn
+    // là bội của 0,01 — thứ nhỏ hơn thế chỉ là rác dấu phẩy động, và nó sẽ nảy ra một dòng
+    // "+0.00" cho một khoản tiền không tồn tại.
+    if (painted && pet && fresh.coins - pet.coins >= 0.005) bump = fresh.coins - pet.coins;
+    pet = fresh;
+    savePet(fresh);
     if (state) render();
   } catch {
     /* không có sổ thì thôi — khung cảnh không phụ thuộc vào nó */
