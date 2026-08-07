@@ -77,24 +77,19 @@ export function loadPet(now = new Date()) {
   if (!box?.pet || box.day !== today(now)) return null;
 
   const pet = box.pet;
-  const nowMs = now.getTime();
   // Bản nhớ tính lại bằng ĐÚNG `livePet` mà lượt vẽ dùng, không phải một bản chép của nó:
   // hai chỗ cùng dựng lại độ no từ `fedAt` là hai chỗ sẽ trôi khỏi nhau đúng lần đầu ai đó
   // chỉnh một cái. Đoạn hồi cũng tụt theo đồng hồ y như hai cái mốc kia — bản nhớ ghi lúc
   // đang ăn dở mà mở lại sau hai phút thì nó đã xong từ lâu, và `livePet` tự ra con số
   // CUỐI chứ không ra con số giữa chừng.
   //
-  // Đồng hồ máy khách so với chính nó, không so với server: `leftMs` là một HIỆU SỐ do
-  // server tính, còn `box.at` là mốc của chính máy này. Trừ hai thứ cùng gốc thì lệch giờ
-  // giữa hai máy không lọt vào được.
-  const left = pet.doing ? pet.doing.leftMs - (nowMs - box.at) : 0;
-
-  return {
-    ...livePet(pet, nowMs),
-    // Hết giờ thì bỏ, kể cả với quãng nghỉ — phía này KHÔNG được kết luận nó đạt hay
-    // trượt (phép kiểm cần `idleMs`, thứ chỉ server có), nên nó chỉ dọn cái đang chạy đi
-    // và để lượt hỏi thật nói tiếp.
-    doing: left > 0 ? { ...pet.doing, leftMs: left } : null,
-    lastBreak: null,
-  };
+  // Việc ĐANG LÀM cũng thế, và tới lượt 18 nó cũng nằm trong `livePet` chứ không còn là một
+  // phép trừ riêng ở đây. Phép ấy vốn chỉ có ở chỗ này, nên bản nhớ thì đúng còn bản vừa lấy
+  // từ mạng thì sai — chính là lỗi "ăn xong không về trạng thái làm việc".
+  //
+  // `pet.at ?? box.at`: từ lượt 18 mốc nhận nằm trong chính bản sổ (`stampPet`), nhưng một
+  // bản nhớ do bản trước ghi thì chưa có nó — và ở đó `box.at` là đúng cái mốc ấy. Đường lui
+  // này chết sau ngày đầu tiên (bản nhớ chỉ sống trong ngày), nhưng thiếu nó thì đúng ngày
+  // nâng cấp mọi người mở popover ra thấy quản gia bê một cái bát của hôm qua.
+  return { ...livePet({ ...pet, at: pet.at ?? box.at }, now.getTime()), lastBreak: null };
 }

@@ -1,15 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+// Đọc thẳng `styles.css`: từ lượt 23 có ba phép kiểm bắc cầu sang bên ấy, vì một cái tên nhịp
+// gõ sai là lỗi DUY NHẤT trong lớp trò chơi không gây ra triệu chứng nào — xem chúng ở dưới.
+import fs from 'node:fs';
 import {
   accrue, buy, cancelBreak, emptyLedger, fullnessOf, moodOf, normWorn, petView,
   focusOf, focusMoodOf, observeRest, resolveBreak, startBreak, wear,
   FULL_MS, FOCUS_MS, BREAK_MS, COIN_PER_HOUR, EAT_MS, FOODS, ITEMS, MOVES, RATE,
   REST_RAMP_MS, SLOTS, doingOf,
 } from '../src/pet.js';
-import { ART, MOVE_ART, bulbRows, coinNum, focusGlass, glassRows, hungerBar } from '../public/lib/pet.js';
+import { ART, DISHES, FACE_NAMES, MOVE_ART, TIP_KEYS, TIP_KINDS, butlerFace, butlerLook, butlerRows, butlerSays, butlerTalk, butlerThinks, coinNum, dialRows, doingRing, faceRows, focusDial, hungerTray, markArt, nudgeOf, speaking, statCells, statWords, tipArt, trayRows } from '../public/lib/pet.js';
 import { rawText } from '../public/lib/dom.js';
-import { FOCUS_CELL_MS, FOCUS_DIP, MOVE_HOME, MOVE_IDS, MOVE_PARK, livePet, moveForHour, wakeOf, whereOf } from '../public/lib/petmath.js';
-import { LOTS, PLACE_IDS, PLACES, ROADS, SCENE_SPOTS, STEP, TOWN_BOX, sizeOf } from '../public/lib/town.js';
+import { FOCUS_DIP, MOVE_HOME, MOVE_IDS, MOVE_PARK, livePet, moveForHour, stateOf, wakeOf, whereOf } from '../public/lib/petmath.js';
+import { LOTS, PLACE_IDS, PLACES, ROADS, SCENE_SPOTS, STEP, TOWN_BOX, WALKERS, WELL, butlerArt, cellPos, onRoad, sizeOf } from '../public/lib/town.js';
+import { outlineRows } from '../public/lib/pixel.js';
 import { lastHumanIn } from '../src/collect/sessions.js';
 import { tableOf } from '../public/lib/i18n.js';
 
@@ -170,8 +174,18 @@ test('việc đang làm gộp MỘT trường, và ăn xong thì nó tự tắt'
   assert.equal(eat.leftMs, EAT_MS - 20_000);
   assert.equal(doingOf(buy(l, 'pho', T0).ledger, T0 + EAT_MS), null);
 
-  const mv = doingOf(startBreak(l, 'walk', T0).ledger, T0 + 60_000);
+  const mv = doingOf(startBreak(l, 'walk', T0).ledger, T0 + MOVES.walk.ms / 2);
   assert.deepEqual({ kind: mv.kind, id: mv.id, ms: mv.ms }, { kind: 'move', id: 'walk', ms: MOVES.walk.ms });
+
+  // Quãng NGHỈ cũng phải tự tắt, y như bữa ăn — chỗ sửa của lượt 18. Tới lượt trước nhánh
+  // này trả về một việc "đang làm" với `leftMs: 0` cho tới khi server chốt quãng và xoá nó
+  // khỏi sổ, nên hai nhánh của cùng một hàm nói hai câu khác nhau: ăn xong thì hết, còn vươn
+  // vai xong thì vẫn đang vươn vai. Người dùng thấy đúng chỗ ấy — "làm gì xong không tự back
+  // về trạng thái làm việc".
+  //
+  // `resolveBreak` không mất gì: nó đọc thẳng sổ, và cái ở lại trong sổ là cái CHƯA CHỐT,
+  // còn cái hàm này trả về là cái ĐANG DIỄN RA.
+  assert.equal(doingOf(startBreak(l, 'walk', T0).ledger, T0 + MOVES.walk.ms), null);
 });
 
 test('tâm trạng có đủ bốn bậc và không có kẽ hở', () => {
@@ -357,6 +371,392 @@ test('mọi món trang trí đứng ở một chỗ CÓ THẬT, và chỗ nào c
   for (const slot of SLOTS) {
     const n = Object.values(ITEMS).filter((i) => i.slot === slot).length;
     assert.ok(n > 0, `chỗ ${slot} không có món nào`);
+  }
+});
+
+/**
+ * GIÁ CAO PHẢI VẼ TO — luật lượt 21, và nó phải là một phép kiểm chứ không phải một thói quen.
+ *
+ * Người dùng: *"Khinh khí cầu, cây quất có thể cân nhắc vẽ to hơn, những vật đắt tiền thế nên
+ * có kích thước khác. Bạn tự rà soát lại các mặt hàng trong chợ và quyết định"*.
+ *
+ * Rà soát ra ba chỗ vỡ, và cả ba đều là chuyện KHÔNG AI ĐO nên không ai thấy:
+ *
+ * - Khe LƠ LỬNG phẳng tuyệt đối: bóng bay 130 xu và khinh khí cầu 480 xu chung đúng một khung
+ *   20×32. Bốn lần giá, không một pixel khác nhau.
+ * - Vòm hoa hồng 560 xu NHỎ HƠN giàn tử đằng 340 xu (1216 so với 1520 px²).
+ * - Đường chân trời 880 xu — món đắt nhất cả cửa hàng — nhỏ hơn cực quang 520 xu.
+ *
+ * Chỗ vỡ ấy không nằm ở tay vẽ, nó nằm ở chỗ chưa ai viết luật ra. Nên luật là: **trong một
+ * khe, món đắt hơn không bao giờ được vẽ nhỏ hơn**, và món đắt nhất phải to gấp đôi món rẻ
+ * nhất — gấp đôi để cái khác nhau còn đọc được ở 4px, chứ không phải chỉ đúng trên bảng số.
+ *
+ * BẰNG NHAU thì được, và đó là chỗ luật cố ý lỏng: mũ len 60 xu với nón chóp 70 xu chênh nhau
+ * mười xu, mà một sự khác biệt mười xu vẽ ra được thì nó cũng nhỏ tới mức không ai thấy. Cái
+ * luật này chặn chuyện ĐI LÙI, không ép mỗi bậc giá phải có một bậc kích thước.
+ */
+test('trong mỗi khe, món đắt hơn không được vẽ nhỏ hơn', () => {
+  const area = (id) => {
+    const rows = ART[id].rows;
+    return Math.max(...rows.map((r) => r.length)) * 4 * rows.length * 4;
+  };
+  for (const slot of SLOTS) {
+    const ids = Object.keys(ITEMS)
+      .filter((id) => ITEMS[id].kind === 'decor' && ITEMS[id].slot === slot)
+      .sort((a, b) => ITEMS[a].price - ITEMS[b].price);
+    assert.ok(ids.length >= 4, `khe ${slot} chỉ có ${ids.length} món — phép kiểm này cần cả bậc thang`);
+    for (let i = 1; i < ids.length; i += 1) {
+      assert.ok(
+        area(ids[i]) >= area(ids[i - 1]),
+        `${ids[i]} (${ITEMS[ids[i]].price} xu, ${area(ids[i])}px²) nhỏ hơn ${ids[i - 1]} ` +
+          `(${ITEMS[ids[i - 1]].price} xu, ${area(ids[i - 1])}px²) — giá đi lên mà hình đi xuống`,
+      );
+    }
+    const lo = area(ids[0]);
+    const hi = area(ids[ids.length - 1]);
+    assert.ok(
+      hi >= lo * 2,
+      `khe ${slot}: món đắt nhất ${hi}px² chỉ gấp ${(hi / lo).toFixed(2)} lần món rẻ nhất — dưới hai lần thì không ai thấy`,
+    );
+  }
+});
+
+/**
+ * TRẦN của mọi sprite là cái bệ trong cửa hàng, và trần ấy phải nói ra được.
+ *
+ * `artFit` co hình cho vừa bệ, nhưng nó bám ba bậc {1 · 0,75 · 0,5} để mỗi ô pixel còn là số
+ * nguyên (4 / 3 / 2px). Bậc cuối là SÀN: vẽ một món rộng hơn 184px thì `artFit` trả 0,5 mà
+ * 0,5 vẫn không đủ, và `overflow: hidden` xén phần thừa — đúng cái lỗi im lặng đã ăn mất tám
+ * pixel của cực quang suốt bốn lượt.
+ *
+ * 184 = 92 × 2 và 112 = 56 × 2, hai con số chỗ thật hẹp nhất của bệ (xem `BOX_TALL` trong
+ * `views/pet.js`).
+ */
+test('không sprite nào vượt bệ — trần 184×112, tức bậc co cuối cùng', () => {
+  for (const [id, a] of Object.entries(ART)) {
+    const w = Math.max(...a.rows.map((r) => r.length)) * 4;
+    const h = a.rows.length * 4;
+    assert.ok(w <= 184, `${id} rộng ${w}px — quá trần 184, cửa hàng sẽ xén nó`);
+    assert.ok(h <= 112, `${id} cao ${h}px — quá trần 112, cửa hàng sẽ xén nó`);
+  }
+});
+
+/* ── Nhịp sống của đồ trang trí ────────────────────────────────────────────── */
+
+/**
+ * MỖI món trang trí phải TRẢ LỜI câu hỏi "động vì cái gì" — kể cả khi câu trả lời là không.
+ *
+ * Lượt 23 gắn cho mỗi món một nhịp (`life`), và cái bẫy của một trường như thế là nó im lặng
+ * khi thiếu: quên khai thì món ấy đứng chết giữa một bức tranh mà mọi thứ khác đều thở, và
+ * không có gì kêu lên. Đúng cái lớp lỗi đã để bốn món khe lơ lửng chung một khung 20×32 suốt
+ * bốn lượt.
+ *
+ * Nên phép kiểm bắt KHAI, không bắt phải có nhịp: `null` là một câu trả lời hợp lệ và sáu món
+ * đang dùng nó. Chỗ nó chặn là chỗ trường không tồn tại — tức là chưa ai nghĩ tới món ấy.
+ */
+test('mỗi món trang trí đều KHAI nhịp sống, kể cả khi nhịp ấy là "đứng yên"', () => {
+  const quen = Object.keys(ITEMS).filter(
+    (id) => ITEMS[id].kind === 'decor' && !Object.hasOwn(ART[id] ?? {}, 'life'),
+  );
+  assert.deepEqual(
+    quen,
+    [],
+    `chưa khai \`life\` cho: ${quen.join(', ')} — khai \`null\` nếu nó cố ý đứng yên, ` +
+      'vì bỏ trống thì không phân biệt được "đã quyết" với "đã quên"',
+  );
+  // Phải còn cả hai phía để phép kiểm trên có nghĩa: một bảng toàn `null` cũng qua được nó.
+  const co = Object.values(ART).filter((a) => a.life).length;
+  const khong = Object.values(ART).filter((a) => Object.hasOwn(a, 'life') && !a.life).length;
+  assert.ok(co >= 20 && khong >= 4, `${co} món có nhịp / ${khong} món đứng yên — bảng đã lệch hẳn về một phía`);
+});
+
+/**
+ * HAI KHUNG của một con vật phải CÙNG KHUNG HÌNH, và phải KHÁC NHAU.
+ *
+ * Hai điều kiện ngược chiều nhau, và cả hai đều hỏng theo kiểu không ai thấy lúc viết:
+ *
+ * - Lệch kích thước → `drawArt` khai bề rộng từ khung A, nên khung B rộng hơn sẽ bị lòi ra
+ *   ngoài hộp, còn hẹp hơn thì con vật NHẢY ngang mỗi lần hoán. Đếm tay một hàng 17 ký tự là
+ *   đúng thứ sai được, và bốn con vật này có 43 hàng.
+ * - Giống hệt nhau → hai lớp chồng khít, hoán qua hoán lại, và cái đọc ra là một hình đứng
+ *   yên. Test vẫn xanh, `npm test` vẫn sạch, và món 720 xu vẫn không nhúc nhích.
+ */
+test('con vật hai khung: cùng khổ, mà không được giống hệt nhau', () => {
+  const doi = Object.entries(ART).filter(([, a]) => a.alt);
+  assert.ok(doi.length >= 4, `chỉ có ${doi.length} món hai khung — chờ ít nhất bốn con vật`);
+  for (const [id, a] of doi) {
+    const kho = (rows) => `${Math.max(...rows.map((r) => r.length))}×${rows.length}`;
+    assert.equal(kho(a.alt), kho(a.rows), `${id}: khung B ${kho(a.alt)} lệch khung A ${kho(a.rows)} — con vật sẽ nhảy`);
+    // So từng hàng chứ không so cả mảng: mảng khác nhau ở đâu thì câu báo lỗi phải nói ra.
+    const khac = a.rows.filter((r, i) => r !== a.alt[i]).length;
+    assert.ok(khac > 0, `${id}: hai khung giống hệt nhau — hoán qua hoán lại vẫn là một hình đứng yên`);
+  }
+});
+
+/**
+ * CÁI TÊN NHỊP phải có thật ở bên CSS — nếu không nó là một món đứng yên trong im lặng.
+ *
+ * Đây là chỗ duy nhất trong cả bộ mà một lỗi CHÍNH TẢ không gây ra bất cứ triệu chứng nào:
+ * gõ `life: 'sawy'` thì `drawArt` vẫn gắn lớp `life-sawy`, DOM vẫn có nó, không console nào
+ * kêu, và món đồ chỉ đơn giản là không động. Cùng hình dạng với lỗi đã để `.shop-art` xén
+ * âm thầm ba sprite 104px suốt năm lượt.
+ *
+ * Đọc thẳng `styles.css` chứ không dựng một danh sách tên hợp lệ ở đây: một danh sách như thế
+ * là bản thứ hai của một sự thật, và nó lệch khỏi CSS đúng lần đầu ai đó thêm một nhịp.
+ */
+/**
+ * `styles.css` đã BỎ CHÚ THÍCH — ba phép kiểm dưới đây đều đọc qua cửa này.
+ *
+ * Không phải chuyện gọn: file này chú thích dày hơn luật, và trong chú thích có cả tên
+ * selector lẫn khối `{ }` viết ra làm ví dụ. Bản đầu của phép kiểm `glow` quét thẳng file
+ * thô và nó KHÔNG bắt được lỗi nó sinh ra để bắt — thử phá bằng cách trả `.art-halo` về
+ * `life-glow` thì test vẫn xanh, vì một khối `{ }` trong chú thích phía trên đã nuốt mất
+ * đoạn ấy trong lượt quét trước đó.
+ *
+ * Một phép kiểm không bắt được đúng cái nó tả thì tệ hơn không có: nó bán một sự yên tâm.
+ */
+const cssRaw = () => fs.readFileSync(new URL('../public/styles.css', import.meta.url), 'utf8');
+const cssNoComments = () => cssRaw().replace(/\/\*[\s\S]*?\*\//g, '');
+
+/**
+ * VĂN XUÔI RƠI VÀO DÒNG MÃ — hai phép kiểm cho một cái bẫy đã sập hai lần.
+ *
+ * `styles.css` chú thích dày hơn luật, nên xác suất một khối chú thích khép sai chỗ không
+ * phải là nhỏ. Và khi nó khép sai thì hậu quả **không có triệu chứng tại chỗ**: CSS không
+ * ném lỗi, không ghi console, không hiện gì trong Sources. Bộ phân tích chỉ lặng lẽ nuốt
+ * đoạn văn xuôi làm bộ chọn, gặp `{` đầu tiên thì bỏ trọn luật ấy — đúng MỘT luật, luật
+ * ngay sau đoạn văn, tức luật mà đoạn văn vừa giải thích.
+ *
+ * Ca thật: một dấu đóng chú thích thừa ở khối `.shop-pick .shop-art` làm rơi mất
+ * `flex: none; width: 72px`, nên `.shop-art` giữ `width: 100%` và cái khay chọn món thành
+ * một dải tím dài với một bát xôi tí xíu ở giữa, cụm chữ bên cạnh bị bóp còn một chữ mỗi
+ * dòng. Chú thích ngay trên chỗ hỏng đã tả trước cảnh ấy — nó chỉ không tự canh được mình.
+ *
+ * Hai phép kiểm vì có hai đường vào, và mỗi đường cần một cái lưới khác nhau:
+ *  1. dấu đóng thừa / khối không đóng  → đếm cặp
+ *  2. văn xuôi lọt vào mã vì bất kỳ lý do nào khác (quên mở `/*`, dán nhầm một dòng)
+ *     → sau khi bóc chú thích và chuỗi, mã CSS của dự án này thuần ASCII, mà văn xuôi
+ *       tiếng Việt thì không bao giờ thuần ASCII. Một dòng lọt là lộ ngay.
+ */
+test('chú thích trong styles.css phải đóng đúng một lần', () => {
+  const s = cssRaw();
+  const dong = (p) => s.slice(0, p).split('\n').length;
+  const moCoi = [];
+  let i = 0;
+  let mo = false;
+  let moTai = 0;
+  while (i < s.length - 1) {
+    const hai = s.slice(i, i + 2);
+    if (!mo && hai === '/*') { mo = true; moTai = i; i += 2; continue; }
+    if (mo && hai === '*/') { mo = false; i += 2; continue; }
+    // Dấu đóng gặp lúc KHÔNG có khối nào đang mở: đây là cái làm rơi luật ngay dưới nó.
+    if (!mo && hai === '*/') { moCoi.push(dong(i)); i += 2; continue; }
+    i++;
+  }
+  if (mo) moCoi.push(dong(moTai));
+  assert.deepEqual(moCoi, [], `dấu chú thích mồ côi ở dòng ${moCoi.join(', ')} — luật ngay dưới nó đang bị trình duyệt bỏ`);
+});
+
+test('không có văn xuôi nào lọt vào dòng mã của styles.css', () => {
+  // Bóc chú thích, rồi bóc chuỗi trong ngoặc (`content: '›'`, `[data-x="..."]`) — hai chỗ
+  // duy nhất mà một ký tự ngoài ASCII được phép đứng trong mã.
+  const code = cssRaw()
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/"[^"\n]*"|'[^'\n]*'/g, "''");
+  const lot = [];
+  code.split('\n').forEach((d, i) => {
+    if (/[^\x00-\x7F]/.test(d)) lot.push(`${i + 1}: ${d.trim().slice(0, 70)}`);
+  });
+  assert.deepEqual(lot, [], `văn xuôi đứng ngoài chú thích:\n  ${lot.join('\n  ')}`);
+});
+
+test('mọi nhịp đã khai đều có luật thật trong styles.css', () => {
+  const css = cssNoComments();
+  const dung = [...new Set(Object.values(ART).map((a) => a.life).filter(Boolean))];
+  assert.ok(dung.length >= 6, `mới có ${dung.length} nhịp — chờ ít nhất sáu`);
+  for (const kind of dung) {
+    assert.ok(css.includes(`.life-${kind}`), `khai \`life: '${kind}'\` mà styles.css không có luật \`.life-${kind}\``);
+  }
+  // Nhịp hai khung còn cần hai bộ khung hình mang đúng tên, một cho mỗi lớp.
+  for (const kind of [...new Set(Object.entries(ART).filter(([, a]) => a.alt).map(([, a]) => a.life))]) {
+    for (const f of ['a', 'b']) {
+      assert.ok(css.includes(`@keyframes ${kind}-${f}`), `thiếu \`@keyframes ${kind}-${f}\` cho nhịp hai khung '${kind}'`);
+    }
+  }
+});
+
+/**
+ * `glow` chỉ được chạm mấy Ô ĐÈN, không bao giờ chạm cả thẻ — nếu không hai lớp mờ NHÂN nhau.
+ *
+ * Lỗi này tự gây ra rồi tự đo thấy ngay trong lượt 23, và nó là bản dựng lại của đúng con bug
+ * người dùng vừa báo. Bản đầu để `glow` chạy ở cả hai tầng: một luật cho từng ô sáng
+ * (`.life-glow .px.gold`) và một luật cho cả thẻ (`.art-halo.life-glow`). Vòng hào quang toàn
+ * thân là `gold` nên nó ăn cả hai, và hai lớp opacity nhân nhau: 0,55 × 0,55 = **0,30** — đúng
+ * con số của `mb-float` mà cả lượt này sinh ra để gỡ.
+ *
+ * Cái làm nó nguy hiểm là không có triệu chứng riêng: món đồ vẫn động, vẫn đúng nhịp, chỉ là
+ * mờ gấp đôi mức đã định. Không ai đọc ra "0,30" từ một bức tranh.
+ *
+ * Nên luật: mọi luật CSS gắn hoạt hình cho `.life-glow` đều phải nhắm vào `.px`. Vật nào cần
+ * cả hình cùng sáng thì đó là `shimmer`, một nhịp khác, và nó không chồng lên gì cả.
+ */
+test('nhịp `glow` không được chạm cả thẻ — hai lớp mờ nhân nhau thì món đồ tối gấp đôi', () => {
+  const css = cssNoComments();
+  const xau = [];
+  for (const m of css.matchAll(/^([^@{}\n][^{}]*)\{([^}]*)\}/gm)) {
+    const [, sel, body] = m;
+    if (!sel.includes('life-glow') || !/animation(-name)?\s*:/.test(body)) continue;
+    // Mỗi vế của danh sách selector phải tự nhắm tới một ô pixel.
+    for (const one of sel.split(',')) if (one.includes('life-glow') && !one.includes('.px')) xau.push(one.trim());
+  }
+  assert.deepEqual(
+    xau,
+    [],
+    `luật gắn hoạt hình cho cả thẻ \`.life-glow\`: ${xau.join(' | ')} — nó chồng lên luật ` +
+      '`.life-glow .px.*` và hai lớp opacity nhân nhau. Vật cần cả hình cùng sáng thì dùng `shimmer`.',
+  );
+  // Và phải còn ít nhất một luật `glow` thật, không thì phép kiểm trên xanh vì rỗng.
+  assert.ok(/\.life-glow[^,{]*\.px/.test(css), 'không còn luật `.life-glow … .px` nào — bộ chọn có vẻ đã hụt');
+});
+
+/**
+ * CHỖ NGHỈ của một hoạt hình phải là chỗ nghỉ THẬT của vật — 0% và 100% phải bằng nhau.
+ *
+ * Đây là phép kiểm sinh ra từ đúng con bug người dùng báo ở lượt 23. Chỗ đứng lơ lửng mượn
+ * `mb-float`, mà `mb-float` viết cho ba chữ `z` của giấc ngủ:
+ *
+ *     0%, 100%  opacity 0.3      50%  opacity 0.85
+ *
+ * Với ba chữ `z` thì đúng — chúng phải tan đi. Với cái đèn lồng thì nó là một món 150 xu mờ
+ * còn 30% suốt nửa mỗi vòng. Và cái bẫy còn một tầng nữa: khối `prefers-reduced-motion` ở đầu
+ * file tắt hoạt hình bằng cách cho nó chạy 0,01ms rồi dừng, nên KHUNG CUỐI là thứ người bật
+ * "giảm chuyển động" nhìn thấy vĩnh viễn. File đã phải chữa tay cho `.mb-zzz`, `.slot-air`,
+ * ba nét trạng thái, và cột khói quán ăn — bốn lần cùng một bệnh.
+ *
+ * Luật cắt hẳn gốc: khung ở hai đầu phải là chỗ nghỉ THẬT — phép biến hình đơn vị, hoặc
+ * `opacity: 1`. Bản đầu của phép kiểm này chỉ so 0% với 100% xem có bằng nhau không, và thử
+ * phá thì nó KHÔNG bắt được: đổi cả hai đầu thành `translateY(-4px)` vẫn qua, trong khi đó
+ * đúng là con bug — quả bóng bay đứng lơ lửng vĩnh viễn với người tắt chuyển động. So bằng
+ * nhau là điều kiện cần, không phải điều kiện đủ; phải nói ra chỗ nghỉ LÀ CÁI GÌ.
+ *
+ * Chỉ soi mấy bộ khung hình của lớp nhịp sống. Mấy bộ cũ có bộ cố ý tan đi (`mb-zzz`,
+ * `town-fade`) và chúng đã có luật chữa riêng ở khối `prefers-reduced-motion`.
+ */
+test('khung hình nhịp sống nghỉ đúng chỗ — hai đầu phải là chỗ đứng yên thật', () => {
+  // Chỗ nghỉ viết ra được bằng đúng mấy dạng này. Danh sách trắng chứ không phép thử "có
+  // chứa số 0 không": `rotate(0.5deg)` cũng chứa số 0.
+  const NGHI = new Set(['transform:none', 'transform:rotate(0)', 'transform:translateY(0)', 'transform:scale(1,1)', 'opacity:1']);
+  const gon = (s) => s.replace(/\s+/g, '').replace(/;$/, '');
+  const css = cssNoComments();
+  // Thân một `@keyframes` có `{}` LỒNG NHAU, nên không có biểu thức chính quy nào cắt đúng
+  // được nó: bản đầu dùng `[\s\S]*?\n\}` và nó bỏ sót đúng sáu bộ viết gọn trên một dòng —
+  // im lặng, vì "không tìm thấy" trông y hệt "không có gì sai". Đếm ngoặc thì không sót.
+  const bodyOf = (open) => {
+    let depth = 0;
+    for (let i = open; i < css.length; i += 1) {
+      if (css[i] === '{') depth += 1;
+      else if (css[i] === '}' && (depth -= 1) === 0) return css.slice(open + 1, i);
+    }
+    return null;
+  };
+  const found = [];
+  for (const m of css.matchAll(/@keyframes\s+(life-[a-z]+|blink-[ab]|peck-[ab]|swim-[ab])\s*\{/g)) {
+    const name = m[1];
+    const body = bodyOf(m.index + m[0].length - 1);
+    assert.ok(body !== null, `@keyframes ${name}: không đóng ngoặc`);
+    const stop = (pct) => {
+      // Bắt đúng khối có mốc `pct`, dù nó đứng một mình hay đi cùng mốc khác ("0%, 100%").
+      const hit = [...body.matchAll(/([\d.%,\s]+)\{([^}]*)\}/g)].find((k) =>
+        k[1].split(',').some((p) => p.trim() === pct),
+      );
+      return hit ? hit[2].replace(/\s+/g, ' ').trim() : null;
+    };
+    const a = stop('0%');
+    const b = stop('100%');
+    assert.ok(a && b, `@keyframes ${name}: thiếu mốc ${a ? '100%' : '0%'} — không nói ra được chỗ nghỉ`);
+    assert.equal(b, a, `@keyframes ${name}: 100% ("${b}") khác 0% ("${a}") — vòng lặp sẽ giật ở chỗ nối`);
+    // Khung B của con vật là ngoại lệ DUY NHẤT, và nó ngược hẳn: chỗ nghỉ của nó là BIẾN MẤT,
+    // vì lúc nghỉ thì khung A mới là con vật. `.pet-frame.fb { opacity: 0 }` ở khối giảm
+    // chuyển động nói đúng điều ấy một lần nữa, ở tầng khác.
+    const can = name.endsWith('-b') ? 'opacity:0' : null;
+    if (can) {
+      assert.equal(gon(a), can, `@keyframes ${name}: hai đầu là "${a}", mà khung B lúc nghỉ phải ẩn hẳn`);
+    } else {
+      assert.ok(
+        NGHI.has(gon(a)),
+        `@keyframes ${name}: hai đầu là "${a}" — không phải một chỗ đứng yên. Người bật "giảm ` +
+          `chuyển động" đọng ở đúng khung này vĩnh viễn, nên nó phải là một trong: ${[...NGHI].join(' · ')}`,
+      );
+    }
+    found.push(name);
+  }
+  assert.ok(found.length >= 11, `chỉ soi được ${found.length} bộ khung hình (${found.join(', ')}) — bộ chọn có vẻ đã hụt`);
+});
+
+/**
+ * Mọi nhịp NỀN trong popover phải khoá pha vào đồng hồ tường.
+ *
+ * `mount()` vẽ bằng `innerHTML =` nên mỗi lượt vẽ dựng lại cả cây DOM, và hoạt hình trên
+ * thẻ mới luôn bắt đầu ở khung hình 0%. Một lần mở popover đo được BA lượt vẽ trong 2,6
+ * giây, cộng một lượt cho mỗi cú bấm. Không khoá pha thì mỗi lượt ấy là một cú giật.
+ *
+ * Lượt 23 chữa đúng nửa: `--life-lag` khai ở `.pet-art`, nên đồ trang trí đứng yên còn mặt
+ * trời, mây, sao và quản gia vẫn nhảy. Lượt 24 chữa nốt popover, và bỏ lại bản đồ thị trấn.
+ * Lượt 25 mới hết. Ba lượt cho một cái bệnh, và cả ba lần cái hỏng đều KHÔNG phải một luật
+ * viết sai — nó là một luật KHÔNG AI VIẾT, ở một chỗ chưa ai nghĩ tới.
+ *
+ * Nên phép kiểm này không soi một danh sách tên, cũng không soi một họ selector: nó soi
+ * **mọi luật trong file có `infinite`**. Danh sách miễn phải khai từng cái một, kèm lý do.
+ * Cái nào mới thêm mà không khoá pha thì đỏ, không cần ai nhớ ra.
+ */
+test('mọi nhịp nền phải khoá pha — không thì mỗi lượt vẽ là một cú giật', () => {
+  // Miễn thì phải nói được VÌ SAO, và mỗi lý do ở đây là một loại khác nhau:
+  //  · LỊCH — `.mb-lid` chớp mắt "cú đầu ở giây 1,3", `.mb-thought` để câu nghĩ đầu hiện sẵn
+  //    lúc mở. Khoá vào đồng hồ tường là biến cái lịch thành ngẫu nhiên, mà cửa sổ sống vài
+  //    giây thì ngẫu nhiên nghĩa là thường xuyên không xảy ra. Cả hai nghỉ ở khung hình 0%
+  //    nên chúng cũng không giật.
+  //  · ĐÃ KHOÁ Ở CHỖ KHÁC — người qua đường và quản gia ra phố nhận `animation-delay` âm
+  //    thẳng từ JS (`Date.now() % (dur * 2000)`, xem `townMap` trong `views/pet.js`), vì độ
+  //    trễ của họ còn phải khớp với chu kỳ `alternate` riêng của từng tuyến. `.resident.pacing`
+  //    và `.mini-frame` cũng vậy, từ `butlerArt` (`-(now % PACE_MS)`). Bản đầu của lượt 25 CÓ
+  //    thêm `--life-lag` cho hai cái ấy, và đo trên trang thật mới thấy: style nội tuyến thắng,
+  //    nên hai dòng vừa thêm không bao giờ chạy. Đã gỡ — một dòng chết đọc thành "chỗ này lo
+  //    rồi", và lần sửa sau sẽ tin nó.
+  //  · NGOÀI LỚP TRÒ CHƠI — chấm nhịp ở đầu trang không nằm trong `.shop` hay `.mb-wrap`,
+  //    tức không có `--now` nào chảy tới. Khoá được, nhưng phải đặt đồng hồ ở một gốc thứ ba
+  //    trước đã; chưa làm, và ghi ra đây để nó là việc đã biết chứ không phải chỗ bỏ sót.
+  const MIEN = [
+    ['.mb-lid', 'lịch'], ['.mb-thought', 'lịch'],
+    ['.town-walker', 'JS gửi độ trễ'], ['.town-stroll', 'JS gửi độ trễ'],
+    ['.resident.pacing', 'JS gửi độ trễ'], ['.mini-frame', 'JS gửi độ trễ'],
+    ['.pulse.scanning', 'ngoài lớp trò chơi'], ['.pulse.off.stale', 'ngoài lớp trò chơi'],
+  ];
+  const css = cssNoComments();
+  // Bắt luật TRONG CÙNG: thân không chứa `{}` nào. Nhờ thế cùng một biểu thức chui được vào
+  // trong `@media` mà không nuốt cả khối, và mấy khung hình trong `@keyframes` tuy cũng khớp
+  // thì lại rơi hết ở bộ lọc `infinite` — không khung hình nào khai từ khoá ấy.
+  //
+  // KHÔNG neo bộ chọn vào `}` của luật trước. Bản đầu viết `(?:^|[{}])\s*...` và nó bỏ sót
+  // đúng hai luật, im lặng: `matchAll` không cho các lần khớp chồng lên nhau, nên cái `}`
+  // vừa bị lần khớp trước ăn mất không còn làm mỏ neo cho lần sau được nữa — hai luật viết
+  // liền nhau thì luật thứ hai tàng hình. Đúng cái bẫy mà dòng `luat.length` dưới kia sinh
+  // ra để bắt, và nó bắt được thật.
+  const luat = [...css.matchAll(/([^{}]*)\{([^{}]*)\}/g)]
+    .map(([, sel, than]) => ({ sel: sel.trim().replace(/\s+/g, ' '), than }))
+    .filter((r) => /\binfinite\b/.test(r.than));
+
+  const quen = luat
+    .filter((r) => !MIEN.some(([m]) => r.sel.includes(m)))
+    .filter((r) => !r.than.includes('--life-lag'))
+    .map((r) => r.sel);
+  assert.deepEqual(quen, [], `nhịp nền chạy vô hạn mà không khoá pha:\n  ${quen.join('\n  ')}`);
+
+  // Chặn ca phép kiểm tự rỗng. Bản đầu của phép kiểm anh em ngay trên đã qua một cách vô
+  // nghĩa vì bộ chọn hụt mất nửa số luật — im lặng, và một phép kiểm im lặng thì tệ hơn
+  // không có phép kiểm nào, vì nó còn bán cả sự yên tâm.
+  assert.ok(luat.length >= 40, `chỉ soi được ${luat.length} nhịp nền — bộ chọn có vẻ đã hụt`);
+  for (const [m, vi] of MIEN) {
+    assert.ok(luat.some((r) => r.sel.includes(m)), `${m} (miễn vì: ${vi}) không còn trong danh sách soi — danh sách miễn đã cũ`);
   }
 });
 
@@ -706,11 +1106,49 @@ test('giá mỗi món ăn = số GIỜ nó mua cho bạn, ở đúng một tỉ 
   }
 });
 
+/**
+ * Đọc tỉ giá NGƯỢC RA TỪ BẢNG HÀNG, không dựng lại công thức.
+ *
+ * Bản trước chốt con số 5 thẳng vào phép so, và lượt 21 nhấc `FULL_MS` lên 8 giờ là nó đỏ —
+ * đúng như thiết kế, nhưng nó đỏ vì một chuyện KHÔNG hỏng. Còn `perBar === FULL_MS/3600000 *
+ * COIN_PER_HOUR` thì lại là một phép so một vế với chính nó, chẳng giữ được gì.
+ *
+ * Chỗ đứng đúng là bảng hàng: chia giá của một món CHỈ LẤP BỤNG cho số giờ no nó mua thì ra
+ * tỉ giá thật đang chạy. Một cái giá gõ đè lên vẫn lọt lưới của phép chia ấy — và đó chính
+ * là thứ phải bắt.
+ */
 test('1 xu mua đúng 1 giờ no — chỗ neo của cả bảng giá', () => {
-  // Chốt riêng vì đây là câu mà khối "cách tính" nói ra với người đọc, và một câu nói ra
-  // với người đọc thì phải có phép kiểm của nó.
-  const perBar = FULL_MS / 3600000 * COIN_PER_HOUR;
-  assert.equal(perBar, 5, 'thanh no đầy phải giá đúng 5 xu ở nhịp 5 giờ');
+  const hours = FULL_MS / 3600000;
+  const plain = FOODS.filter((id) => !ITEMS[id].wake);
+  assert.ok(plain.length >= 3, 'phải còn ít nhất ba món chỉ lấp bụng để đọc ra tỉ giá');
+  for (const id of plain) {
+    const it = ITEMS[id];
+    const rate = it.price / (it.fill * hours);
+    assert.ok(
+      Math.abs(rate - COIN_PER_HOUR) <= 0.006,
+      `${id}: ${it.price} xu cho ${it.fill * hours} giờ no — tỉ giá ${rate}, phải là ${COIN_PER_HOUR}`,
+    );
+  }
+});
+
+/**
+ * NHỊP ĐÓI ĐỔI THÌ VÍ KHÔNG ĐƯỢC ĐỔI — luật lượt 15, đo ở chỗ nó dễ vỡ nhất.
+ *
+ * Lượt 21 nhấc `FULL_MS` từ 5 lên 8 giờ theo yêu cầu người dùng, và một thay đổi như thế
+ * ĐÁNG NGỜ đúng vì nó động vào mẫu số của cả bảng giá. Nó an toàn nhờ một tính chất chứ
+ * không nhờ may: giá một món là số GIỜ nó mua, nên đồng hồ đói chậm lại thì món vừa đắt
+ * hơn vừa no lâu hơn cùng một tỉ lệ, và tiền ăn của một ngày đứng yên.
+ *
+ * Phép kiểm này chốt đúng tính chất ấy, nên lần sau ai đó gõ tay một cái giá là ví lệch
+ * ngay và cái lệch ấy có tên.
+ */
+test('đổi nhịp đói không đụng tới ví — tiền ăn một ngày 10 tiếng vẫn là 10 xu', () => {
+  const hours = FULL_MS / 3600000;
+  const perHour = Math.min(...FOODS.map((id) => ITEMS[id].price / (ITEMS[id].fill * hours)));
+  assert.ok(
+    Math.abs(10 * perHour - 10) <= 0.06,
+    `ngày 10 tiếng ăn hết ${10 * perHour} xu — phải là 10 ở MỌI nhịp đói`,
+  );
 });
 
 /**
@@ -788,12 +1226,52 @@ test('mỗi chỗ trong thị trấn có HÌNH và có TÊN ở cả hai ngôn n
   }
 });
 
+/** Mọi bản vẽ của một chỗ, không chỉ bản mặc định. Nhà mình có ba bộ đồ đạc kể từ lượt đổi
+ *  cảnh theo việc (xem `homeSetOf`), và hai bài test dưới đây phải nhìn thấy CẢ BA — bản đầu
+ *  chỉ nhìn `p.rows` và nó bỏ lọt đúng cái ký tự chỉ có trong cảnh bàn ăn. */
+const artsOf = (p) => [...new Set([p.rows, ...Object.values(p.sets ?? {})])];
+
 test('hình toà nhà là lưới CHỮ NHẬT — hàng lệch nhau là hình vỡ', () => {
   for (const p of PLACES) {
-    const w = p.rows[0].length;
-    for (const [i, row] of p.rows.entries()) {
-      assert.equal(row.length, w, `${p.id} hàng ${i} dài ${row.length}, phải là ${w}`);
+    for (const rows of artsOf(p)) {
+      const w = rows[0].length;
+      for (const [i, row] of rows.entries()) {
+        assert.equal(row.length, w, `${p.id} hàng ${i} dài ${row.length}, phải là ${w}`);
+      }
     }
+  }
+});
+
+/**
+ * Ba cảnh của căn phòng phải phủ ĐÚNG một khối ô như nhau.
+ *
+ * Đây là phép canh "không món đồ nào thò ra ngoài sàn", viết bằng thứ đo được. Sàn là một
+ * hình THOI nên nó thu vào bốn ô mỗi hàng khi đi xuống, còn tấm thảm tập là một chữ NHẬT nên
+ * nó không thu — đặt nó thấp bằng tấm thảm tròn thì hai góc trước của nó đứng lơ lửng trên
+ * cỏ, và trên màn hình thì phải nhìn kỹ mới thấy (đã dính đúng lần này, chữa bằng cách nâng
+ * nó bảy hàng).
+ *
+ * Đo bằng phép so tập ô CÓ VẼ chứ không bằng một bảng toạ độ chép tay: mọi món đồ trong nhà
+ * đều đắp ĐÈ lên sàn hoặc lên vách, nên chúng chỉ đổi MÀU mấy ô đã có. Một ô có vẽ ở cảnh này
+ * mà trống ở cảnh kia thì đúng nghĩa đen là một món đồ vừa mọc ra ngoài căn phòng.
+ *
+ * Nó canh luôn một điều kiện thứ hai mà `SPOT` đang dựa vào: ba cảnh cùng khung, cùng chiều
+ * cao. Lệch một hàng là lúc đổi cảnh quản gia nhích lên hoặc lún xuống một ô.
+ */
+test('ba cảnh trong nhà phủ đúng một khối ô — không món đồ nào mọc ra ngoài phòng', () => {
+  const home = PLACES.find((p) => p.id === 'home');
+  const inked = (rows) => {
+    const s = new Set();
+    rows.forEach((row, y) => [...row].forEach((c, x) => c !== '.' && s.add(`${x},${y}`)));
+    return s;
+  };
+  const [base, ...rest] = artsOf(home).map((rows) => ({ rows, ink: inked(rows) }));
+  for (const s of rest) {
+    assert.equal(s.rows.length, base.rows.length, 'hai cảnh khác chiều cao — chỗ đứng của quản gia sẽ lệch');
+    const out = [...s.ink].filter((k) => !base.ink.has(k));
+    const gone = [...base.ink].filter((k) => !s.ink.has(k));
+    assert.equal(out.length, 0, `có ${out.length} ô mọc ra ngoài căn phòng, ô đầu ở ${out[0]}`);
+    assert.equal(gone.length, 0, `có ${gone.length} ô của căn phòng bị một cảnh đục thủng, ô đầu ở ${gone[0]}`);
   }
 });
 
@@ -811,7 +1289,7 @@ test('hình toà nhà là lưới CHỮ NHẬT — hàng lệch nhau là hình v
 test('bảng màu và hình khớp nhau CẢ HAI CHIỀU', () => {
   for (const p of PLACES) {
     const used = new Set();
-    for (const row of p.rows) for (const c of row) if (c !== '.') used.add(c);
+    for (const rows of artsOf(p)) for (const row of rows) for (const c of row) if (c !== '.') used.add(c);
     for (const c of used) assert.ok(c in p.chars, `${p.id}: ký tự '${c}' không có tên màu — nó sẽ là một ô kem câm`);
     for (const c of Object.keys(p.chars)) assert.ok(used.has(c), `${p.id}: tên màu '${c}' không còn ký tự nào dùng`);
   }
@@ -1064,119 +1542,308 @@ test('mọi đoạn đường chạy đúng độ dốc 2:1 của mặt đất',
 });
 
 /**
- * Cây cối quanh phố phải đứng NGOÀI lưới.
+ * Cây cối quanh phố phải đứng NGOÀI lưới — trừ cái giếng, thứ bắt buộc đứng TRÊN lưới.
  *
- * Đó là toàn bộ việc của chúng: tám mắt lưới đều tăm tắp đọc thành bàn cờ, và thứ phá cái
- * đều ấy chỉ phá được nếu nó không rơi vào chính mấy mắt ấy. Một cái cây tình cờ đứng đúng
- * mắt lưới trông như một toà nhà chưa vẽ xong.
+ * Với cây thì đó là toàn bộ việc của chúng: mấy mắt lưới đều tăm tắp đọc thành bàn cờ, và
+ * thứ phá cái đều ấy chỉ phá được nếu nó không rơi vào chính mấy mắt ấy. Một cái cây tình cờ
+ * đứng đúng mắt lưới trông như một toà nhà chưa vẽ xong.
+ *
+ * Cái giếng thì ngược lại, và ngược lại vì một lý do đo được: hai cái ngõ sau khép về nó, mà
+ * đầu đường thì chỉ khai được bằng mắt lưới. Đẩy nó lệch đi vài pixel cho "tự nhiên" là hai
+ * cái ngõ đứng nguyên còn cái mốc trôi đi, và cái ngã ba hở ra.
  */
-test('cây cối quanh phố không đứng trên mắt lưới — đó là việc của chúng', () => {
+test('cây cối quanh phố không đứng trên mắt lưới — trừ cái giếng, thứ phải đứng', () => {
   assert.ok(SCENE_SPOTS.length >= 8, 'ít quá thì hai rìa bản đồ vẫn đọc thành lề thừa');
-  for (const s of SCENE_SPOTS) {
-    const onNode = s.x % STEP.x === 0 && s.y % STEP.y === 0 && Math.abs((s.x / STEP.x + s.y / STEP.y) % 2) === 0;
-    assert.ok(!onNode, `cây ở (${s.x}, ${s.y}) đứng đúng mắt lưới, chỗ dành cho một toà nhà`);
+  const onGrid = (s) => s.x % STEP.x === 0 && s.y % STEP.y === 0 && Math.abs((s.x / STEP.x + s.y / STEP.y) % 2) === 0;
+  const wells = SCENE_SPOTS.filter((s) => s.kind === 'well');
+  assert.equal(wells.length, 1, 'đúng một cái giếng — nó là MỐC của hai cái ngõ sau');
+  assert.ok(onGrid(wells[0]), 'cái giếng phải đứng đúng mắt lưới, nếu không hai cái ngõ trượt khỏi nó');
+  for (const s of SCENE_SPOTS.filter((x) => x.kind !== 'well')) {
+    assert.ok(!onGrid(s), `cây ở (${s.x}, ${s.y}) đứng đúng mắt lưới, chỗ dành cho một toà nhà`);
   }
 });
 
 /**
- * Bầu đồng hồ cát phải chứa VỪA KHÍT số hạt, không thừa không hụt.
+ * KHÔNG vật phong cảnh nào được đứng TRÊN mặt đường.
  *
- * Bầu xếp theo dãy lẻ 1, 3, 5, … nên k hàng chứa đúng `k²` hạt: số hạt vừa khít khi và chỉ
- * khi nó là số chính phương. Chín hạt (90 phút chia mười) vừa khít ba hàng.
+ * Người dùng chỉ vào ảnh: "mấy vật thể đang nằm giữa đường nhìn rất là kì". Đo lại thì đúng
+ * ba vật — hai cái cây và một cột đèn.
  *
- * Đây là chỗ phép kiểm phải nói to, vì cái hỏng thì im: đổi `FOCUS_MS` thành 100 phút là
- * mười hạt, hàng ngoài cùng chỉ được lấp một trong năm ô, và cái bầu vẹt mất một góc. Không
- * có lỗi nào ném ra — chỉ có một cái hình xấu mà phải mở đúng màn ấy mới thấy.
+ * Vì sao nó lọt được, và vì sao phải có bài test chứ không phải chỉnh ba con số rồi thôi:
+ * mặt đường KHÔNG phải cái hộp bao khai trong `ROADS`. Cái thẻ ấy bị lệch trục 26,565°, nên
+ * dải nó phủ trượt lên hoặc xuống tới 190px ở hai đầu. Đặt cây bằng mắt trên toạ độ thì chỗ
+ * ấy "trông xa đường" trong khi thật ra nó nằm giữa lòng đường — và mã thì không nói gì cả.
+ *
+ * Đo trên CẢ hộp của sprite chứ không mỗi cái chân: một cột đèn cao 36px có chân trên cỏ mà
+ * thân cắt ngang mặt đường thì vẫn là một cột đèn mọc giữa đường.
+ *
+ * Cái giếng là ngoại lệ, và nó phải là ngoại lệ: nó LÀ cái mốc mà hai ngõ sau khép về, nên
+ * cái sân của nó bắt buộc trùm lên chỗ hai ngõ gặp nhau.
  */
-test('đồng hồ cát: bầu chứa vừa khít số hạt, và cả hai bầu đối xứng', () => {
-  const n = Math.round(FOCUS_MS / FOCUS_CELL_MS);
-  const bulb = bulbRows(n);
+test('không cây, đèn hay bụi nào mọc giữa lòng đường', () => {
+  // Cỡ lấy từ `SCENE_SPOTS` — nó đo bằng `sizeOf` trên chính mảng hình, nên bài test không
+  // giữ một bảng cỡ thứ hai để mà lệch. Quét theo lưới 4px, đúng cỡ ô của cả bức tranh.
+  const covers = (s) => {
+    for (let x = s.x - s.w / 2; x <= s.x + s.w / 2; x += 4) {
+      for (let y = s.y - s.h; y <= s.y; y += 4) if (onRoad(x, y)) return true;
+    }
+    return false;
+  };
+  const wells = SCENE_SPOTS.filter((s) => s.kind === 'well');
+  assert.ok(covers(wells[0]), 'cái giếng PHẢI trùm ngã ba — nó là mốc của hai ngõ sau');
+  for (const s of SCENE_SPOTS.filter((x) => x.kind !== 'well')) {
+    assert.ok(!covers(s), `${s.kind} ở (${s.x}, ${s.y}) đè lên mặt đường`);
+  }
+});
 
-  assert.ok(bulb.length >= 2, 'một hàng thì không còn là cái bầu');
-  assert.equal(
-    bulb.reduce((a, b) => a + b, 0),
-    n,
-    'tổng số ô của bầu phải bằng đúng số hạt',
-  );
-  assert.deepEqual(
-    bulb,
-    bulb.map((_, i) => 2 * i + 1),
-    `bầu vẹt góc: ${n} hạt không phải số chính phương — đổi FOCUS_MS thì phải xem lại hình`,
-  );
+/**
+ * VÒNG ĐẾM NGƯỢC — mười hai ô, và ô nào đã hết giờ thì đã tắt sẵn ở khung hình ĐẦU.
+ *
+ * Vế thứ hai là vế đáng canh. Popover không có nhịp vẽ lại nào và bản đồ thì vẽ lại mỗi giây;
+ * cái giữ cho hai chỗ ấy chạy giống nhau là độ trễ ÂM bằng đúng phần đã trôi. Bỏ dấu trừ đi
+ * thì cái vòng đầy lại từ đầu mỗi lượt vẽ — trên bản đồ là mỗi giây một lần, mà không có gì
+ * đỏ lên báo.
+ *
+ * Phép thử đọc thẳng chuỗi `animation-delay` trong style: đó chính là con số quyết.
+ */
+test('vòng đếm ngược: 12 ô, và phần đã trôi thì đã tắt sẵn', () => {
+  const html = rawText(doingRing({ ms: 60000, leftMs: 45000 }));
+  const cells = html.match(/animation:ring-out (\d+)ms steps\(1, end\) (-?\d+)ms/g) ?? [];
+  assert.equal(cells.length, 12, 'đủ mười hai ô — một mặt đồng hồ, không phải mười một');
 
-  // Khung phải rộng hơn hàng cát rộng nhất, không thì hai nắp trùng khít mép bầu và cả hình
-  // đọc thành hai tam giác chồng nhau chứ không thành một cái đồng hồ có khung.
-  const rows = glassRows(n);
-  assert.ok(rows[0].length > Math.max(...bulb), 'nắp phải nhô ra ngoài mép bầu');
-  assert.equal(rows[0], rows[rows.length - 1], 'hai nắp phải giống hệt nhau');
-  // Cổ nằm đúng giữa theo chiều dọc, và cả hàng eo là KHUNG — hai vách kính chụm vào một ô
-  // cổ. Cát chảy QUA cổ, nó không đọng ở đấy, nên một hạt nằm cổ là một hạt đếm hai lần.
-  const waist = rows[(rows.length - 1) / 2];
-  assert.equal(waist.replace(/\./g, ''), 'kkk', 'giữa eo phải là khung, không phải cát');
+  const nums = [...html.matchAll(/animation:ring-out (\d+)ms steps\(1, end\) (-?\d+)ms/g)].map((m) => [
+    Number(m[1]),
+    Number(m[2]),
+  ]);
+  const gone = 15000;
+  assert.ok(nums.every(([, lag]) => lag === -gone), 'mọi ô cùng một độ trễ ÂM bằng phần đã trôi');
+  // Mốc tắt phải TĂNG DẦN quanh vành và ô cuối rơi đúng vào lúc hết giờ.
+  for (let i = 1; i < nums.length; i += 1) assert.ok(nums[i][0] > nums[i - 1][0], 'kim phải chạy một chiều');
+  assert.equal(nums[nums.length - 1][0], 60000, 'ô cuối tắt đúng lúc việc xong');
+  // Ba ô đầu (mốc 5000/10000/15000) đã tới hạn ở khung hình đầu — hoạt hình của chúng đã
+  // chạy hết ngay từ lúc vẽ, và `forwards` giữ chúng ở trạng thái tắt.
+  assert.equal(nums.filter(([t]) => t <= gone).length, 3);
 
-  // VÁCH KÍNH: mỗi hàng lòng bầu phải có đúng hai ô khung ôm hai bên, ở MỌI mức. Đây là thứ
-  // giữ hình cái bầu từ khi lớp lót xám bị bỏ — thiếu nó thì một cái bầu rỗng chỉ còn hai
-  // cái nắp, và hình đọc thành hai vạch ngang chứ không thành cái đồng hồ.
-  for (const lit of [n, Math.floor(n / 2), 0]) {
-    for (const [y, r] of glassRows(lit).entries()) {
-      if (y === 0 || y === rows.length - 1) continue;
-      const on = [...r].map((c, i) => (c === '.' ? -1 : i)).filter((i) => i >= 0);
-      assert.equal(r[on[0]], 'k', `mức ${lit} hàng ${y}: mép trái phải là vách kính`);
-      assert.equal(r[on[on.length - 1]], 'k', `mức ${lit} hàng ${y}: mép phải phải là vách kính`);
+  assert.equal(doingRing(null), '', 'rảnh thì không có vòng nào');
+});
+
+/**
+ * KHÔNG đầu đường nào được dừng giữa bãi cỏ.
+ *
+ * Người dùng chỉ ra lỗi bằng đúng một câu: "đường bị cụt, không biết đi tiếp đến đâu". Luật
+ * chữa nó có hai vế, và bài test này canh cả hai:
+ *
+ * 1. Đoạn `open` là con phố CỐ Ý chạy ra khỏi bức tranh. Cả hai đầu phải nằm ngoài
+ *    `TOWN_BOX` — chỉ cần một đầu lọt vào trong khung là nó lại cụt, mà lần này cụt ngay
+ *    giữa khung.
+ * 2. Đoạn thường phải có CẢ HAI đầu đè lên một đoạn khác, tức là một ngã ba. Phép thử chạy
+ *    trên MẮT LƯỚI nên nó hoặc đúng hoặc sai, không có vùng xám kiểu "gần một đoạn khác".
+ *
+ * Đây là loại lỗi mà không có bài test thì không có gì đỏ lên: thêm một toà nhà thứ sáu ở một
+ * mắt lưới mới rồi quên kéo đường tới nó thì trang vẫn dựng, vẫn đẹp, và vẫn có một con đường
+ * dẫn ra chỗ không có gì.
+ */
+test('không đầu đường nào cụt: hoặc là ngã ba, hoặc là ra khỏi khung', () => {
+  // Một đoạn trên lưới luôn nằm dọc đúng một trục, nên "điểm nằm trên đoạn" là phép thử trên
+  // số nguyên: trùng trục kia, và kẹp giữa hai đầu.
+  const covers = (rd, [a, b]) => {
+    const [[a1, b1], [a2, b2]] = rd.ends;
+    const between = (v, p, q) => v >= Math.min(p, q) && v <= Math.max(p, q);
+    if (a1 === a2) return a === a1 && between(b, b1, b2);
+    if (b1 === b2) return b === b1 && between(a, a1, a2);
+    return false;
+  };
+  const outside = (rd) => rd.x + TOWN_BOX.ox < 0 && rd.x + rd.w + TOWN_BOX.ox > TOWN_BOX.w;
+  let junctions = 0;
+  for (const rd of ROADS) {
+    if (rd.open) {
+      assert.ok(outside(rd), `con phố ${JSON.stringify(rd.ends)} dừng lại trong khung — nó phải chạy ra ngoài`);
+      continue;
+    }
+    for (const end of rd.ends) {
+      assert.ok(
+        ROADS.some((other) => other !== rd && covers(other, end)),
+        `đầu ngõ ở mắt lưới (${end}) không gặp đoạn nào khác — nó cụt giữa bãi cỏ`,
+      );
+      junctions += 1;
+    }
+  }
+  assert.ok(junctions >= 8, 'ít ngã ba quá thì hai đầu bản đồ không khép lại được');
+});
+
+/**
+ * Sân giếng phải trùm được chỗ hai cái ngõ thò quá nó, và không được đội mép bản đồ lên.
+ *
+ * Vế thứ nhất: mỗi ngõ chạy quá mắt lưới của cái giếng một đoạn, và đoạn ấy phải nằm TRÊN
+ * sân chứ không nằm trên cỏ — một mẩu đường rời trên bãi cỏ đọc đúng thành "cụt", thứ vừa đi
+ * sửa. Đo đoạn thò từ chính `ROADS` chứ không chép lại `ROAD_PAD`: chép lại thì lần chỉnh
+ * `ROAD_PAD` sau bài test vẫn xanh trong khi bức tranh đã hỏng.
+ *
+ * Vế thứ hai: nó đứng ở `y = -2 × STEP.y`, còn mép trên bản đồ ở `-TOWN_BOX.oy`. Cao quá
+ * khoảng ấy là cả bản đồ phải nở ra vì một vật trang trí — đúng cái giá đã từ chối trả cho
+ * hai ô đất ngoài cùng ở lượt trước. Và chạm SÁT mép cũng đã hỏng: một vật chạm đường viền
+ * khung thì đọc thành bị cắt.
+ */
+test('sân giếng trùm được cái ngã ba sau, và không đội mép bản đồ lên', () => {
+  const well = SCENE_SPOTS.find((s) => s.kind === 'well');
+  const lanes = ROADS.filter((r) => !r.open && r.ends.some(([a, b]) => cellPos(a, b).x === well.x && cellPos(a, b).y === well.y));
+  assert.equal(lanes.length, 2, 'phải đúng hai cái ngõ khép về giếng');
+  const over = Math.max(...lanes.map((r) => Math.min(r.x + r.w - well.x, well.x - r.x)));
+  assert.ok(sizeOf(WELL).w / 2 >= over, `ngõ thò quá giếng ${over}px, sân chỉ với ra được ${sizeOf(WELL).w / 2}px`);
+  assert.ok(sizeOf(WELL).h < TOWN_BOX.oy - STEP.y * 2, 'cái giếng chạm hoặc vượt mép trên bản đồ');
+});
+
+/**
+ * Viền phải dựng TỪ hình, và phải kín.
+ *
+ * Ba tính chất, và cả ba là thứ mà một bản viền chép tay sẽ hỏng ở lần sửa hình thứ hai:
+ *
+ * 1. Nở đúng MỘT ô mỗi phía — chỗ gọi lệch lớp viền lên trên-trái đúng 4px, nên lệch con số
+ *    này là cả cái viền trượt khỏi hình.
+ * 2. Không ô viền nào đè lên ô đặc. Đè thì cái viền đang XOÁ hình chứ không bao lấy hình.
+ * 3. Mọi ô đặc nằm ở rìa đều có ô viền kề bên. Đây là vế nói "kín" — một chỗ hở duy nhất
+ *    cũng đủ cho cái hình rò ra nền, mà chỗ hở thì mắt chỉ thấy khi đã đứng sai nền.
+ */
+test('viền dựng từ hình: nở một ô, không đè lên hình, và kín', () => {
+  const art = ['.##.', '####', '#..#', '.##.'];
+  const edge = outlineRows(art);
+  assert.equal(edge.length, art.length + 2, 'viền phải cao hơn hình đúng hai hàng');
+  assert.equal(edge[0].length, art[0].length + 2, 'viền phải rộng hơn hình đúng hai cột');
+  const solid = (x, y) => ((art[y] ?? '')[x] ?? '.') !== '.';
+  const edged = (x, y) => (edge[y + 1] ?? '')[x + 1] === 'o';
+  const near = (x, y, f) => [-1, 0, 1].some((dy) => [-1, 0, 1].some((dx) => f(x + dx, y + dy)));
+  for (let y = 0; y < art.length; y += 1) {
+    for (let x = 0; x < art[y].length; x += 1) {
+      if (solid(x, y)) {
+        assert.ok(!edged(x, y), `ô đặc (${x}, ${y}) bị viền đè lên`);
+        if (near(x, y, (a, b) => !solid(a, b))) {
+          assert.ok(near(x, y, edged), `ô rìa (${x}, ${y}) không có ô viền nào kề bên`);
+        }
+      }
     }
   }
 });
 
 /**
- * Cát BẢO TOÀN ở mọi mức — đây là chính cái lỗi đã nhìn thấy trên màn hình, hai đời trước.
+ * Cái khay VẼ ĐÚNG số đĩa mà nó khai, và nó khai NĂM.
  *
- * Bản thanh đời đầu vẽ phần chưa sáng bằng `--text-3` ở 24% trên ô rộng 5px, tức gần như
- * tàng hình: ở mức 79% chỉ còn 12px trên 75px, và cái thanh trông như vừa vặn hết chỗ chứ
- * không như còn hai phần. Mất phần chưa sáng là mất MẪU SỐ, mà không có mẫu số thì con số
- * không đọc được — chỉ còn một vệt tím dài ngắn tuỳ lúc.
+ * Chiều suy đã đảo ở lượt 22 — xem `DISHES` trong `lib/pet.js`. Trước đó số đĩa là hệ quả của
+ * `FULL_MS` và phép kiểm này canh đúng chuyện đó; giờ số đĩa là hằng của giao diện, nên chỗ
+ * đáng canh cũng đổi: **hình vẽ ra phải khớp với con số đã khai.** `trayRows` với `hungerTray`
+ * là hai đường khác nhau tới cùng một cái khay, và chúng trôi khỏi nhau được.
  *
- * Đồng hồ cát sửa chuyện ấy theo cách khoẻ hơn một cái vành mờ vẽ thêm cho đủ: mẫu số CHÍNH
- * LÀ đống cát ở bầu dưới. Nên phép kiểm đếm tổng số hạt, và tổng ấy phải là hằng.
- *
- * Từ lượt này hai đống cát mang HAI class khác nhau (`sand` cho phần còn lại, `spent` cho
- * phần đã chảy), nên tổng phải cộng cả hai — và phép kiểm dưới đây canh luôn cái ranh giới
- * ấy: `sand` một mình phải đúng bằng số hạt còn ở bầu trên. Đếm nhầm một class là cái thanh
- * lại đọc thành đầy trong lúc nó đã cạn.
+ * Con số 5 chốt thẳng ở đây, cố ý: nó là một quyết định giao diện (người dùng xin đúng con số
+ * ấy, và năm là ngưỡng đếm-mà-không-phải-đếm), không phải hệ quả của một hằng số nào. Một
+ * quyết định thì phép kiểm được phép gọi tên nó.
  */
-test('đồng hồ cát không làm mất hạt nào, kể cả lúc gần cạn', () => {
-  const n = Math.round(FOCUS_MS / FOCUS_CELL_MS);
-  const draw = (focus) => rawText(focusGlass({ focus, focusMood: focusMoodOf(focus) }));
+test('khay vẽ đúng NĂM cái đĩa, đúng bằng con số nó khai', () => {
+  assert.equal(DISHES, 5, 'khay là năm đĩa — xem khối chú thích của DISHES');
+  const dishes = DISHES;
+  const rows = trayRows(dishes, dishes);
+
+  assert.equal(rows.length, 4, 'một cái đĩa cao 4 hàng, cả khay cũng thế');
+  assert.equal(
+    rows[0].length,
+    dishes * 4 + (dishes - 1),
+    'bề rộng phải suy từ số món: mỗi món 4 ô, giữa hai món một ô hở',
+  );
+  // Số món vẽ ra phải đúng bằng số món khai — đếm bằng cách chia hàng theo ô hở.
+  const groups = rows[3].split('.');
+  assert.equal(groups.length, dishes, `phải có đúng ${dishes} cái bát`);
+  assert.ok(groups.every((g) => g === 'pppp'), 'mỗi cái bát rộng đúng 4 ô');
+  // Cái bát phải vẽ Y HỆT nhau ở hai trạng thái, không thì mẫu số co lại theo mức.
+  const bowl = (rows2) => rows2.map((r) => [...r].map((c) => (c === 'p' ? 'p' : '.')).join(''));
+  assert.deepEqual(bowl(trayRows(1, 1)), bowl(trayRows(0, 1)), 'bát đầy và bát rỗng phải cùng một cái bát');
+});
+
+/**
+ * Cái ĐĨA là mẫu số, và nó phải ở lại NGUYÊN VẸN ở mọi mức.
+ *
+ * Đây chính là cái lỗi đã nhìn thấy trên màn hình hai đời trước: cái thanh mười ô vẽ phần
+ * chưa sáng bằng `--text-3` ở 24%, tức gần như tàng hình trên theme sáng — mất phần chưa
+ * sáng là mất mẫu số, mà không có mẫu số thì con số không đọc được, chỉ còn một vệt lục dài
+ * ngắn tuỳ lúc.
+ *
+ * Khay sửa chuyện ấy bằng cách cho mẫu số một hình THẬT: cái đĩa rỗng rộng đúng bằng cái đĩa
+ * đầy. Nên phép kiểm đếm số ô đĩa, và số ấy phải là hằng ở mọi mức.
+ */
+test('khay không làm mất cái đĩa nào, kể cả lúc cạn sạch', () => {
+  const dishes = DISHES;
+  const draw = (full) => rawText(hungerTray({ full, mood: moodOf(full) }));
   const count = (s, re) => (s.match(re) ?? []).length;
-  const sand = (s) => count(s, /px sand/g) + count(s, /px spent/g);
-  // Số hạt còn ở bầu TRÊN, đọc từ chính lưới: hàng nào nằm trên cái cổ thì thuộc bầu trên.
-  const upper = (focus) => {
-    const rows = glassRows(Math.max(1, Math.round(focus * n)));
-    return rows
-      .slice(0, (rows.length - 1) / 2)
-      .join('')
-      .split('s').length - 1;
-  };
 
+  // Số ô của MỘT cái bát đọc từ chính lưới bát rỗng — sửa hình là phép kiểm đi theo.
+  const perBowl = trayRows(0, 1).join('').split('p').length - 1;
   for (const f of [1, 0.79, 0.5, 0.11, 0.02, 0]) {
-    assert.equal(sand(draw(f)), n, `mức ${f}: cát bốc hơi mất — tổng phải luôn là ${n}`);
+    assert.equal(count(draw(f), /px plate/g), dishes * perBowl, `mức ${f}: cái bát biến mất mất rồi`);
   }
 
-  assert.equal(upper(1), n, 'đầy thì cát ở cả trên bầu trên');
-  assert.equal(glassRows(0).slice(0, 4).join('').includes('s'), false, 'cạn hẳn thì bầu trên phải trống');
-  assert.ok(upper(0.02) >= 1, 'còn một chút thì vẫn phải sót một hạt ở bầu trên');
-  assert.ok(upper(0.5) < n && upper(0.5) > 0, 'nửa chừng thì cát phải chia hai bầu');
+  // Phần CÓ MÓN phải đúng bằng phần còn lại. Số ô của MỘT món đọc từ chính cái lưới một
+  // món, không gõ tay — sửa hình cái đĩa là phép kiểm đi theo.
+  const perDish = trayRows(1, 1).join('').split('f').length - 1;
+  assert.equal(count(draw(1), /px food/g), dishes * perDish, 'đầy thì mọi đĩa đều có món');
+  assert.equal(count(draw(0), /px food/g), 0, 'cạn sạch thì không còn món nào');
+  assert.ok(count(draw(0.02), /px food/g) >= perDish, 'còn một chút thì vẫn phải sót đúng một món');
+  const half = count(draw(0.5), /px food/g);
+  assert.ok(half > 0 && half < dishes * perDish, 'nửa chừng thì khay phải vơi một nửa');
+});
 
-  // Phần CÓ SẮC phải đúng bằng phần còn lại, không bằng tổng: đây là cả nội dung của phép
-  // sửa lượt này. Vẽ cả hai đống bằng một class là quay về ca cũ — hai tam giác giống hệt
-  // nhau, và người đọc phải so tỉ lệ trên một hình cao 36px.
-  for (const f of [1, 0.5, 0.11]) {
-    assert.equal(count(draw(f), /px sand/g), upper(f), `mức ${f}: phần có sắc phải là phần CÒN LẠI`);
+/**
+ * Mặt đồng hồ: vành khép KÍN, và phần đã tiêu vẫn ở lại làm mẫu số.
+ *
+ * Hai tính chất, và cả hai là thứ đổi hình dễ làm gãy nhất:
+ *
+ * 1. **Vành là một vòng LIỀN.** Mỗi ô của vành phải kề ô trước nó theo đúng thứ tự khai —
+ *    lệch một toạ độ là cái vành hở ra một chỗ, mà một vòng tròn hở thì thôi không còn là
+ *    vòng tròn. Phép kiểm chạy trên chính bảng toạ độ nên nó bắt được lỗi trước khi ai kịp
+ *    mở trang.
+ * 2. **Phần đã tiêu KHÔNG biến mất.** Nó là mẫu số, đúng vai cái đĩa rỗng bên khay — thiếu
+ *    nó thì cái cung có màu lửng lơ giữa khoảng trống và không ai đọc được "còn bao nhiêu
+ *    trên bao nhiêu".
+ */
+test('mặt đồng hồ: vành khép kín, và phần đã tiêu vẫn ở lại làm mẫu số', () => {
+  const cells = (rows, ch) => rows.join('').split(ch).length - 1;
+  const full = dialRows(16);
+  const n = cells(full, 'w');
+
+  assert.equal(full.length, full[0].length, 'mặt đồng hồ phải VUÔNG — một vành 7×6 là một hình bầu dục');
+  assert.ok(n >= 12, `vành ${n} ô thì quá thô để đọc ra một vòng tròn`);
+
+  // Vành liền: mọi ô kề nhau theo đúng thứ tự vẽ, kể cả cặp cuối–đầu (nó là một VÒNG).
+  const on = [];
+  full.forEach((r, y) => [...r].forEach((c, x) => { if (c === 'w') on.push([x, y]); }));
+  assert.equal(on.length, n, 'đầy thì cả vành phải có màu, không sót ô nào');
+
+  for (const lit of [n, 12, 8, 1, 0]) {
+    const rows = dialRows(lit);
+    assert.equal(rows.length, full.length, `mức ${lit}: khung phải giữ nguyên cỡ`);
+    assert.equal(cells(rows, 'w'), lit, `mức ${lit}: số ô có màu phải bằng số ô còn lại`);
+    assert.equal(cells(rows, 'd') >= n - lit, true, `mức ${lit}: phần đã tiêu phải ở lại làm mẫu số`);
   }
-  assert.equal(count(draw(1), /px spent/g), 0, 'đầy thì chưa có hạt nào đã chảy');
-  assert.equal(count(draw(0), /px sand/g), 0, 'cạn hẳn thì không còn hạt nào có sắc');
+});
 
-  // Sổ đời cũ chưa có trường này: không vẽ gì cả, chứ không vẽ một cái đồng hồ rỗng.
-  assert.equal(rawText(focusGlass({})), '');
+/**
+ * Chấm giữa CHÁY hay TẮT là một kênh nhị phân, và nó phải khớp với `focusMood`.
+ *
+ * Đây là kênh mà đồng hồ cát không có và là lý do bỏ nó: nó BÃO HOÀ — ngồi 91 phút và ngồi
+ * 300 phút cho ra cùng một cái bầu rỗng, đúng ở quãng lời nhắc đang kêu. Mặt đồng hồ vẫn bão
+ * hoà y như thế (`focus` bị kẹp về 0), nên chính cái chấm giữa là thứ gánh câu trả lời — mất
+ * nó là quay về đúng cái lỗi đã bỏ hai đời hình để chữa.
+ */
+test('mặt đồng hồ: hết nhịp thì chấm giữa tắt và có khói', () => {
+  const draw = (focus) => rawText(focusDial({ focus, focusMood: focusMoodOf(focus) }));
+  const has = (s, cls) => new RegExp(`px ${cls}`).test(s);
+
+  for (const f of [1, 0.5, 0.05]) {
+    assert.ok(has(draw(f), 'flame'), `mức ${f}: còn nhịp thì chấm giữa phải còn cháy`);
+    assert.ok(!has(draw(f), 'smoke'), `mức ${f}: chưa hết nhịp thì chưa có khói`);
+  }
+  assert.ok(!has(draw(0), 'flame'), 'hết nhịp thì chấm giữa phải TẮT');
+  assert.ok(has(draw(0), 'smoke'), 'hết nhịp thì phải có khói — đó là kênh thay cho chấm cháy');
+  assert.ok(!has(draw(0), 'wax'), 'hết nhịp thì không còn ô nào của vành có màu');
+
+  // Sổ đời cũ chưa có trường này: không vẽ gì cả, chứ không vẽ một mặt đồng hồ rỗng.
+  assert.equal(rawText(focusDial({})), '');
 });
 
 /**
@@ -1187,21 +1854,565 @@ test('đồng hồ cát không làm mất hạt nào, kể cả lúc gần cạn
  * thành "cùng một thứ ở hai cỡ", nên phần phân biệt rơi hết về màu — đúng thứ mà luật theme
  * daltonized của dự án cấm ở mọi chỗ khác.
  *
- * Phép kiểm này canh cái ranh giới ấy ở chỗ nó không tự trôi được: hai hàm phải sinh ra hai
- * loại phần tử khác nhau. Cỡ nhỏ và cỡ to của cùng một hình thì vẫn là một loại.
+ * Từ lượt mặt đồng hồ thì phép kiểm không còn hỏi "một cái nằm, một cái đứng" được nữa: cái
+ * đồng hồ VUÔNG. Nó hỏi thứ bền hơn — **một cái là dãy vật RỜI, một cái là đường KHÉP KÍN**
+ * — bằng cách đếm số hình chữ nhật bao ngoài: cái khay dài gấp nhiều lần bề cao, cái đồng hồ
+ * thì vuông. Hai tỉ lệ ấy không có cỡ nào làm chúng lẫn vào nhau.
  */
 test('độ no và tập trung không còn là hai cái thanh giống nhau', () => {
   const pet = { full: 0.5, mood: 'fine', focus: 0.5, focusMood: 'sharp' };
-  const bar = rawText(hungerBar(pet));
-  const glass = rawText(focusGlass(pet));
+  const tray = rawText(hungerTray(pet));
+  const dial = rawText(focusDial(pet));
 
-  assert.match(bar, /class="pet-bar/, 'độ no vẫn là cái thanh');
-  assert.doesNotMatch(bar, /pet-glass/);
-  assert.match(glass, /class="pet-glass/, 'tập trung là cái đồng hồ cát');
-  assert.doesNotMatch(glass, /pet-bar/, 'đồng hồ cát mà mượn lại class của thanh là quay về ca cũ');
+  assert.match(tray, /class="pet-tray/, 'độ no là cái khay');
+  assert.doesNotMatch(tray, /pet-dial/);
+  assert.match(dial, /class="pet-dial/, 'tập trung là mặt đồng hồ');
+  assert.doesNotMatch(dial, /pet-tray/, 'mặt đồng hồ mà mượn lại class của khay là quay về ca cũ');
 
-  // Và nó phải ĐỨNG, không nằm: một cái thanh nằm ngang cạnh một cái hình cũng nằm ngang thì
-  // kênh "khác loại" chỉ còn là đường viền.
-  const [, w, h] = /width:(\d+)px;height:(\d+)px/.exec(glass) ?? [];
-  assert.ok(Number(h) > Number(w), `đồng hồ cát phải cao hơn rộng, đang là ${w}×${h}`);
+  const box = (s) => (/width:(\d+)px;height:(\d+)px/.exec(s) ?? []).slice(1).map(Number);
+  const [tw, th] = box(tray);
+  const [dw, dh] = box(dial);
+  assert.ok(tw >= th * 3, `khay phải là một DẢI dài, đang là ${tw}×${th}`);
+  assert.equal(dw, dh, `mặt đồng hồ phải vuông, đang là ${dw}×${dh}`);
+  // Nó KHÔNG được cao hơn cây nến cũ: 36px là trần mà dải popover chịu được.
+  assert.ok(dh <= 36, `mặt đồng hồ cao ${dh}px — quá 36px là dải popover đội lên`);
+});
+
+/* ── Lượt 10: máy trạng thái, hai tư thế mới, ba nét ────────────────────────── */
+
+/**
+ * Thứ hạng trạng thái phải KIỂM ĐƯỢC, vì trước lượt này nó không tồn tại thành một vật.
+ *
+ * Nó nằm trong thứ tự mấy dòng `if` của `moodOfScene` bên popover, còn bản đồ thị trấn thì
+ * đọc ba nguồn theo một luật khác — hai bề mặt, hai luật, không ai viết ra luật nào. Phép
+ * kiểm này khoá đúng những ca mà hai nguồn CÃI NHAU, vì đó là những ca duy nhất mà thứ hạng
+ * có nghĩa; một trạng thái đơn lẻ thì luật nào cũng cho ra cùng đáp án.
+ */
+test('thứ hạng trạng thái quản gia: việc đang làm > đói lả > kiệt > đói > hết nhịp', () => {
+  const p = (o) => ({ on: true, mood: 'fine', focusMood: 'sharp', doing: null, ...o });
+
+  assert.equal(stateOf(p({})), 'well');
+  // Việc đang làm thắng MỌI thứ, kể cả đói lả cộng kiệt sức cùng lúc: nó là thứ người dùng
+  // vừa bấm, và nó kết thúc trong một phút.
+  assert.equal(stateOf(p({ doing: { kind: 'move', id: 'water' }, mood: 'starving', focusMood: 'spent' })), 'busy');
+  // Đói lả trên kiệt sức. Lý do là TẦN SUẤT — xem chú thích của `stateOf`.
+  assert.equal(stateOf(p({ mood: 'starving', focusMood: 'spent' })), 'starving');
+  assert.equal(stateOf(p({ focusMood: 'spent' })), 'spent');
+  // Đói (chưa lả) vẫn đứng trên hết-nhịp, cùng luật thứ tự với hai bậc nặng ngay trên.
+  assert.equal(stateOf(p({ mood: 'hungry', focusMood: 'dip' })), 'hungry');
+  assert.equal(stateOf(p({ focusMood: 'dip' })), 'dip');
+  // No căng không phải một trạng thái đáng vẽ riêng — nó chỉ là "vừa ăn xong".
+  assert.equal(stateOf(p({ mood: 'stuffed' })), 'well');
+  // Trò chơi tắt thì không có con vật nào để nói về.
+  assert.equal(stateOf(p({ on: false, mood: 'starving' })), 'well');
+});
+
+/**
+ * Mỗi trạng thái phải cho ra một CÁCH VẼ khác nhau — đó là toàn bộ việc của lượt này.
+ *
+ * Chỗ hỏng nó sửa: `starving` và `spent` từng cùng ra một hình ngủ gật, tức hai chuyện sửa
+ * bằng hai cách hoàn toàn khác nhau (bấm mua một bát phở / đứng dậy khỏi ghế) nói chung một
+ * câu. Phép kiểm khoá đúng chỗ đó và không khoá thêm gì: nó không nói tư thế nào phải là
+ * dáng gì, chỉ nói hai trạng thái ấy không được trùng nhau.
+ */
+test('mỗi trạng thái quản gia có một cách vẽ riêng', () => {
+  const look = (o) => butlerLook({ on: true, mood: 'fine', focusMood: 'sharp', doing: null, ...o });
+  const key = (l) => `${l.pose}/${l.eyes}/${l.mark}`;
+
+  const starving = look({ mood: 'starving' });
+  const spent = look({ focusMood: 'spent' });
+  assert.notEqual(key(starving), key(spent), 'đói lả và kiệt sức lại vẽ giống nhau — đúng ca lượt này sinh ra để sửa');
+
+  assert.equal(spent.eyes, 'shut', 'kiệt sức vẫn là ngủ gật');
+  assert.equal(starving.eyes, 'open', 'đói lả thì THỨC, khác hẳn ngủ gật');
+  assert.equal(look({ mood: 'hungry' }).mark, 'pang');
+  assert.equal(look({ focusMood: 'dip' }).mark, 'sweat');
+  assert.equal(look({}).mark, null, 'không có gì để nói thì không được vẽ thêm nét nào');
+
+  // Dáng mừng là một SỰ KIỆN, không phải một trạng thái đọc từ sổ — nên nó thắng cả `busy`.
+  // Không thắng thì nó không bao giờ được thấy: mua đồ ăn xong `doing` bật lên ngay trong
+  // cùng một lượt trả lời.
+  const bought = butlerLook({ on: true, mood: 'fine', focusMood: 'sharp', doing: { kind: 'food', id: 'pho' } }, { cheer: true });
+  assert.equal(bought.pose, 'cheer');
+});
+
+/**
+ * Hai tư thế mới phải phân biệt được bằng ĐƯỜNG BAO, không bằng chi tiết.
+ *
+ * Ở lưới 4px thì một cổ tay xoay hay một khớp gối co là bốn pixel không ai đọc ra — chỉ
+ * đường bao còn nói được (xem chú thích của `POSE`). Phép kiểm đo đúng hai đầu của đường
+ * bao, hai chỗ mắt đọc trước nhất, và nó đo bằng SỐ Ô chứ không so chuỗi: sửa vài pixel ở
+ * giữa thân thì nó phải im, còn làm phẳng cái vai hay chụm lại hai chân thì nó phải đỏ.
+ */
+test('slump và cheer khác stand ở hai đầu đường bao', () => {
+  const w = (rows, y) => [...rows[y]].filter((c) => c !== '.').length;
+  const stand = butlerRows('stand').slice(9);
+  const slump = butlerRows('slump').slice(9);
+  const cheer = butlerRows('cheer').slice(9);
+
+  // Đỉnh: vai của `slump` đã tụt xuống một hàng, nên hàng đầu chỉ còn cái cổ.
+  assert.ok(w(slump, 0) < w(stand, 0), 'slump phải hẹp hơn stand ở hàng vai');
+  // Đáy: `stand` đứng hai chân tách, `slump` chụm lại thành một khối liền.
+  assert.match(stand.at(-1), /#\.+#/, 'stand vốn phải có khe giữa hai chân');
+  assert.doesNotMatch(slump.at(-1), /#\.+#/, 'slump phải chụm chân — đó là nửa dưới của cái đường bao');
+  // `cheer` thì ngược lại: hai bàn chân hất RA NGOÀI, rộng hơn cả thân.
+  assert.ok(w(cheer, 6) >= w(stand, 6), 'cheer phải xoè chân rộng hơn stand');
+  assert.ok(cheer.at(-1).indexOf('#') < stand.at(-1).indexOf('#'), 'bàn chân cheer phải hất ra ngoài trục đứng');
+
+  // Cái đầu là cái mark của app và KHÔNG ai được vẽ lại nó — chín hàng đầu phải y hệt nhau
+  // ở mọi tư thế. Đây là ràng buộc nặng nhất của cả bộ sprite.
+  for (const pose of ['stand', 'walk', 'up', 'hold', 'slump', 'cheer']) {
+    assert.deepEqual(butlerRows(pose).slice(0, 9), butlerRows('stand').slice(0, 9), `tư thế ${pose} đã đụng vào cái đầu`);
+  }
+});
+
+/**
+ * Nét bụng kêu phải BÁM THEO tư thế, không đứng ở một toạ độ cố định.
+ *
+ * Cùng cái lỗi mà `butlerHand` đã sửa cho món đồ đang cầm: một cặp toạ độ chép sang chỗ khác
+ * là bản thứ hai của một con số, và lần đổi tư thế sau là cái nét lơ lửng cách cái bụng hai
+ * ô.
+ *
+ * Phép kiểm so với chính MẤY HÀNG PIXEL chứ không so hai tư thế với nhau, và đó là một chỗ
+ * bản đầu viết sai rồi bị chính nó bắt: `slump` và `stand` có hàng bụng y hệt (`stand` thu
+ * tay ở hàng 4, không phải hàng 3), nên đòi hai tư thế ấy ra hai toạ độ khác nhau là đòi
+ * một khác biệt không có thật. Cái đáng khoá là "toạ độ SUY RA từ hình", và cách duy nhất
+ * kiểm được điều đó là tính lại nó từ hình.
+ */
+test('nét trạng thái neo vào thân của tư thế đang vẽ', () => {
+  const at = (mark, pose) => /left:(\d+)px;top:(\d+)px/.exec(rawText(markArt(mark, pose)))?.slice(1).map(Number);
+  // Hàng bụng là hàng 3 của phần THÂN, tức hàng 12 của cả sprite (đầu chiếm 9 hàng).
+  const belly = (pose) => [(butlerRows(pose)[12].lastIndexOf('#') + 1) * 4, 12 * 4];
+
+  assert.equal(rawText(markArt(null, 'stand')), '', 'không có nét thì không vẽ gì');
+  for (const pose of ['stand', 'walk', 'up', 'hold', 'slump', 'cheer']) {
+    assert.deepEqual(at('pang', pose), belly(pose), `nét bụng kêu ở tư thế ${pose} không suy từ hình`);
+  }
+  // Và phải có ít nhất một cặp tư thế cho ra hai chỗ khác nhau, nếu không thì phép suy ở
+  // trên vẫn đúng mà vô nghĩa — một hằng số cũng thoả.
+  assert.notDeepEqual(at('pang', 'stand'), at('pang', 'hold'), 'mọi tư thế cho ra cùng một chỗ — phép neo không thật sự động');
+
+  // Giọt mồ hôi bám THÁI DƯƠNG, mà cái đầu thì cố định ở mọi tư thế — nên nó phải đứng yên.
+  assert.deepEqual(at('sweat', 'stand'), at('sweat', 'slump'), 'giọt mồ hôi bám đầu, mà đầu thì không đổi');
+  // Hai tia mừng bay quanh cả người nên chỗ đứng do CSS rải, không do sprite.
+  assert.equal(rawText(markArt('spark', 'cheer')).match(/pet-mark mark-spark/g)?.length, 2, 'phải là HAI tia, một tia đọc thành đèn báo');
+});
+
+/* ── Lượt 14: cơn đói có hậu quả, và quản gia ngồi vào bàn ─────────────────── */
+
+/**
+ * Cơn đói phải NÓI được, và nó phải nói ở đúng cái cửa của nó.
+ *
+ * Người dùng chỉ ra chỗ trống: "gợi ý nổi lên khi đói hoặc thiếu năng lượng tôi chưa thấy
+ * gì khác biệt ngoài thanh năng lượng cạn đi cả". Đo lại thì đúng — `nudgeOf` đời trước chỉ
+ * đọc `focusMood`, nên một quản gia đói lả mà đầu óc còn tỉnh thì cả màn hình im lặng.
+ *
+ * Ba vế, và mỗi vế là một cách hỏng riêng:
+ *
+ * 1. Đói lả thì phải có câu, kể cả khi nhịp ngồi đang tốt.
+ * 2. Nó phải THẮNG câu về nhịp ngồi — cùng thứ hạng mà `stateOf` đã dựng, vì việc cần làm
+ *    là ăn chứ không phải đứng dậy đi lại.
+ * 3. Cái nút phải dẫn về QUÁN ĂN. Một câu "đói lả rồi" kèm cái nút đi ra công viên là lời
+ *    khuyên dẫn nhầm chỗ, tệ hơn hẳn không có nút nào.
+ */
+test('đói lả thì có lời nhắc, và nó dẫn về quán ăn chứ không ra công viên', () => {
+  const noon = new Date(2026, 7, 6, 10, 0);
+  assert.equal(nudgeOf({ mood: 'fine', focusMood: 'sharp', satMin: 10 }, noon), null, 'ổn cả thì im');
+
+  const starving = nudgeOf({ mood: 'starving', focusMood: 'sharp', satMin: 10 }, noon);
+  assert.ok(starving, 'đói lả mà nhịp còn tốt thì vẫn phải có câu — đây là chỗ đời trước câm');
+  assert.equal(starving.go, 'food', 'cửa của cơn đói là quán ăn');
+
+  const both = nudgeOf({ mood: 'starving', focusMood: 'spent', satMin: 120 }, noon);
+  assert.equal(both.go, 'food', 'đói lả phải thắng hết nhịp — cùng thứ hạng của stateOf');
+
+  const spent = nudgeOf({ mood: 'fine', focusMood: 'spent', satMin: 120 }, noon);
+  assert.equal(spent.go, 'park', 'hết nhịp thì vẫn dẫn ra công viên');
+
+  // `hungry` KHÔNG nhắc: nó là ngưỡng 35%, tức hơn một phần ba thời gian trong ngày, và một
+  // lời nhắc thường trực là một dòng chữ người ta học cách không nhìn.
+  assert.equal(nudgeOf({ mood: 'hungry', focusMood: 'sharp', satMin: 10 }, noon), null);
+});
+
+/**
+ * CƠN ĐÓI KHÔNG ĐƯỢC ĐỤNG VÀO VÍ — bài test canh chiều ngược lại của lượt trước.
+ *
+ * Lượt 14 dựng một cửa ở `buy`: đói lả thì không bán đồ trang trí. Người dùng bác ngay ở
+ * lượt sau — "đừng đánh vào kinh tế" — và lý do sâu hơn một khẩu vị: ví ở đây ĐỌC RA hoá đơn
+ * thật (`RATE` = 1), nên mọi cái van do trò chơi vặn vào chỗ tiêu tiền đều dạy người đọc rằng
+ * con số ấy không phải chi tiêu thật.
+ *
+ * Nên bài test đảo chiều: đói lả tới đâu thì `buy` cũng chỉ được từ chối vì mấy lý do CÓ THẬT
+ * — không đủ xu, đang bận, đã có rồi. Viết nó ra chứ không chỉ xoá bài cũ đi: một cửa đã gỡ
+ * mà không có gì canh là một cửa sẽ được dựng lại ở lượt sau.
+ */
+test('đói lả không khoá được cái ví — mọi gian hàng vẫn mở', () => {
+  const at = Date.UTC(2026, 7, 6, 9, 0);
+  const decor = Object.keys(ITEMS).find((k) => ITEMS[k].kind === 'decor');
+  const food = Object.keys(ITEMS).find((k) => ITEMS[k].kind === 'food');
+  const led = (fullMs) => ({
+    ...emptyLedger(),
+    coins: 9999,
+    fedAt: new Date(at - fullMs).toISOString(),
+    restedAt: new Date(at).toISOString(),
+  });
+
+  const lean = led(FULL_MS * 0.95); // no còn 5% → đói lả
+  assert.equal(moodOf(fullnessOf(lean, at)), 'starving', 'mốc thử phải thật sự là đói lả');
+  assert.equal(buy(lean, decor, at).error, null, 'đói lả KHÔNG được là lý do từ chối một cú mua');
+  assert.equal(buy(lean, food, at).error, null, 'quán ăn thì đương nhiên vẫn mở');
+
+  // Còn cái đáng từ chối thì vẫn phải từ chối: gỡ hình phạt không phải gỡ mọi cái cửa.
+  const broke = { ...lean, coins: 0 };
+  assert.equal(buy(broke, decor, at).error, 'không đủ xu');
+});
+
+/**
+ * Hậu quả của cơn đói dọn sang đâu — hai chỗ, và cả hai đo được từ chuỗi vẽ ra.
+ *
+ * 1. BỨC TRANH: `starving` có nét RIÊNG (bong bóng nghĩ) chứ không dùng chung ba vạch bụng
+ *    kêu với `hungry` nữa. Đây là chỗ sửa một lỗi mà chính bảng `LOOK` đang cấm bằng chữ.
+ * 2. DẢI BÁO ĐỘNG: lời nhắc mang thêm một BẬC, và bậc to chỉ bật ở hai trạng thái mà bức
+ *    tranh đã vẽ ra một người ngừng làm việc.
+ */
+test('đói lả có nét riêng và có bậc báo động riêng', () => {
+  const noon = new Date(2026, 7, 6, 10, 0);
+  const markOf = (pet) => butlerLook(pet).mark;
+
+  assert.equal(markOf({ mood: 'starving', focusMood: 'sharp' }), 'crave');
+  assert.equal(markOf({ mood: 'hungry', focusMood: 'sharp' }), 'pang');
+  assert.notEqual(
+    markOf({ mood: 'starving', focusMood: 'sharp' }),
+    markOf({ mood: 'hungry', focusMood: 'sharp' }),
+    'hai bậc đói không được dùng chung một nét — luật ghi ngay trên bảng LOOK',
+  );
+
+  const lv = (pet) => nudgeOf(pet, noon)?.level;
+  assert.equal(lv({ mood: 'starving', focusMood: 'sharp', satMin: 10 }), 'urge');
+  assert.equal(lv({ mood: 'fine', focusMood: 'spent', satMin: 120 }), 'urge');
+  assert.equal(lv({ mood: 'fine', focusMood: 'dip', satMin: 70 }), 'hint',
+    'sắp hết nhịp thì vẫn ngồi gõ được — kêu to ở đây là kêu to gần như cả ngày');
+});
+
+/**
+ * Quản gia nói được về MỌI trạng thái mình có thể ở trong.
+ *
+ * Bong bóng thoại đọc `butlerLook(...).state`, mà bảng `LOOK` thì còn thêm món; thiếu một
+ * khoá là một bong bóng trống ở đúng lúc người ta vừa bấm vào để hỏi. Bài test đi qua cả sáu
+ * trạng thái của `stateOf` cộng hai ca ngoài sổ (`cheer`, trò chơi tắt).
+ */
+test('bấm vào quản gia thì trạng thái nào cũng có câu trả lời', () => {
+  const pets = [
+    { mood: 'fine', focusMood: 'sharp' },
+    { mood: 'hungry', focusMood: 'sharp' },
+    { mood: 'starving', focusMood: 'sharp' },
+    { mood: 'fine', focusMood: 'dip' },
+    { mood: 'fine', focusMood: 'spent' },
+    { mood: 'fine', focusMood: 'sharp', doing: { kind: 'move', id: 'water', ms: 60000, leftMs: 30000 } },
+  ];
+  for (const p of pets) {
+    const say = butlerSays({ on: true, ...p });
+    assert.ok(say && !say.startsWith('pet.says.'), `thiếu câu cho ${butlerLook({ on: true, ...p }).state}`);
+  }
+  assert.ok(!butlerSays({ on: true, mood: 'fine', focusMood: 'sharp' }, { cheer: true }).startsWith('pet.says.'));
+  assert.ok(!butlerSays({ on: false }).startsWith('pet.says.'), 'trò chơi tắt cũng phải có câu');
+});
+
+/**
+ * Cái ví KHÔNG được lọt vào sổ trạng thái của popover.
+ *
+ * Đó là toàn bộ phép gộp của lượt mười bảy: hai chỉ số vào trong tranh, cái ví ở lại ngoài
+ * tranh với một cái tên. Lượt 18 đổi cách vẽ cái sổ — chữ có màu thay cho khay và mặt đồng hồ
+ * — nhưng luật thì không đổi, nên phép kiểm bám vào `statWords`, chỗ mới của nó.
+ *
+ * Cái ba ô đầy đủ thì vẫn phải còn nguyên ở màn Cửa hàng: ở đó cái ví không phải một CỬA,
+ * người dùng đã đứng trong tiệm rồi.
+ */
+test('sổ trạng thái trên popover chỉ có no và nhịp, không có ví', () => {
+  const pet = { on: true, mood: 'fine', full: 0.7, fullMs: FULL_MS, focus: 0.7, focusMood: 'sharp', satMin: 20, coins: 12.5 };
+  assert.doesNotMatch(rawText(statWords(pet, 'b')), /pet-wallet/, 'ví lọt vào sổ trạng thái');
+  assert.match(rawText(statCells(pet)), /pet-wallet/, 'màn Cửa hàng vẫn phải có đủ ba ô');
+});
+
+/**
+ * NÓI và NGHĨ — hai giọng, và ranh giới giữa chúng phải là ĐÚNG một cửa.
+ *
+ * Người dùng xin "nói chỉ khi thực sự có gì quan trọng, còn lại thì thỉnh thoảng nghĩ".
+ * Cái dễ sai ở đây không phải chọn trạng thái nào, mà là để hai giọng cùng bật một lúc:
+ * lúc ấy popover có hai bong bóng chồng nhau ở cùng nửa phải bầu trời, và không ai thấy
+ * cho tới khi đúng cái trạng thái ấy xảy ra thật — tức là lúc người dùng đang đói.
+ *
+ * Nên phép kiểm là một phép LOẠI TRỪ, không phải hai phép kiểm rời.
+ */
+test('nói và nghĩ loại trừ nhau, và chỉ hai trạng thái gấp mới được nói', () => {
+  const cases = [
+    [{ mood: 'fine', focusMood: 'sharp' }, false],
+    [{ mood: 'hungry', focusMood: 'sharp' }, false],
+    [{ mood: 'fine', focusMood: 'dip' }, false],
+    [{ mood: 'starving', focusMood: 'sharp' }, true],
+    [{ mood: 'fine', focusMood: 'spent' }, true],
+    // Đang dở việc thì `stateOf` trả `busy` và nó THẮNG cả đói lả — nên kể cả lúc gần kiệt
+    // anh ta vẫn chỉ nghĩ. Đúng: một người vừa bấm ăn thì việc cần nói đã đang được làm.
+    [{ mood: 'starving', focusMood: 'spent', doing: { kind: 'food', id: 'pho', ms: 6e4, leftMs: 3e4 } }, false],
+  ];
+  for (const [p, loud] of cases) {
+    const pet = { on: true, ...p };
+    assert.equal(speaking(pet), loud, `sai bậc giọng cho ${JSON.stringify(p)}`);
+    assert.equal(butlerThinks(pet).length, loud ? 0 : 3, 'đang nói thì không được nghĩ, và ngược lại');
+  }
+  assert.equal(speaking({ on: false }), false, 'trò chơi tắt thì không có giọng nào');
+  assert.deepEqual(butlerThinks({ on: false }), [], 'trò chơi tắt thì không nghĩ');
+});
+
+/**
+ * Bộ ba câu nghĩ phải ĐỦ CHỮ ở mọi bối cảnh, và phải XOAY theo đồng hồ.
+ *
+ * Hai lỗi khác nhau cùng bị chặn ở đây:
+ *
+ * 1. `t()` im lặng trả lại chính cái khoá khi thiếu chuỗi, nên một mã động tác chưa có câu
+ *    sẽ hiện nguyên văn "pet.think.sun.1" trong bong bóng — không lỗi, không log.
+ * 2. Sổ chép tay có thể mang một mã lạ. Nó phải rơi về buổi trong ngày, không rơi ra một
+ *    khoá trần.
+ */
+test('mỗi bối cảnh có đủ ba câu nghĩ, và mã lạ rơi về buổi trong ngày', () => {
+  const base = { on: true, mood: 'fine', focusMood: 'sharp' };
+  const at = (h) => new Date(2026, 7, 6, h, 0, 0).getTime();
+  const ctx = [
+    { ...base, doing: { kind: 'food', id: 'pho', ms: 6e4, leftMs: 3e4 } },
+    ...MOVE_IDS.map((id) => ({ ...base, doing: { kind: 'move', id, ms: 6e4, leftMs: 3e4 } })),
+    ...[7, 12, 17, 23].map((h) => ({ ...base, _h: h })),
+  ];
+  for (const p of ctx) {
+    const said = butlerThinks(p, at(p._h ?? 12));
+    assert.equal(said.length, 3);
+    for (const s of said) {
+      assert.ok(s.say && !s.say.startsWith('pet.'), `thiếu chuỗi: ${s.say}`);
+      // Mỗi câu phải có một khuôn mặt CÓ THẬT trong bảng — `faceRows` rơi về `flat` khi mã
+      // lạ, nên một khoá gõ sai không kêu lên mà chỉ lặng lẽ ra cùng một khuôn mặt cho tất cả.
+      assert.ok(FACE_NAMES.includes(s.face), `khuôn mặt lạ: ${s.face}`);
+    }
+    assert.equal(new Set(said.map((s) => s.say)).size, 3, 'ba câu phải khác nhau — trùng thì vòng xoay chỉ còn hai');
+  }
+  // Mã lạ: hai câu bối cảnh phải rơi về BUỔI, không rơi ra khoá trần. Câu thứ ba thì khác —
+  // nó là `butlerSays`, và ở đây nó đúng là "đang dở việc" vì sổ vẫn khai có việc đang chạy.
+  const vi = tableOf('vi');
+  const odd = butlerThinks({ ...base, doing: { kind: 'move', id: 'constructor', ms: 6e4, leftMs: 3e4 } }, at(12)).map((s) => s.say);
+  assert.ok(odd.includes(vi['pet.think.day.1']) && odd.includes(vi['pet.think.day.2']), `mã lạ không rơi về buổi: ${odd}`);
+});
+
+test('mở popover ở hai lúc khác nhau thì câu nghĩ đầu tiên khác nhau', () => {
+  const pet = { on: true, mood: 'fine', focusMood: 'sharp' };
+  const t0 = new Date(2026, 7, 6, 12, 0, 0).getTime();
+  // Cùng một ô 20 giây thì phải RA CÙNG MỘT BỘ: popover vẽ hai lượt (bản nhớ rồi bản mạng)
+  // cách nhau vài trăm mili giây, và đổi câu giữa hai lượt là đổi ngay trước mắt người đọc.
+  assert.deepEqual(butlerThinks(pet, t0), butlerThinks(pet, t0 + 19000));
+  // Ba ô liên tiếp thì phải ra ba câu mở đầu khác nhau — đó là toàn bộ chỗ "thỉnh thoảng".
+  const heads = [0, 20000, 40000].map((d) => butlerThinks(pet, t0 + d)[0].say);
+  assert.equal(new Set(heads).size, 3, `chỉ xoay được ${new Set(heads).size} câu`);
+});
+
+/**
+ * Trần độ dài của MỌI câu vào bong bóng, và nó là một phép ĐO HÌNH HỌC.
+ *
+ * MỘT trần cho cả hai bảng, không phải hai. Tới lượt trước `pet.says.*` không có trần vì nó
+ * được cả 128px bề rộng, còn `pet.think.*` bị kẹp ở 46. Từ lượt 18 hai bảng vào CÙNG một cái
+ * hộp với CÙNG một khuôn mặt ở đầu dòng, nên hai trần khác nhau là hai con số cho một hình
+ * học — và cái không có trần là cái đã tràn.
+ *
+ * Phép đo, ở popover 360pt:
+ *
+ *   bong bóng   150px  (từ `left: 52%` tới `right: 6px` của bầu trời rộng 326px)
+ *   − viền 2×2    4px
+ *   − đệm 9×2    18px
+ *   − mặt cười   21px  (28px thu 0,75 — xem `.mb-bubble .pet-face`)
+ *   − khe hở      7px
+ *   = chữ       100px  ≈ 17 ký tự một dòng ở cỡ 11px
+ *
+ *   chiều cao còn 76px (neo `bottom: 72px` trong bầu trời 148px), trừ viền và đệm còn 61px
+ *   → BỐN dòng 15px vừa khít. Bốn nhân 17 = 68, lấy 56 cho chắc.
+ *
+ * Đây là lỗi đã xảy ra thật ở lượt 18 và thấy được ngay trên màn hình: `pet.says.starving`
+ * bản VI dài 91 ký tự, ra năm dòng, và dòng đầu bị cắt cụt bởi mép trên bức tranh.
+ */
+test('không câu bong bóng nào dài quá bề rộng của nó', () => {
+  const MAX = 56;
+  for (const lang of ['vi', 'en']) {
+    const table = tableOf(lang);
+    const bad = Object.entries(table)
+      .filter(([k, v]) => /^pet\.(think|says|tip)\./.test(k) && typeof v === 'string' && v.length > MAX)
+      .map(([k, v]) => `${lang}/${k}: ${v.length}`);
+    assert.deepEqual(bad, [], `câu bong bóng dài quá ${MAX} ký tự`);
+  }
+});
+
+/**
+ * Mỗi khuôn mặt phải KHÁC nhau thật, không chỉ khác tên.
+ *
+ * Bộ này dựng từ một khuôn chung rồi thay hàng mắt với hai hàng miệng, nên hai tên trỏ vào
+ * cùng một cặp (mắt, miệng) sẽ cho ra hai mảng pixel giống hệt — không lỗi, không cảnh báo,
+ * chỉ là hai trạng thái đeo chung một vẻ mặt. Đúng cái lỗi mà bảng `LOOK` đã mắc một lần với
+ * nét `pang` dùng chung cho hai bậc đói.
+ */
+test('mỗi khuôn mặt là một hình khác nhau', () => {
+  const seen = new Map();
+  for (const name of FACE_NAMES) {
+    const key = faceRows(name).join('|');
+    assert.ok(!seen.has(key), `${name} trùng hình với ${seen.get(key)}`);
+    seen.set(key, name);
+  }
+  assert.equal(seen.size, FACE_NAMES.length);
+  // Mã lạ rơi về một khuôn CÓ THẬT, không rơi ra một hình rỗng: `faceArt` vẽ một khung 28px,
+  // và một khung 28px trống giữa bong bóng thoại đọc thành lỗi tải hình.
+  assert.deepEqual(faceRows('không-có-thật'), faceRows('flat'));
+});
+
+/**
+ * Sổ trạng thái chỉ chở CHỮ, và màu của nó đọc PHÂN SỐ chứ không đọc tên trạng thái.
+ *
+ * Hai điều kiện, và cái thứ hai là chỗ sửa của lượt 19 (người dùng: *"quy về cùng màu xanh gần
+ * full → vàng → đỏ"*). Phép kiểm bắt đúng cái làm nên phép quy ấy: mỗi hàng phải gửi ra một
+ * `--f` là số 0–1, vì cả sắc lẫn bề rộng vạch đều nhân ra từ đúng con số đó. Còn một cái tên
+ * trạng thái nào trong class là còn một thang thứ hai.
+ */
+test('sổ trạng thái là chữ, và màu đi theo phân số chứ không theo tên', () => {
+  const pet = { on: true, mood: 'hungry', focus: 0.3, focusMood: 'dip', satMin: 74, full: 0.25 };
+  const vi = tableOf('vi');
+  const out = rawText(statWords(pet));
+  assert.match(out, new RegExp(vi['pet.mood.hungry']), 'thiếu tên độ no');
+  assert.match(out, new RegExp(vi['pet.focusMood.dip']), 'thiếu tên nhịp');
+  assert.doesNotMatch(out, /pet-tray|pet-dial|pet-wallet/, 'còn kéo theo hình cũ');
+  assert.doesNotMatch(out, /lv-\w/, 'còn gán màu theo tên trạng thái');
+  assert.deepEqual([...out.matchAll(/--f:([\d.]+)/g)].map((m) => m[1]), ['0.250', '0.300']);
+  // Trị ngoài khoảng bị KẸP chứ không tràn ra CSS: một `--f` bằng 1,4 cho ra một cái vạch dài
+  // hơn cả cái sổ, và `clamp` bên CSS chỉ giữ được phần màu chứ không giữ được bề rộng.
+  const wild = rawText(statWords({ on: true, mood: 'stuffed', full: 1.4, focus: -0.2, focusMood: 'spent' }));
+  assert.deepEqual([...wild.matchAll(/--f:([\d.]+)/g)].map((m) => m[1]), ['1.000', '0.000']);
+  // Sổ đời cũ không có nhịp tập trung thì còn đúng MỘT hàng, không bày một hàng rỗng.
+  assert.doesNotMatch(rawText(statWords({ on: true, mood: 'fine', full: 0.6 })), new RegExp(vi['pet.focusMood.dip']));
+});
+
+/**
+ * NÓI và NGHĨ chia việc theo một ranh giới viết ra được: gấp thì nói trạng thái, còn lại thì
+ * mách một mẹo.
+ *
+ * Người dùng, lượt 19: *"Quản gia có thể nhắc nhở user các tip sử dụng claude hiệu quả"* và
+ * *"bấm vào quản gia … kết hợp nói chuyện nữa chứ"*. Hai câu, một cơ chế.
+ *
+ * Bài này canh ba chỗ có thể trôi:
+ *
+ * 1. **Ranh giới.** Hai bậc `URGENT` phải ra câu trạng thái, mọi bậc khác ra mẹo. Trôi chỗ này
+ *    là một người đang đói lả bấm vào thì nhận được một mẹo về `/compact`.
+ * 2. **Khoá có thật.** `t()` im lặng trả lại khoá khi thiếu, nên một khoá gõ sai sẽ hiện nguyên
+ *    chữ `pet.tip.…` trong bong bóng mà không có gì kêu lên — ở cả hai bảng chữ.
+ * 3. **Vòng xoay.** Mười sáu ô liên tiếp phải ra mười sáu câu khác nhau, và hai lượt vẽ trong
+ *    cùng một ô phải ra cùng một câu (popover vẽ hai lượt cách nhau vài trăm mili giây).
+ * 4. **Hai bảng hình không lẫn nhau**, từ lượt 20. Câu trạng thái mang `face`, câu mẹo mang
+ *    `tip` — và không câu nào mang cả hai. Trôi chỗ này thì `talkArt` chọn nhầm bảng, mà nó
+ *    chọn bằng `talk.tip ? …` nên "nhầm" ở đây nghĩa là một câu đói lả đeo cái hộp đồ nghề.
+ */
+test('gấp thì nói trạng thái, còn lại thì mách mẹo', () => {
+  const vi = tableOf('vi');
+  const at = (h) => new Date(2026, 7, 6, h, 0, 0).getTime();
+
+  for (const [mood, focusMood] of [['starving', 'sharp'], ['fine', 'spent']]) {
+    const said = butlerTalk({ on: true, mood, focusMood, full: 0.05, focus: 0 }, at(12));
+    assert.match(said.say, /^(Đói lả|Quá nhịp)/, `bậc gấp phải nói trạng thái, lại ra: ${said.say}`);
+    assert.ok(said.face, 'câu trạng thái phải mang một khuôn mặt');
+    assert.equal(said.tip, undefined, 'câu trạng thái không được đeo huy hiệu mẹo');
+  }
+
+  const calm = butlerTalk({ on: true, mood: 'fine', focusMood: 'sharp' }, at(12));
+  assert.equal(calm.face, undefined, 'câu mẹo không được đeo khuôn mặt');
+  assert.ok(TIP_KINDS.includes(calm.tip), `loại lạ: ${calm.tip}`);
+  assert.ok(TIP_KEYS.some((k) => vi[`pet.tip.${k}`] === calm.say), `câu lạ: ${calm.say}`);
+  // Trò chơi TẮT thì vẫn có mẹo: mẹo không đọc sổ, nên nó là thứ duy nhất trong cả popover còn
+  // nói được khi không có con vật nào.
+  assert.ok(butlerTalk(null, at(12)).tip, 'trò chơi tắt vẫn phải còn mẹo');
+
+  for (const lang of ['vi', 'en']) {
+    const table = tableOf(lang);
+    for (const k of TIP_KEYS) assert.ok(table[`pet.tip.${k}`], `${lang} thiếu pet.tip.${k}`);
+  }
+
+  const t0 = at(9);
+  assert.equal(butlerTalk(null, t0).say, butlerTalk(null, t0 + 24000).say, 'cùng một ô phải ra cùng một mẹo');
+  const heads = TIP_KEYS.map((_, i) => butlerTalk(null, t0 + i * 25000).say);
+  assert.equal(new Set(heads).size, TIP_KEYS.length, `chỉ xoay được ${new Set(heads).size} mẹo`);
+  // Mọi loại phải có hình, và bốn hình phải KHÁC nhau — cùng lý lẽ với bảng khuôn mặt: hai loại
+  // trỏ vào một hình là hai loại đeo chung một huy hiệu, và không có gì kêu lên.
+  const kinds = TIP_KEYS.map((_, i) => butlerTalk(null, t0 + i * 25000).tip);
+  assert.deepEqual([...new Set(kinds)].sort(), [...TIP_KINDS].sort(), 'có loại không bao giờ tới lượt');
+  const shapes = new Map();
+  for (const kind of TIP_KINDS) {
+    const svg = rawText(tipArt(kind));
+    assert.ok(!shapes.has(svg), `${kind} trùng hình với ${shapes.get(svg)}`);
+    shapes.set(svg, kind);
+  }
+});
+
+/**
+ * Ở NHÀ thì quản gia ngồi vào bàn, và anh ta chỉ GÕ MÁY khi còn gõ được.
+ *
+ * Đây là chỗ trả lời cả hai câu người dùng hỏi cùng lúc: "thêm trạng thái gõ máy tính" và
+ * "đói thì cần có hậu quả". Cùng một cái công tắc — đói lả hoặc hết nhịp thì tay rời bàn
+ * phím, và cái màn hình trên bàn tắt theo (`.resident.typing` là chỗ CSS bám vào).
+ *
+ * Phép kiểm đọc class chứ không đọc pixel: `typing` / `pacing` / `busy` là ba chế độ loại
+ * trừ nhau, và chính cái tên ấy là thứ `styles.css` dùng để bật nhịp gõ với mặt kính sáng.
+ */
+test('ở nhà thì gõ máy, còn đói lả hay hết nhịp thì tay rời bàn phím', () => {
+  const draw = (o) => rawText(butlerArt(null, 'home', 0, { on: true, mood: 'fine', focusMood: 'sharp', doing: null, ...o }));
+
+  assert.match(draw({}), /resident typing/, 'ổn cả thì anh ta đang gõ');
+  assert.match(draw({ mood: 'hungry' }), /resident typing/, 'đói bụng vẫn làm được việc');
+  assert.match(draw({ focusMood: 'dip' }), /resident typing/, 'trũng nhịp vẫn làm được việc');
+
+  assert.doesNotMatch(draw({ mood: 'starving' }), /typing/, 'đói lả thì DỪNG — đây là cái hậu quả');
+  assert.doesNotMatch(draw({ focusMood: 'spent' }), /typing/, 'hết nhịp thì DỪNG');
+
+  // Và không còn chế độ đi lại nào ở nhà: cái đồng hồ tập trung đo "đã ngồi ở bàn bao lâu",
+  // nên một người đi tha thẩn trong phòng là bức tranh nói ngược lại con số.
+  for (const o of [{}, { mood: 'starving' }, { focusMood: 'spent' }, { mood: 'hungry' }]) {
+    assert.doesNotMatch(draw(o), /resident pacing/, 'ở nhà thì không đi lại nữa');
+  }
+});
+
+/**
+ * Người qua đường phải đi ĐÚNG TRÊN đường, không đi cạnh nó.
+ *
+ * Hai đầu tuyến khai bằng chính `at()` như mọi thứ khác trên bản đồ, nên phép kiểm này bắt
+ * đúng ca mà một cặp toạ độ gõ tay sẽ hỏng: lần nới bước lưới tiếp theo.
+ */
+test('hai người đi đường đi trên hai con đường có thật', () => {
+  assert.equal(WALKERS.length, 2);
+  for (const w of WALKERS) {
+    const onRoad = ROADS.some((r) => {
+      const inX = (p) => p >= r.x - 1 && p <= r.x + r.w + 1;
+      return inX(w.from.x) && inX(w.to.x);
+    });
+    assert.ok(onRoad, `tuyến ${w.i} không nằm trên đoạn đường nào`);
+  }
+  // Hai chu kỳ phải NGUYÊN TỐ CÙNG NHAU: cùng chu kỳ thì cứ mỗi vòng họ lại gặp nhau đúng
+  // một chỗ, và cái trùng lặp ấy đọc thành máy móc chứ không đọc thành người qua lại.
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+  assert.equal(gcd(WALKERS[0].dur, WALKERS[1].dur), 1, 'hai nhịp đi trùng ước — họ sẽ gặp nhau đều đặn');
+});
+
+/**
+ * Nhà mình phải là vật CAO NHẤT thị trấn.
+ *
+ * Nhận xét "home đang hơi bé" hoá ra không phải chuyện bề ngang — nhà vốn đã rộng gấp đôi
+ * một cửa hàng. Ở phối cảnh đẳng cự thứ mắt đọc thành "to" là CHIỀU CAO trên mặt đất, và
+ * đó đúng là kênh mà nhà mình thua: nó là chỗ duy nhất không có mái. Phép kiểm khoá lại
+ * chỗ vừa sửa, để lần phóng to một cửa hàng nào đó sau này không lặng lẽ lật ngược nó.
+ */
+test('nhà mình cao nhất và rộng nhất thị trấn', () => {
+  const home = PLACES.find((p) => p.id === 'home');
+  const hs = sizeOf(home.rows);
+  for (const p of PLACES) {
+    if (p.id === 'home') continue;
+    const s = sizeOf(p.rows);
+    assert.ok(hs.h > s.h, `${p.id} cao bằng hoặc hơn nhà mình (${s.h} vs ${hs.h})`);
+    assert.ok(hs.w > s.w, `${p.id} rộng bằng hoặc hơn nhà mình (${s.w} vs ${hs.w})`);
+  }
 });

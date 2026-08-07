@@ -116,9 +116,15 @@ export const floor2 = (n) => at2(n, Math.floor);
  *
  * ## Tỉ giá
  *
- * `FULL_MS` là 5 giờ và một thanh no đầy giá 5 xu, nên **1 xu mua đúng 1 giờ no**. Ghép
+ * `FULL_MS` là 8 giờ và một thanh no đầy giá 8 xu, nên **1 xu mua đúng 1 giờ no**. Ghép
  * với `RATE` (1 xu = $1) thì cả trò chơi rút về một câu: *$1 token đổi được một giờ no.*
  * Không có con số thứ hai nào phải nhớ.
+ *
+ * Cái tỉ giá ấy là chỗ bậc `FULL_MS` đi từ 5 lên 8 giờ ở lượt 21 mà KHÔNG đụng tới ví: giá
+ * một món là số GIỜ nó mua, nên đồng hồ đói chậm lại thì mỗi món vừa đắt hơn vừa no lâu
+ * hơn đúng cùng một tỉ lệ. Tiền ăn của một ngày mười tiếng là 10 xu ở cả hai bậc. Đó là
+ * bằng chứng cho luật lượt 15 — không cơ chế nào được chạm vào ví — và nó đứng được vì
+ * bảng giá SUY RA chứ không gõ tay.
  *
  * Tập trung tính cùng tỉ giá ấy trên `FOCUS_MS` — một chu kỳ 90 phút là 1,5 giờ, nên đầy
  * một thanh tập trung đắt bằng 1,5 xu. Nó RẺ HƠN thanh no và đúng là phải thế: thứ đắt
@@ -201,27 +207,64 @@ export const ITEMS = {
   //
   // Nhiều món CHUNG một chỗ đứng, và đó là điểm đổi so với bản đầu: chỗ đứng giờ là một
   // cái khe thay được, không phải một ô cố định của đúng một món. Xem `SLOTS`.
+  //
+  // Mỗi khe có thêm MỘT món ở bậc cao kể từ lượt này, và giá của chúng đặt theo một luật chứ
+  // không theo cảm giác: **đắt hơn món đắt nhất cùng khe ít nhất một nửa.** Dưới mức ấy thì
+  // món mới không mở ra một cái đích mới, nó chỉ chen vào giữa hai món cũ — mà cửa hàng này
+  // vốn đã có mười sáu món và chỗ hụt của nó không phải là số lượng.
+  //
+  // Lượt 19 thêm một tầng thứ BA, theo đúng luật ấy: mỗi món xa xỉ đắt hơn món đắt nhất cùng
+  // khe từ 55% tới 70%. Cùng một luật cho cả hai tầng là điều kiện để tầng sau còn so được với
+  // tầng trước — hai luật khác nhau thì "đắt hơn" thôi không còn nghĩa gì ngoài một con số lớn.
+  //
+  // Lượt 22 thêm tầng thứ TƯ, cùng luật ấy lần thứ ba: mỗi món đắt hơn món đắt nhất cùng khe
+  // 59–65%. Từ lượt này cỡ hình cũng phải đi theo giá và có phép kiểm canh — xem khối chú thích
+  // của tầng thứ tư trong `public/lib/pet.js`.
+  //
+  // Trần mới là 1420 xu, tức 1420 giờ no, tức chừng ba tháng làm việc ở mức thu nhập đo được
+  // trên máy này ($50–120 một ngày) — dài hơn trần cũ (880 xu, chừng tám tuần) đúng một nửa.
+  // Đó là chủ ý và nó là con số đáng nói thẳng: đồ trang trí không mua thứ gì đo được, nên thứ
+  // duy nhất chúng có thể là — cái đích dài hạn. Một cái đích với tới trong hai tuần thì hai
+  // tuần sau nó lại trống.
   beanie: { kind: 'decor', price: 60, slot: 'head' },
   hat: { kind: 'decor', price: 70, slot: 'head' },
   crown: { kind: 'decor', price: 260, slot: 'head' },
+  wreath: { kind: 'decor', price: 400, slot: 'head' },
+  halo: { kind: 'decor', price: 700, slot: 'head' },
+  helm: { kind: 'decor', price: 1150, slot: 'head' },
 
   cactus: { kind: 'decor', price: 80, slot: 'left' },
   plant: { kind: 'decor', price: 90, slot: 'left' },
   bonsai: { kind: 'decor', price: 200, slot: 'left' },
+  sakura: { kind: 'decor', price: 380, slot: 'left' },
+  kumquat: { kind: 'decor', price: 640, slot: 'left' },
+  bamboo: { kind: 'decor', price: 1020, slot: 'left' },
 
   mushroom: { kind: 'decor', price: 110, slot: 'right' },
   dog: { kind: 'decor', price: 220, slot: 'right' },
   cat: { kind: 'decor', price: 240, slot: 'right' },
+  crane: { kind: 'decor', price: 420, slot: 'right' },
+  koipond: { kind: 'decor', price: 720, slot: 'right' },
+  torii: { kind: 'decor', price: 1180, slot: 'right' },
 
   balloon: { kind: 'decor', price: 130, slot: 'air' },
   kite: { kind: 'decor', price: 140, slot: 'air' },
   lantern: { kind: 'decor', price: 150, slot: 'air' },
+  firework: { kind: 'decor', price: 300, slot: 'air' },
+  airship: { kind: 'decor', price: 480, slot: 'air' },
+  chime: { kind: 'decor', price: 790, slot: 'air' },
 
   bunting: { kind: 'decor', price: 170, slot: 'top' },
   lights: { kind: 'decor', price: 190, slot: 'top' },
+  wisteria: { kind: 'decor', price: 340, slot: 'top' },
+  roses: { kind: 'decor', price: 560, slot: 'top' },
+  awning: { kind: 'decor', price: 900, slot: 'top' },
 
   hills: { kind: 'decor', price: 210, slot: 'back' },
   rainbow: { kind: 'decor', price: 320, slot: 'back' },
+  aurora: { kind: 'decor', price: 520, slot: 'back' },
+  skyline: { kind: 'decor', price: 880, slot: 'back' },
+  peak: { kind: 'decor', price: 1420, slot: 'back' },
 };
 
 /**
@@ -615,6 +658,25 @@ export function buy(ledger, id, nowMs = Date.now()) {
    * khung trời — nên nó mua được bất cứ lúc nào, kể cả trong lúc chờ hết quãng nghỉ.
    */
   if (item.kind === 'food' && doingIn(ledger, nowMs)) return { ledger, error: 'đang bận' };
+  /*
+   * ĐÃ CÓ một cửa thứ ba ở đây và nó đã bị GỠ, cùng lượt với lượt dựng nó.
+   *
+   * Cửa ấy: đói lả thì không bán đồ trang trí. Nó ra đời để trả lời "cơn đói phải có hậu
+   * quả", và nó tránh được mấy hình phạt bằng số (cắt tốc độ đúc xu, trừ thẳng xu, bắt món
+   * đang đeo rơi ra) — mấy thứ ấy đều nhân ví với một hệ số bịa hoặc xoá một khoản tiền có
+   * thật, nên chúng vẫn bị loại và vẫn nên bị loại.
+   *
+   * Nhưng nó vẫn còn phạm đúng cái luật ấy ở một bậc nhẹ hơn, và người dùng gọi tên ngay ở
+   * lượt sau: **"đừng đánh vào kinh tế"**. Ví ở đây ĐỌC RA hoá đơn thật (`RATE` = 1), nên
+   * mọi cửa treo vào ví — kể cả một cửa không đổi con số nào, chỉ khoá tạm chỗ tiêu — đều
+   * dạy người đọc rằng số tiền trên màn hình có một cái van do trò chơi vặn. Một khi đã nghĩ
+   * thế thì cái ví thôi không còn là bản đọc chi tiêu nữa.
+   *
+   * Hậu quả của cơn đói vì thế dọn hẳn sang chỗ nó không đụng vào tiền: BỨC TRANH (quản gia
+   * gục xuống, màn hình tắt, bong bóng chỉ còn nghĩ đến đồ ăn) và DẢI BÁO ĐỘNG (xem
+   * `nudgeOf` bên `lib/pet.js`). Cả hai đều ngắt lời to hơn một cái nút xám, mà không cái
+   * nào chạm vào sổ.
+   */
   if (ledger.coins < item.price) return { ledger, error: 'không đủ xu' };
 
   // `coins` giữ NGUYÊN phần lẻ sâu — nó là hiệu của một khoản tiền thật cộng theo từng

@@ -29,10 +29,14 @@
 
 import { html } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
-import { itemArt, moveArt, doingArt, dressArt, hungerBar, hungerText, focusGlass, nudgeText, wallet, coinNum } from '../lib/pet.js';
-import { LOTS, PLACES, PLACE_IDS, ROADS, SCENE_SPOTS, TOWN_BOX, butlerArt, lotArt, placeArt, sceneArt } from '../lib/town.js';
-import { livePet, moveForHour, rampAt, wakeOf } from '../lib/petmath.js';
+import { CHEER_MS, artFit, itemArt, lifeClock, moveArt, doingArt, dressArt, nudgeOf, statCells, coinNum } from '../lib/pet.js';
+import { LOTS, PLACES, PLACE_IDS, ROADS, SCENE_SPOTS, STROLL, TOWN_BOX, WALKERS, butlerArt, lotArt, placeArt, sceneArt, sizeOf, strollLag, strolling, walkerArt } from '../lib/town.js';
+import { livePet, moveForHour, phaseOf, rampAt, stampPet, wakeOf } from '../lib/petmath.js';
 import { loadPet as cachedPet, savePet } from '../lib/petcache.js';
+// Lớp tiếng CHỈ được nhập ở đây, và đó là một hàng rào bằng kiến trúc chứ không phải một
+// chỗ đặt cho gọn: `menubar.js` không có đường nào tới file này, nên popover thanh menu
+// không thể kêu kể cả khi ai đó quên mất luật. Xem đầu `lib/sound.js`.
+import { cue, setSound, soundOn } from '../lib/sound.js';
 import { empty } from './shared.js';
 
 /**
@@ -67,6 +71,34 @@ let place = 'home';
  * lại thấy nó vẫn đội trên đầu là một bức tranh nói dối về thứ mình đang có.
  */
 let tryOn = null;
+/**
+ * KHE đang mở ở tiệm trang trí — một cái ngăn kéo, không phải một bộ lọc.
+ *
+ * ## Vì sao lượt này phải có nó
+ *
+ * Người dùng hỏi thẳng: "nếu sau này tôi có 100 đồ thì kéo mệt nghỉ à". Đo bản trước thì câu
+ * ấy đúng và nó đã đúng ở cỡ hiện tại: tiệm bày SÁU lưới chồng nhau, mỗi lưới một tiêu đề, và
+ * tất cả cùng mở. Hai mươi hai món ở cỡ ô 112px là chừng bốn màn hình cuộn — mà cái người ta
+ * muốn xem thì luôn chỉ là MỘT khe, vì một món chỉ tranh chỗ với mấy món cùng khe. Năm khe
+ * còn lại là năm khối chữ nằm giữa câu hỏi và câu trả lời, đúng cái lỗi mà dải thông số đã bị
+ * chỉ ra ở lượt trước.
+ *
+ * Một trăm món thì con số ấy thành mười bảy màn hình. Cái ngăn kéo cắt nó về gần một, và nó
+ * cắt theo đúng đường mà chính bảng hàng hoá đã kẻ sẵn.
+ *
+ * ## Vì sao một cái NGĂN KÉO chứ không phải một ô tìm kiếm hay một bộ lọc
+ *
+ * Ô tìm kiếm đòi người ta biết mình đang tìm cái gì — mà ở đây họ đang *ngắm*. Bộ lọc kiểu
+ * "chỉ hiện món mua nổi" thì giấu mất chính cái đích dài hạn mà cả bảng giá dựng lên. Sáu cái
+ * thẻ thì không giấu gì cả: mỗi thẻ nói tên khe, nói món đang bày ở đó, và nói còn bao nhiêu
+ * món chưa có. Cả sáu câu ấy đọc được mà không phải mở cái nào.
+ *
+ * Mặc định là khe ĐẦU, không phải "tất cả": một chỗ mở ra rồi bày sạch mọi thứ thì cái ngăn
+ * kéo không làm gì cả ở đúng lượt đầu tiên người ta nhìn nó.
+ *
+ * Sống ở tầng module cùng `tryOn`, và cùng lý do. Rời tiệm là quên.
+ */
+let shelf = null;
 /**
  * Món ăn đang được CHỌN ở quán — đã bấm một lần, chưa mua, chưa gửi gì lên server.
  *
@@ -119,6 +151,21 @@ let bump = 0;
  * cái cờ đi thì cứ nửa phút cái khối lại nhấp nháy một lần cho một cú bấm từ lâu.
  */
 let arriving = false;
+/**
+ * Mốc của cú MUA vừa xong — quản gia nhảy lên mừng trong `CHEER_MS` rồi thôi.
+ *
+ * Là một MỐC chứ không phải một cờ, và khác `arriving`/`bump` ở đúng chỗ đó. Hai cái kia
+ * tiêu ngay sau một lượt vẽ vì thứ chúng bật là một hoạt hình CSS chạy một lần trên một thẻ
+ * vừa dựng. Dáng mừng thì không: nó là một tư thế, tức là cái thẻ phải còn mang đúng tư thế
+ * ấy suốt hai giây — mà giữa hai giây đó có thể có mấy lượt vẽ lại (nhịp một giây khi đang
+ * ăn, hoặc một cú bấm sang chỗ khác). Một cờ dùng-một-lượt sẽ tắt ngay lượt thứ hai.
+ *
+ * Cái hẹn giờ đi kèm là để đánh thức lượt vẽ CUỐI, lượt trả anh ta về dáng thường. Không có
+ * nó thì lúc mua đồ trang trí (không sinh ra `doing`, nên `beat` không chạy) quản gia đứng
+ * nhảy cho tới lượt hỏi sổ 30 giây sau.
+ */
+let cheerAt = 0;
+let cheerTimer = null;
 /**
  * Lúc bản sổ đang cầm được coi là ĐÚNG, theo đồng hồ máy này.
  *
@@ -174,7 +221,12 @@ async function call(body) {
       // `>= 0.005` chứ không `> 0`: hai số đã cắt hai chữ số lẻ ở server nên hiệu thật luôn
       // là bội của 0,01, thứ nhỏ hơn thế chỉ là rác dấu phẩy động.
       if (pet && d.pet.coins - pet.coins >= 0.005) bump = d.pet.coins - pet.coins;
-      pet = d.pet;
+      // Bản CŨ giữ lại để so, vì mấy tiếng dưới đây hỏi "cái gì vừa đổi" chứ không hỏi "sổ
+      // đang nói gì". Phải chụp trước dòng gán ngay dưới.
+      const prev = pet;
+      // Đóng dấu mốc NHẬN ngay chỗ nhận — `leftMs` là một hiệu số và nó chỉ có nghĩa khi
+      // biết trừ từ đâu, xem `stampPet`. Thiếu nó thì việc đang làm không bao giờ xong.
+      pet = stampPet(d.pet);
       petAt = Date.now();
       // Mua xong thì thôi thử: món ấy giờ là món ĐANG BÀY thật (server tự bày món vừa mua),
       // và giữ nó ở trạng thái "đang thử" là bức tranh vẫn đúng nhưng cái nút dưới nó vẫn
@@ -185,10 +237,29 @@ async function call(body) {
       // nhắc là tự tay bấm "Thôi" hộ họ. Còn lúc bị từ chối ("không đủ xu") thì khay ở
       // lại — chỗ ấy là chỗ câu từ chối có nghĩa.
       if (body?.action === 'buy' && !d.error) pick = null;
+      // Mua ăn được thì mừng. Cửa `!d.error` là cả điều kiện: một cú mua bị từ chối vì
+      // thiếu xu vẫn đi qua đây, và nhảy lên mừng vì vừa bị từ chối là màn hình nói dối.
+      if (body?.action === 'buy') {
+        if (d.error) cue('deny');
+        else {
+          cheer();
+          cue('buy');
+        }
+      }
+      // Chốt xong một quãng nghỉ — tiếng dài nhất và mềm nhất trong bộ, vì đứng dậy khỏi
+      // ghế là thứ đắt nhất mà trò chơi này xin người dùng làm.
+      //
+      // Bám vào SỐ QUÃNG NGHỈ ĐÃ TÍNH, không bám vào cú bấm. `action: 'break'` chỉ KHAI một
+      // quãng — nó bắt đầu đếm ngược, và phải tới lượt quét sau server mới so `idleMs` rồi
+      // quyết có tính hay không (xem `resolveBreak`). Kêu ngay lúc bấm là kêu mừng cho một
+      // việc chưa xảy ra, và nó sẽ kêu cả trong đúng cái ca mà quãng nghỉ bị từ chối vì bạn
+      // vẫn đang gõ. `pet.breaks` nhích lên đúng một lần cho mỗi quãng ĐƯỢC tính, nên nó là
+      // cái mốc trung thực duy nhất ở phía này.
+      if (prev && Number(d.pet.breaks) > Number(prev.breaks)) cue('rest');
       // Cất bản MỚI NHẤT, không cất bản đã pha lỗi: `err` không nằm trong `pet` nên nó
       // không đi cùng, và đó là điều kiện để lần mở sau không bày lại một câu "không đủ
       // xu" của phiên trước.
-      savePet(d.pet);
+      savePet(pet);
     }
     err = d.error ?? (res.ok ? null : d.error ?? `HTTP ${res.status}`);
   } catch (e) {
@@ -198,6 +269,21 @@ async function call(body) {
     redraw();
   }
 }
+
+/** Bật dáng mừng và hẹn đúng MỘT lượt vẽ để tắt nó. Hẹn lại thì huỷ cái cũ: mua hai món
+ *  liền tay thì cái hẹn thứ nhất sẽ tắt dáng mừng của cú thứ hai giữa chừng. */
+function cheer() {
+  cheerAt = Date.now();
+  clearTimeout(cheerTimer);
+  cheerTimer = setTimeout(() => {
+    cheerAt = 0;
+    redraw();
+  }, CHEER_MS);
+}
+
+/** Còn đang mừng không — hỏi theo đồng hồ chứ không theo cái cờ, để một lượt vẽ bất kỳ
+ *  giữa hai giây ấy vẫn ra đúng câu trả lời. */
+const cheering = () => cheerAt > 0 && Date.now() - cheerAt < CHEER_MS;
 
 /** Một cú bấm → một lượt gửi. Gom vào một chỗ vì cả bốn việc chung đúng một nhịp: khoá
  *  nút, xoá lỗi cũ, vẽ lại ngay để nút kịp mờ đi, rồi mới đi. */
@@ -218,9 +304,13 @@ function onClick(e) {
     place = pl.dataset.place;
     tryOn = null;
     pick = null;
+    // Ngăn kéo cũng quên theo, cùng luật với `tryOn` và `pick`: rời tiệm là quên. Quay lại
+    // thấy khe thứ năm đang mở là một trạng thái không ai đặt ra và không ai nhớ mình đã đặt.
+    shelf = null;
     err = null;
     // Cú bấm phải NHÌN THẤY ĐƯỢC hậu quả của nó. Xem `arrive` và `showPanel`.
     arriving = true;
+    cue('tap');
     redraw();
     return showPanel();
   }
@@ -232,6 +322,24 @@ function onClick(e) {
   if (tr) {
     tryOn = tr.dataset.try ?? null;
     err = null;
+    return redraw();
+  }
+
+  // MỞ MỘT KHE ở tiệm trang trí. Cũng không gửi gì lên server, cùng lý do với hai việc trên:
+  // mở một ngăn kéo là một việc của mắt.
+  //
+  // Bấm lại đúng khe đang mở thì KHÔNG gập nó lại, và đó là chủ ý: một cái ngăn kéo gập được
+  // hết thì có một trạng thái mà cả tiệm trống trơn, và người rơi vào đấy không có gì để đọc
+  // ngoài sáu cái thẻ. Sáu cái thẻ là đường ĐI, không phải đích đến.
+  const sh = e.target.closest('[data-shelf]');
+  if (sh) {
+    shelf = sh.dataset.shelf;
+    // Bỏ luôn món đang mặc thử: nó thuộc về khe vừa đóng lại, mà bức tranh thử đồ thì đứng
+    // ngay trên đầu cái ngăn kéo. Giữ nó lại là một bức tranh nói về một món không còn nhìn
+    // thấy ở đâu trên màn hình.
+    tryOn = null;
+    err = null;
+    cue('tap');
     return redraw();
   }
 
@@ -260,6 +368,20 @@ function onClick(e) {
   if (e.target.closest('.hud-why > summary')) {
     whyOpen = !whyOpen;
     return;
+  }
+
+  // Công tắc tiếng. Ngoài `fire` như mọi việc không gửi gì lên server — nó là thiết lập của
+  // MÁY NÀY, không phải của sổ; sổ thì dùng chung giữa dashboard và app thanh menu, mà app
+  // thanh menu thì không được kêu bao giờ.
+  //
+  // Kêu một tiếng NGAY sau khi bật, và đó là cả điểm: cú bấm này là cú bấm duy nhất trong
+  // màn mà hậu quả của nó không nhìn thấy được, nên nó phải tự nghe thấy được. Bật xong mà
+  // im lặng thì không có cách nào biết nó đã ăn — trừ khi đi bấm một thứ khác.
+  const sw = e.target.closest('[data-sound]');
+  if (sw) {
+    setSound(sw.dataset.sound === 'on');
+    cue('tap');
+    return redraw();
   }
 
   const buy = e.target.closest('[data-buy]');
@@ -499,17 +621,23 @@ function doingStrip() {
  * — trừ đúng một cái, để cái biển tên của toà nhà gần không bị toà nhà xa che (thứ tự DOM
  * lo được lớp giữa các chỗ, nhưng biển tên thò xuống dưới chân nhà nên nó cần một bậc).
  *
- * Chỗ đang mở nhận hai kênh: viền accent và tấm biển đảo sáng-tối. Theme daltonized làm cái
- * viền hết phân biệt, và lúc ấy tấm biển đen chữ trắng vẫn đọc ra ngay.
+ * Chỗ đang mở nhận hai kênh: một hình thoi sáng dưới chân công trình và tấm biển đảo
+ * sáng-tối. Theme daltonized làm màu accent hết phân biệt, và lúc ấy tấm biển đen chữ trắng
+ * vẫn đọc ra ngay.
+ *
+ * `w` là bề rộng sprite, gửi sang CSS làm `--bw`: cái hình thoi ấy phải nống ra quanh chân
+ * ĐÚNG toà nhà nó đang chọn, mà năm toà nhà rộng từ 128 tới 240px. Đo bằng `sizeOf` chứ
+ * không gõ tay — cùng lý lẽ đã ghi cho `TOWN_BOX`: một con số chép tay là một con số đúng
+ * vào ngày viết.
  */
 function townMap() {
   const spots = [
-    ...PLACES.map((p) => ({ id: p.id, x: p.x, y: p.y })),
+    ...PLACES.map((p) => ({ id: p.id, x: p.x, y: p.y, w: sizeOf(p.rows).w })),
     ...LOTS.map((l) => ({ ...l, lot: true })),
     ...SCENE_SPOTS.map((s) => ({ ...s, scene: true })),
   ].sort((a, b) => a.y - b.y);
   const doing = doingNow();
-  return html`<div class="town">
+  return html`<div class="town sky-${phaseOf(new Date().getHours())}">
     <div class="town-map">
       <!-- Đường xá vẽ TRƯỚC mọi thứ và nằm dưới mọi thứ: chúng là mặt đất, và trên mặt đất
            thì cái gì cũng đè lên được. Bốn thẻ div lệch trục, không phải mười bốn nghìn ô
@@ -522,7 +650,7 @@ function townMap() {
         // sách với mấy toà nhà để phép sắp lớp theo `y` vẫn là một phép duy nhất — một cái
         // cây đứng trước nhà phải che được góc nhà, và một cái cây đứng sau thì không.
         if (s.scene) {
-          return html`<div class="place scene" style="--x:${s.x}px;--y:${s.y}px;z-index:${Math.round(200 + s.y)}">
+          return html`<div class="place scene kind-${s.kind}" style="--x:${s.x}px;--y:${s.y}px;z-index:${Math.round(200 + s.y)}">
             <span class="place-art">${sceneArt(s.i)}</span>
           </div>`;
         }
@@ -542,12 +670,44 @@ function townMap() {
         // Quản gia hỏi TỪNG chỗ xem anh ta có đang ở đấy không, thay vì chỗ này tự đoán.
         // Ở nhà khi rảnh và khi đang ăn hay đang vươn vai; ở công viên khi đang đi bộ hay
         // tắm nắng — xem `whereOf`. Bảng quyết định nằm ở `MOVES`, không ở đây.
-        return html`<button type="button" class="place ${place === s.id ? 'here' : ''}" style="${at}"
+        // `placeArt` nhận thêm việc đang làm từ lượt này, và CHỈ nhà mình đọc tới nó: căn
+        // phòng đổi đồ đạc theo việc — bàn làm việc, bàn ăn, góc tập. Xem `homeSetOf`.
+        return html`<button type="button" class="place ${place === s.id ? 'here' : ''}" style="${at};--bw:${s.w}px"
           data-place="${s.id}" aria-pressed="${place === s.id}">
-          <span class="place-art">${placeArt(s.id)}${butlerArt(doing, s.id)}</span>
+          <span class="place-art">${placeArt(s.id, doing)}${butlerArt(doing, s.id, Date.now(), pet, cheering())}</span>
           <span class="place-sign">${t(`town.${s.id}`)}</span>
         </button>`;
       })}
+      <!-- Người qua đường vẽ SAU cùng và nằm trên mọi thứ, khác hẳn luật sắp lớp theo y ở
+           trên. Không phải bỏ sót: họ ĐI, nên cái y của họ đổi liên tục, mà z-index thì
+           tính một lần lúc dựng — xếp họ vào danh sách kia là một người lúc thì đi trước
+           nhà lúc thì chui vào trong tường, tuỳ lượt vẽ rơi vào đâu.
+           Đường xuyên tâm nằm ở mép TRƯỚC của mấy toà nhà nên đè lên trên là đúng chỗ
+           gần như suốt tuyến; chỗ sai duy nhất là hai đầu, và ở đó họ đã mờ hết. -->
+      <!-- animation-delay ÂM trên CẢ HAI hoạt hình, và nó là một chỗ sửa chứ không phải một
+           dòng cho đủ: lúc có việc đang chạy thì cả bản đồ dựng lại mỗi giây, mà một thẻ mới
+           thì hoạt hình của nó bắt đầu lại từ 0. Tức suốt quãng ấy hai con vật đứng đơ ở đầu
+           tuyến, mỗi giây nhích được một phần tư giây rồi giật về. Không ai báo vì nó chỉ xảy
+           ra đúng lúc người ta đang nhìn chỗ khác — món đồ đang vơi.
+           Chu kỳ là HAI lần dur vì alternate nối lượt đi với lượt về thành một vòng.
+           Chữ trần, không quote: backtick trong comment HTML nằm trong template literal sẽ
+           ĐÓNG LUÔN chuỗi — CLAUDE.md điều 3. -->
+      ${WALKERS.map(
+        (w) => html`<i class="town-walker" aria-hidden="true"
+          style="--ax:${w.from.x}px;--ay:${w.from.y}px;--bx:${w.to.x}px;--by:${w.to.y}px;--dur:${w.dur}s;animation-delay:${-(Date.now() % (w.dur * 2000))}ms,${-(Date.now() % (w.dur * 1000))}ms"
+          >${walkerArt(w.i)}</i
+        >`,
+      )}
+      <!-- Quản gia RA PHỐ khi đang rời mắt khỏi màn hình. Thẻ này đứng ngoài danh sách mấy
+           chỗ vì anh ta lúc ấy không thuộc chỗ nào cả — anh ta đang đi trên đường, và đường
+           thì không phải một cái nút. Cùng cơ chế với người qua đường: bốn biến toạ độ và
+           một độ trễ âm, xem STROLL trong lib/town.js. -->
+      ${strolling(doing)
+        ? html`<i class="town-stroll" aria-hidden="true"
+            style="--ax:${STROLL.from.x}px;--ay:${STROLL.from.y}px;--bx:${STROLL.to.x}px;--by:${STROLL.to.y}px;--dur:${STROLL.ms}ms;animation-delay:${strollLag(Date.now())}ms"
+            >${butlerArt(doing, 'street', Date.now(), pet, cheering())}</i
+          >`
+        : ''}
     </div>
   </div>`;
 }
@@ -578,34 +738,15 @@ function townMap() {
  *    theo luật "tooltip chỉ được chở thứ suy ra được từ cái hình nó dán vào". Luật ấy còn
  *    đúng, nhưng nó có một tiền đề: cái hình phải ĐỌC ĐƯỢC. Người dùng vừa báo cái đồng hồ
  *    cát "khá khó nhìn để biết được tình trạng tập trung là thế nào" — tiền đề hỏng, nên
- *    kết luận cũng hỏng. Hình đã sửa (xem `glassRows`), và phần phán xét trả về mặt trang,
+ *    kết luận cũng hỏng. Hình đã sửa (xem `dialRows`), và phần phán xét trả về mặt trang,
  *    vì nó mới là câu người ta hỏi khi liếc: không phải "bao nhiêu phần trăm", mà "thế có
  *    ổn không". Tooltip giữ nguyên — nó thành bản đầy đủ, không còn là bản duy nhất.
  */
 function townHud(up) {
-  return html`<div class="town-hud">
-    <span class="hud-cell">
-      <b class="hud-k">${t('pet.wallet')}</b>
-      <!-- Cùng một cái ví với popover, cùng một hàm vẽ. Cái ví ở đây và cái ví trên thanh
-           menu là MỘT cái ví; vẽ hai kiểu là mời người ta nghĩ đó là hai số. -->
-      ${wallet(pet, up)}
-    </span>
-    <span class="hud-cell">
-      <b class="hud-k">${t('pet.hunger')}</b>
-      ${hungerBar(pet)}
-      <span class="hud-say"><b>${t(`pet.mood.${pet.mood}`)}</b> ${hungerText(pet)}</span>
-    </span>
-    ${typeof pet.focus === 'number'
-      ? html`<span class="hud-cell">
-          <b class="hud-k">${t('pet.focus')}</b>
-          ${focusGlass(pet)}
-          <span class="hud-say">
-            <b>${t(`pet.focusMood.${pet.focusMood}`)}</b>
-            ${pet.satMin > 0 ? t('pet.satMin', { n: pet.satMin }) : t('pet.satRested')}
-          </span>
-        </span>`
-      : ''}
-  </div>`;
+  // Cùng một dải với popover, cùng một hàm vẽ — xem `statCells` trong `lib/pet.js`. Hai bản
+  // vẽ riêng là hai chỗ để lệch, và chúng ĐÃ lệch: bề mặt này mở bằng cái Ví còn popover
+  // kết bằng nó, không vì lý lẽ nào cả. Khác nhau ở đây chỉ còn đúng một tham số.
+  return html`<div class="town-hud">${statCells(pet, { bump: up })}</div>`;
 }
 
 /**
@@ -629,11 +770,19 @@ function townHud(up) {
  * dải bắt đầu ăn vào mấy tấm biển. Một thứ chỉ đúng ở một bề rộng thì nó chưa đúng.
  */
 function townAlert() {
-  const say = nudgeText(pet);
-  if (!say) return '';
-  return html`<button type="button" class="town-alert" data-place="park">
-    <span class="town-alert-say">${say}</span>
-    <span class="town-alert-go">${t('town.park')}</span>
+  // Cái CỬA nó dẫn tới là do lời nhắc quyết, không phải viết cứng ở đây. Đời trước dải này
+  // luôn trỏ về Công viên, và điều đó đúng đúng chừng nào nó chỉ nói về nhịp ngồi. Từ lượt
+  // này nó còn nói về cơn đói, mà một câu "đói lả rồi" kèm cái nút đi ra công viên là một
+  // lời khuyên dẫn nhầm chỗ — tệ hơn hẳn không có nút nào.
+  // BẬC to nhỏ cũng do lời nhắc quyết, cùng một cửa với cái đích. Người dùng xin "thông báo
+  // nổi bật khi quá đói hoặc làm việc quá lâu... và hướng dẫn hành động luôn" — vế thứ hai
+  // đã có sẵn (cái nút), vế thứ nhất là bậc này. Ranh giới của nó ở `URGENT`, `lib/pet.js`:
+  // kêu to đúng ở hai trạng thái mà bức tranh đã vẽ ra một người ngừng làm việc.
+  const nudge = nudgeOf(pet);
+  if (!nudge) return '';
+  return html`<button type="button" class="town-alert lv-${nudge.level}" data-place="${nudge.go}">
+    <span class="town-alert-say">${nudge.say}</span>
+    <span class="town-alert-go">${t(`town.${nudge.go}`)}</span>
   </button>`;
 }
 
@@ -674,6 +823,7 @@ const TOWN_VARS = `--town-w:${TOWN_BOX.w}px;--town-h:${TOWN_BOX.h}px;--town-ox:$
 function homeSec() {
   const worn = pet.worn ?? {};
   const on = (pet.slots ?? []).filter((s) => worn[s]);
+  const sound = soundOn();
   return html`<section class="shop-sec">
     <p class="shop-hint">${t('pet.homeHint')}</p>
     <!-- Ba động tác LÀM ĐƯỢC NGAY TẠI BÀN đứng ở đây chứ không ở công viên, và đó là một
@@ -688,7 +838,7 @@ function homeSec() {
       ? html`<div class="home-worn">
           ${on.map(
             (s) => html`<span class="home-piece">
-              <span class="shop-art">${itemArt(worn[s])}</span>
+              ${artOn('shop-art', worn[s], BOX_TALL)}
               <b>${t(`pet.item.${worn[s]}`)}</b>
               <em>${t(`pet.slot.${s}`)}</em>
             </span>`,
@@ -697,12 +847,52 @@ function homeSec() {
       : html`<p class="shop-mood">${t('pet.homeBare')}</p>`}
     <div class="home-foot">
       <span class="shop-tally">${t('pet.tally', { earned: coinNum(pet.earned), spent: coinNum(pet.spent), meals: pet.meals, breaks: pet.breaks ?? 0 })}</span>
+      <!-- Công tắc tiếng đứng CẠNH công tắc tắt trò chơi, không đứng ở dải thông số hay ở
+           thanh trên cùng. Cả hai là thiết lập của chính lớp trò chơi này, và cả hai đều là
+           thứ người ta chỉnh đúng một lần rồi quên — chỗ của chúng là trong nhà, không phải
+           trên đường đi của mắt.
+           Nó nói ra trạng thái bằng CHỮ chứ không bằng một cái icon loa gạch chéo: một icon
+           loa chỉ nói được bật hay tắt sau khi người ta học nó, mà cái công tắc này thì mỗi
+           tháng bấm một lần. Mặc định là TẮT — xem lib/sound.js. -->
+      <!-- aria-pressed phải là CHUỖI "true"/"false", không phải một trị boolean: hàm html
+           nuốt mọi thứ falsy nên một trị false ra thuộc tính rỗng, mà thuộc tính rỗng thì
+           trình đọc màn hình coi như không khai — tức cái công tắc mất luôn phần nói ra nó
+           đang bật hay tắt. Đã kiểm trên DOM thật.
+           Chữ trần, không quote: backtick trong comment HTML nằm trong template literal sẽ
+           ĐÓNG LUÔN chuỗi — CLAUDE.md điều 3. Đã lọt lần thứ ba ở đúng dòng này. -->
+      <button type="button" class="btn ghost" data-sound="${sound ? 'off' : 'on'}"
+        aria-pressed="${sound ? 'true' : 'false'}">${t(sound ? 'pet.soundOn' : 'pet.soundOff')}</button>
       <button type="button" class="btn ghost" data-pet-toggle="off" ${busy === 'toggle' ? 'disabled' : ''}>${t('pet.turnOff')}</button>
     </div>
   </section>`;
 }
 
 /* ── Quán ăn và tiệm trang trí ────────────────────────────────────────────────── */
+
+/**
+ * BỆ ĐẶT MÓN, và nó tự co hình lại cho vừa.
+ *
+ * Cả lý lẽ nằm ở `artFit` bên `lib/pet.js`. Ở đây chỉ có mấy con số chỗ thật, và chúng là
+ * chỗ thật ĐO ĐƯỢC chứ không ướm:
+ *
+ * - `BOX_TALL` 92×56 — lưới trang trí. Ô lưới hẹp nhất là 112px (`auto-fill minmax`), trừ
+ *   18px đệm hai bên và 2px viền còn 92; chiều cao 62px trừ 4px đệm đáy trừ 2px viền còn 56.
+ * - `BOX_FOOD` 92×40 — lưới đồ ăn, cùng bề rộng, bệ thấp hơn (46px).
+ * - `BOX_PICK` 70×38 — cái khay chọn món, bệ khai cứng 72×42.
+ * - `BOX_SHELF` 78×26 — sáu cái thẻ chọn khe; bệ 28px cao, không viền.
+ *
+ * Bốn con số thay cho `scale(0.5)` cứng của cái thẻ khe: một hệ số cố định đúng cho đúng cái
+ * sprite cao nhất tại lúc gõ nó, và sai ngay ở lần sprite ấy đổi — đã sai một lần ở lượt 20,
+ * khi con hạc cao lên 52px và cái mào bị xén.
+ */
+const BOX_TALL = [92, 56];
+const BOX_FOOD = [92, 40];
+const BOX_PICK = [70, 38];
+const BOX_SHELF = [78, 26];
+
+/** Một món trên bệ: hình cộng đúng một biến CSS nói nó phải co bao nhiêu. */
+const artOn = (cls, id, [w, h], eat = null) =>
+  html`<span class="${cls}" style="--fit:${artFit(id, w, h)}">${id ? itemArt(id, eat) : ''}</span>`;
 
 /**
  * Một ô đồ ăn — CHỌN, không phải mua. Cú bấm thứ hai nằm dưới khay (xem `foodTray`).
@@ -720,7 +910,7 @@ function foodTile(id, item, busyNow) {
   return html`<button type="button" class="shop-item ${poor ? 'poor' : ''} ${pick === id ? 'trying' : ''}"
     data-pick="${id}" ${busy === id || busyNow ? 'disabled' : ''}
     title="${busyNow ? t('pet.oneAtATime') : poor ? t('pet.tooPoor', { n: coinNum(item.price - pet.coins) }) : ''}">
-    <span class="shop-art">${itemArt(id)}</span>
+    ${artOn('shop-art', id, BOX_FOOD)}
     <span class="shop-name">${t(`pet.item.${id}`)}</span>
     <span class="shop-price">${price(item.price)}</span>
     <span class="shop-fill">${t('pet.fills', { pct: Math.round(item.fill * 100) })}</span>
@@ -768,7 +958,7 @@ function decorTile(id, item) {
       : html`data-try-slot="${item.slot}" ${on ? '' : html`data-try="${id}"`}`}
     ${busy === (owned ? `wear:${item.slot}` : id) ? 'disabled' : ''}
     title="${poor ? t('pet.tooPoor', { n: coinNum(item.price - pet.coins) }) : ''}">
-    <span class="shop-art">${itemArt(id)}</span>
+    ${artOn('shop-art', id, BOX_TALL)}
     <span class="shop-name">${t(`pet.item.${id}`)}</span>
     <span class="shop-price">${owned ? t(worn ? 'pet.wearOff' : 'pet.wear') : price(item.price)}</span>
     ${on ? html`<span class="rest-best">${t('pet.trying')}</span>` : ''}
@@ -839,7 +1029,7 @@ function foodTray(busyNow) {
   const poor = pet.coins < item.price;
   const to = Math.round(Math.min(1, pet.full + item.fill) * 100);
   return html`<div class="shop-pick on">
-    <span class="shop-art">${itemArt(pick)}</span>
+    ${artOn('shop-art', pick, BOX_PICK)}
     <div class="pick-side">
       <p class="pick-on">${t('pet.pickOn', { name: t(`pet.item.${pick}`), pct: to })}</p>
       <div class="try-act">
@@ -868,27 +1058,81 @@ function foodSec() {
  * Đồ trang trí, chia theo CHỖ ĐỨNG chứ không đổ chung một lưới.
  *
  * Từ lúc nhiều món chung một chỗ thì "mua thêm" và "đổi món" là hai việc khác nhau, và
- * một lưới phẳng mười sáu ô không nói được cái nào loại trừ cái nào — mua cái vương miện
+ * một lưới phẳng hai mươi hai ô không nói được cái nào loại trừ cái nào — mua cái vương miện
  * xong thấy cái nón chóp lặng lẽ biến khỏi popover là một chuyện không giải thích được ở
- * bất kỳ chỗ nào trên màn hình. Gom theo khe thì luật ấy đọc ra từ chính bố cục: ba món
+ * bất kỳ chỗ nào trên màn hình. Gom theo khe thì luật ấy đọc ra từ chính bố cục: mấy món
  * đứng chung một tiêu đề, tiêu đề nói đang bày món nào.
  *
  * Thứ tự khe do SERVER định (`SLOTS`), không do file này — nó là thứ tự trong bức tranh
  * (trên đầu trước, nền trời sau), và bức tranh thì server cũng là chỗ giữ bảng chỗ đứng.
+ *
+ * ## Lượt này: sáu lưới cùng mở → MỘT lưới, và năm cái cửa
+ *
+ * Cả lý lẽ nằm ở `shelf`. Ba chỗ đáng ghi ở phần dựng:
+ *
+ * 1. **Dải thẻ đứng NGAY TRÊN cái lưới nó điều khiển**, không ở đầu khối và không dưới bức
+ *    tranh thử đồ. Một cái điều khiển đặt xa thứ nó điều khiển thì cú bấm không có phản hồi
+ *    trong tầm mắt — đúng cái bẫy mà cái khay đồ ăn đã phải dời lên trên để tránh.
+ * 2. **Bức tranh thử đồ giữ nguyên chỗ cũ**, trên cùng. Nút MUA nằm trong nó (xem `tryDesk`),
+ *    và dời chỗ một cái nút mua để lấy chỗ cho một cái điều khiển mới là đổi một thói quen
+ *    đã có lấy một tính năng chưa ai dùng.
+ * 3. **Mỗi thẻ chở BA tin, không phải một cái tên**: món đang bày ở khe ấy (bằng hình), tên
+ *    khe, và số món đã có trên tổng số. Tin thứ ba là tin mà bản cũ không nói ở đâu cả — với
+ *    sáu lưới cùng mở thì người ta tự đếm được, với một lưới thì không. Đóng bớt năm cái cửa
+ *    mà không trả lại con số ấy là giấu thông tin, không phải dọn gọn.
  */
+/** `open` truyền vào chứ không đọc thẳng `shelf`: `shelf` có thể là `null` (lượt đầu) hoặc là
+ *  một khe server vừa bỏ đi, và trong cả hai ca ấy `decorSec` đã chọn một khe thay thế. Đọc
+ *  lại `shelf` ở đây là dựng bản thứ hai của cùng một quyết định, và bản thứ hai sẽ ra một
+ *  dải sáu thẻ không thẻ nào sáng lên trong khi lưới bên dưới đang mở một khe. */
+function shelfTab(slot, open) {
+  const ids = idsOf((i) => i.slot === slot);
+  const own = ids.filter((id) => pet.owned.includes(id)).length;
+  const on = pet.worn?.[slot];
+  return html`<button type="button" class="shelf-tab ${slot === open ? 'on' : ''}"
+    data-shelf="${slot}" aria-pressed="${slot === open}"
+    title="${t('pet.shelfOwn', { own, all: ids.length })}">
+    <!-- Ô hình giữ chỗ KỂ CẢ khi khe đang trống, và đó không phải chỗ quên: sáu cái thẻ cao
+         bằng nhau thì cả dải là một hàng, còn cao thấp so le thì nó đọc thành sáu cái nút
+         rời. Chỗ trống ấy cũng chính là thứ nói khe này chưa có gì.
+         Chữ trần, không quote: backtick trong comment HTML nằm trong template literal sẽ
+         ĐÓNG LUÔN chuỗi — CLAUDE.md điều 3. -->
+    ${artOn('shelf-art', on, BOX_SHELF)}
+    <b>${t(`pet.slot.${slot}`)}</b>
+    <i>${own}/${ids.length}</i>
+  </button>`;
+}
+
 function decorSec() {
+  const slots = (pet.slots ?? []).filter((s) => idsOf((i) => i.slot === s).length);
+  // Khe đang mở phải LUÔN là một khe có thật: `shelf` sống qua nhịp vẽ lại 30 giây, mà bảng
+  // hàng hoá đến từ server và có thể đổi giữa hai nhịp ấy. Rơi về khe đầu chứ không rơi về
+  // một lưới rỗng — cùng luật "hỏng về phía im lặng" đã ghi cho mặt kính laptop.
+  const open = slots.includes(shelf) ? shelf : slots[0];
+  const ids = open ? idsOf((i) => i.slot === open) : [];
+  const worn = open ? pet.worn?.[open] : null;
   return html`<section class="shop-sec">
     <p class="shop-hint">${t('pet.decorHint')}</p>
     ${tryDesk()}
-    ${(pet.slots ?? []).map((slot) => {
-      const ids = idsOf((i) => i.slot === slot);
-      if (!ids.length) return '';
-      const on = pet.worn?.[slot];
-      return html`<div class="shop-slot">
-        <h3>${t(`pet.slot.${slot}`)} <em>${on ? t(`pet.item.${on}`) : t('pet.slotEmpty')}</em></h3>
-        <div class="shop-grid">${ids.map((id) => decorTile(id, pet.items[id]))}</div>
-      </div>`;
-    })}
+    <!-- Số cột gửi sang bằng BIẾN, đếm từ bảng khe của server. Viết cứng 6 vào CSS thì ngày
+         server thêm khe thứ bảy là ô ấy rơi xuống dòng hai, im lặng — cùng hạng lỗi đã bắt
+         TOWN_BOX phải bỏ ba con số viết cứng.
+         Chữ trần, không quote: backtick trong comment HTML nằm trong template literal sẽ
+         ĐÓNG LUÔN chuỗi — CLAUDE.md điều 3. -->
+    <div class="shop-shelves" style="--shelves:${slots.length}">${slots.map((s) => shelfTab(s, open))}</div>
+    ${open
+      ? html`<div class="shop-slot">
+          <h3>${t(`pet.slot.${open}`)} <em>${worn ? t(`pet.item.${worn}`) : t('pet.slotEmpty')}</em></h3>
+          <!-- tall chỉ ở lưới TRANG TRÍ, không ở lưới đồ ăn. Bệ đặt món cao 62px vì con hạc
+               cao 52px (xem shop-art trong styles.css), mà món ăn cao nhất chỉ 28px — nới
+               chung thì mỗi ô đồ ăn có 29px trời trống phía trên một cái cốc, và cả lưới đọc
+               thành "hình chưa tải xong". Đã thấy trên màn hình một lần, ở đúng bản nới chung.
+               Chữ trần, không quote: backtick trong comment HTML nằm trong template literal sẽ
+               ĐÓNG LUÔN chuỗi — CLAUDE.md điều 3, và lượt 20 lọt lại đúng vào nó một lần nữa,
+               cách dòng cảnh báo ngay trên đúng bốn mươi dòng. -->
+          <div class="shop-grid tall">${ids.map((id) => decorTile(id, pet.items[id]))}</div>
+        </div>`
+      : ''}
   </section>`;
 }
 
@@ -1142,7 +1386,10 @@ export function renderPet() {
   // khối bên dưới. Kẹp riêng ở chỗ chọn khối thì bản đồ không sáng chỗ nào cả.
   if (!PLACE_IDS.includes(place)) place = 'home';
 
-  return html`<div class="shop" style="${TOWN_VARS}">
+  // `--now` khoá pha hoạt hình vào đồng hồ tường — cùng con số, cùng lý do như ở khung trời
+  // popover (xem `lifeClock` bên `lib/pet.js`). Cửa hàng cần nó không kém: nó vẽ lại mỗi 30
+  // giây theo nhịp SSE, và mỗi lượt là một lần `innerHTML` mới.
+  return html`<div class="shop" style="${TOWN_VARS};${lifeClock()}">
     <!-- MỘT cái khung: dải thông số, bản đồ, dải nhắc. Xem townShell.
          Chữ trần, không quote: backtick trong comment HTML nằm trong template literal sẽ
          ĐÓNG LUÔN chuỗi — CLAUDE.md điều 3, lọt thêm một lần nữa ở đúng chỗ này.

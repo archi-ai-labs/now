@@ -14,15 +14,27 @@
      rơi về SF Mono của hệ thống, cùng họ với chính thanh menu ở trên. -->
 <link rel="stylesheet" href="/styles.css">
 
-<!-- Nền đặt TRƯỚC nhịp vẽ đầu, như index.html. Khác một chỗ: ở đây theme đi theo
-     APPEARANCE CỦA MACOS chứ không theo localStorage. WKWebView trong app Swift có
-     kho riêng, không dùng chung với Safari — đọc localStorage ở đây thì lần nào cũng
-     rỗng và popover luôn ra nền sáng, nằm chình ình dưới một thanh menu tối. -->
+<!-- Nền đặt TRƯỚC nhịp vẽ đầu, như index.html — nếu không thì mỗi lần mở popover là một
+     nháy trắng dưới một thanh menu tối.
+
+     Mặc định vẫn là APPEARANCE CỦA MACOS, và đó là chỗ khác index.html: WKWebView trong
+     app Swift có kho localStorage riêng, không dùng chung với Safari, nên cái theme người
+     dùng chọn trên dashboard không với tới đây được.
+
+     Từ lượt 18 cửa sổ này có công tắc riêng — bấm vào mặt trời, xem `lib/mbtheme.js`. Kho
+     riêng ở đây là kho CỦA NÓ, nên đọc được. Ba chế độ: `auto` hỏi macOS, hai chế độ kia
+     trả chính nó.
+
+     Đoạn dưới đây là BẢN CHÉP DUY NHẤT của `resolveTheme` bên module ấy, và nó được phép
+     tồn tại vì nó phải chạy ĐỒNG BỘ trước nhịp vẽ đầu — module thì `defer`. Khoá phải khớp
+     'now-mb-theme'; đổi tên ở một bên mà quên bên kia thì cái hỏng là một nháy trắng, không
+     phải một dòng lỗi. -->
 <script>
   var dark = matchMedia('(prefers-color-scheme: dark)');
-  function paint(m) { document.documentElement.setAttribute('data-theme', m.matches ? 'dark' : 'light'); }
-  paint(dark);
-  dark.addEventListener('change', paint);
+  var m;
+  try { m = localStorage.getItem('now-mb-theme'); } catch (e) { m = null; }
+  if (m !== 'light' && m !== 'dark') m = dark.matches ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', m);
 </script>
 </head>
 <body class="mb-body">

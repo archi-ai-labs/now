@@ -42,6 +42,40 @@ test('quét được cả hai thư mục module client', () => {
   assert.ok(FILES.includes('lib/report.js'));
 });
 
+/**
+ * GỌI TÊN cái bẫy, chứ không chỉ bắt được nó.
+ *
+ * Lưới ở dưới đã bắt lớp lỗi này ngay từ lần đầu, và nó vẫn là lưới chính. Chỗ nó hụt là
+ * chỗ khác: nó báo về đúng thứ mà trình biên dịch nhìn thấy — `Unexpected identifier 'left'`
+ * — tức là con chữ ĐẦU TIÊN sau dấu backtick, thường cách nguyên nhân vài chục dòng và
+ * không dính dáng gì tới nó. Lượt 20 mất một vòng vì thế, lượt 21 mất thêm một vòng nữa.
+ *
+ * Nên có thêm một phép quét chỉ để đặt tên: tìm khối chú thích HTML nào còn backtick, chỉ
+ * ra số dòng, và nói thẳng phải làm gì. Nó không thay lưới kia — một dấu backtick lọt vào
+ * chỗ khác trong template vẫn chỉ có lưới kia bắt được.
+ *
+ * Quét cả file chứ không riêng phần trong template: một khối `<!-- -->` trong mã client thì
+ * gần như chắc chắn nằm trong một template `html`, và phân biệt cho đúng đòi hỏi một bộ
+ * phân tích cú pháp — đắt hơn hẳn thứ nó mua về. Chú thích HTML ngoài template là thứ không
+ * ai viết, nên báo nhầm là ca không tồn tại.
+ */
+test('không backtick nào trong chú thích HTML — nó ĐÓNG luôn template', () => {
+  const hits = [];
+  for (const rel of FILES) {
+    const src = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    for (const m of src.matchAll(/<!--[\s\S]*?-->/g)) {
+      if (!m[0].includes('`')) continue;
+      hits.push(`${rel}:${src.slice(0, m.index).split('\n').length}`);
+    }
+  }
+  assert.deepEqual(
+    hits,
+    [],
+    `backtick trong chú thích HTML tại ${hits.join(', ')} — nó đóng luôn chuỗi template và ` +
+      'cả module thành lỗi cú pháp. Bỏ hết backtick trong khối đó, viết tên class và tên file trần.',
+  );
+});
+
 for (const rel of FILES) {
   // `app.js` gắn listener vào `document` ngay lúc nạp, nên ở Node nó luôn ném — với nó thì
   // chỉ kiểm CÚ PHÁP, tức là đúng cái lớp lỗi đã lọt. Lỗi cú pháp xảy ra lúc BIÊN DỊCH, tức
@@ -58,3 +92,43 @@ for (const rel of FILES) {
     }
   });
 }
+
+/* ── Bản nhớ trạng thái ─────────────────────────────────────────────────────── */
+
+/**
+ * Luật tuổi của bản nhớ dashboard — xem `lib/statecache.js`.
+ *
+ * Nó ở đây chứ không trong `pet.test.js` vì nó không dính gì tới trò chơi, và ở đây thì file
+ * đã sẵn nhập `fs`/`path` cho mấy phép quét module.
+ *
+ * Ca đáng canh nhất là ca đã mắc thật lúc dựng: `/api/state` trả `generatedAt` là SỐ mili
+ * giây, còn sổ quản gia trả chuỗi ISO. Một hàm chỉ biết `Date.parse` ra `NaN` cho dạng số rồi
+ * lặng lẽ lùi về mốc GHI — tức là bản nhớ của tám tiếng trước vẫn được coi là tươi, đúng cái
+ * ca mà trần 90 phút sinh ra để chặn.
+ */
+const { STALE_MAX_MS, freshEnough } = await import(
+  new URL(`file://${path.join(ROOT, 'lib/statecache.js')}`).href
+);
+
+test('bản nhớ: tuổi đếm từ generatedAt, nhận cả số lẫn chuỗi ISO', () => {
+  const now = 1_700_000_000_000;
+  const old = now - STALE_MAX_MS - 60_000;
+
+  // Mốc GHI mới tinh, nhưng SỐ LIỆU thì cũ — đây là tab mở suốt buổi mà server đã im.
+  const staleNum = { at: now, state: { generatedAt: old } };
+  const staleIso = { at: now, state: { generatedAt: new Date(old).toISOString() } };
+  assert.equal(freshEnough(staleNum, now), false, 'generatedAt dạng SỐ mà quá hạn vẫn phải bị loại');
+  assert.equal(freshEnough(staleIso, now), false, 'generatedAt dạng ISO mà quá hạn vẫn phải bị loại');
+
+  const fresh = now - STALE_MAX_MS + 60_000;
+  assert.equal(freshEnough({ at: now, state: { generatedAt: fresh } }, now), true);
+  assert.equal(freshEnough({ at: now, state: { generatedAt: new Date(fresh).toISOString() } }, now), true);
+});
+
+test('bản nhớ: không có generatedAt thì lùi về mốc ghi, và rỗng thì loại', () => {
+  const now = 1_700_000_000_000;
+  assert.equal(freshEnough({ at: now - 60_000, state: { stats: {} } }, now), true, 'sổ bản cũ vẫn dùng được');
+  assert.equal(freshEnough({ at: now - STALE_MAX_MS - 1, state: { stats: {} } }, now), false);
+  assert.equal(freshEnough(null, now), false);
+  assert.equal(freshEnough({ at: now }, now), false, 'hộp không có sổ thì không phải một bản nhớ');
+});

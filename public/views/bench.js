@@ -29,6 +29,8 @@
  * (`nav.bench` / `title.bench`) đi qua i18n, vì nó nằm trên thanh rail cạnh bảy màn kia.
  */
 import { html } from '../lib/dom.js';
+import { setLang } from '../lib/i18n.js';
+import { setTheme } from '../lib/mbtheme.js';
 import { popoverView, DEFAULTS } from '../lib/menubar-view.js';
 import { currentPet } from './pet.js';
 
@@ -104,6 +106,11 @@ const CONTROLS = [
       [false, 'không — tiết kiệm ~130px, câu hạn mức vẫn còn'],
     ],
   },
+  /* Núm `stat` từng đứng ngay đây — ba lối vẽ cái sổ bấm-ra, dựng ở lượt 18 để người dùng nhìn
+     thật rồi quyết. Đã chốt lối C ở lượt 19, nên núm và hai lối kia gỡ hẳn.
+     Ghi lại vì nó là bằng chứng cho việc bàn chỉnh này dùng để làm gì: một núm ở đây được phép
+     tồn tại tạm để CHỌN, nhưng chọn xong thì nó phải chết. Một bàn chỉnh giữ lại mọi phương án
+     từng cân nhắc thì sau mười lượt nó là bảo tàng, không phải bàn chỉnh. */
   {
     key: 'est',
     label: 'Nhãn dự phóng đứng đâu',
@@ -361,6 +368,27 @@ function onKnob(e) {
 }
 
 function onTab(e) {
+  // Nút đổi ngôn ngữ TRONG popover cũng phải chạy ở đây, không nhờ được nút của dashboard:
+  // trang lẻ `menubar-demo.html` không có thanh rail nào để mà nhờ. `setLang` tự gọi mọi
+  // người đang nghe, nên trên dashboard `render()` của app đã lo phần còn lại — chỗ này chỉ
+  // cần lo cho trang lẻ, và một lượt vẽ thừa trên dashboard rẻ hơn một trang lẻ câm.
+  const lang = e.target.closest('.mbd-pop [data-lang]');
+  if (lang) {
+    setLang(lang.dataset.lang);
+    redraw();
+    return;
+  }
+  // MẶT TRỜI đổi nền, và ở bàn chỉnh nó lật theme của CẢ TRANG — `data-theme` sống trên
+  // `<html>`, một chỗ duy nhất. Đó không phải tác dụng phụ mà đúng là thứ bàn chỉnh dùng để
+  // xem: popover thật cũng chỉ có một cái `<html>`. Khoá lưu thì riêng (`now-mb-theme`), nên
+  // theme của dashboard không bị ghi đè — tải lại trang là nó về đúng chỗ cũ.
+  // Núm `theme` ngay trong bảng bên trái vẫn là chỗ chỉnh chính; cái này để thử chính CÁI NÚT.
+  const sky = e.target.closest('.mbd-pop [data-sky]');
+  if (sky) {
+    setTheme(sky.dataset.sky);
+    redraw();
+    return;
+  }
   const btn = e.target.closest('.mbd-pop [data-tab]');
   if (!btn) return;
   opts.tab = btn.dataset.tab;

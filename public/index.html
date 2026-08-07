@@ -16,6 +16,42 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/styles.css">
 
+<!-- ── Gọi trước mấy module ở TẦNG SÂU ─────────────────────────────────────────
+
+     Dự án này cố ý không có bước build, nên trình duyệt phải TỰ KHÁM PHÁ cây import:
+     nó tải app.js, đọc xong mới biết cần lib/*, tải lib/* xong mới biết views/pet.js
+     cần lib/town.js, và cứ thế. Mỗi tầng là một vòng mạng.
+
+     Đo trên máy này (33 module, localhost):
+
+         50ms   app.js
+         75ms   20 file — mọi thứ app.js nhập thẳng
+        100ms   6 file  — lib/game, lib/surface, lib/chart, views/tools, lib/mbtheme, lib/menubar-view
+        125ms   6 file  — lib/pet, lib/town, lib/petmath, lib/petcache, lib/sound, lib/pixel
+
+     Bốn tầng, và hai tầng cuối chỉ tồn tại vì trình duyệt chưa biết chúng có mặt. Mười hai
+     dòng dưới đây nói trước, nên chúng khởi hành cùng tầng hai thay vì đợi hai vòng nữa.
+
+     `modulepreload` chứ không `preload`: nó vừa tải vừa BIÊN DỊCH và cất vào đúng bản đồ
+     module, nên lúc `import` thật chạy thì không có lượt tải thứ hai. `preload` thường chỉ
+     nhét vào cache HTTP và Safari sẽ cảnh báo "tải nhưng không dùng".
+
+     Chỉ liệt kê hai tầng CUỐI. Tầng hai thì app.js đã tự nói ra rồi, và chép lại nó ở đây là
+     dựng một danh sách thứ hai phải nhớ chỉnh — đắt hơn hẳn thứ nó mua về. Hai tầng này thì
+     ít đổi: chúng là ruột của bức tranh và của trò chơi. -->
+<link rel="modulepreload" href="/lib/game.js">
+<link rel="modulepreload" href="/lib/surface.js">
+<link rel="modulepreload" href="/lib/chart.js">
+<link rel="modulepreload" href="/views/tools.js">
+<link rel="modulepreload" href="/lib/mbtheme.js">
+<link rel="modulepreload" href="/lib/menubar-view.js">
+<link rel="modulepreload" href="/lib/pet.js">
+<link rel="modulepreload" href="/lib/town.js">
+<link rel="modulepreload" href="/lib/petmath.js">
+<link rel="modulepreload" href="/lib/petcache.js">
+<link rel="modulepreload" href="/lib/sound.js">
+<link rel="modulepreload" href="/lib/pixel.js">
+
 <!-- Chạy như app riêng trên Dock: Safari → File → Add to Dock. `short_name` trong
      manifest là cái tên hiện dưới icon Dock — bỏ nó đi thì macOS lấy <title> và nhãn
      thành "NOW — sở chỉ huy" tràn ra ngoài. -->
@@ -99,7 +135,7 @@
 
     <div class="offline" id="offline" role="status" aria-live="polite" hidden>
       <span class="ic" aria-hidden="true">⚠</span>
-      <span><span data-i18n="off.pre">Mất kết nối tới server — đang xem ảnh chụp lúc</span> <b id="off-t">—</b><span data-i18n="off.post">, không còn tự cập nhật.</span></span>
+      <span><span id="off-pre" data-i18n="off.pre">Mất kết nối tới server — đang xem ảnh chụp lúc</span> <b id="off-t">—</b><span id="off-post" data-i18n="off.post">, không còn tự cập nhật.</span></span>
       <button class="btn" id="offretry" data-i18n="off.retry">Thử lại</button>
     </div>
 

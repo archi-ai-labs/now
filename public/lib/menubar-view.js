@@ -11,10 +11,30 @@
  * không phải sửa hai chỗ.
  */
 import { html, ago } from './dom.js';
-import { t } from './i18n.js';
+import { t, getLang, LANGS, LANG_FLAG, LANG_LABEL } from './i18n.js';
 import { pixels } from './pixel.js';
-import { BUTLER_CHARS, butlerHand, butlerRows, poseOf, itemArt, doingArt, hungerBar, focusGlass, nudgeText, wallet } from './pet.js';
-import { whereOf } from './petmath.js';
+import {
+  BUTLER_CHARS,
+  butlerHand,
+  butlerLook,
+  butlerRows,
+  butlerSays,
+  butlerTalk,
+  butlerThinks,
+  faceArt,
+  itemArt,
+  lifeClock,
+  doingArt,
+  doingRing,
+  markArt,
+  nudgeOf,
+  speaking,
+  statWords,
+  talkArt,
+  wallet,
+} from './pet.js';
+import { phaseOf, whereOf } from './petmath.js';
+import { nextTheme, themeMode } from './mbtheme.js';
 import { briefing, toolWindows } from './butler.js';
 import {
   windowsOf,
@@ -39,8 +59,13 @@ import {
  *
  * `inline`: gộp nhãn cửa sổ vào cùng hàng với thanh. Đổi chiều cao lấy bề rộng thanh —
  * đúng phép đổi đó, không phải một bố cục "gọn hơn" chung chung.
+ *
+ * `skyEcho`: lượt vẽ này có phải là lượt NGAY SAU một cú bấm mặt trời không. Cái duy nhất
+ * nó bật lên là nhãn chế độ nền dưới mặt trời — xem chỗ dựng nó trong `scene`. Mặc định
+ * tắt, và đó là chủ ý: đổi tab hay đổi ngôn ngữ cũng đi qua cùng hàm vẽ này, mà một cái
+ * nhãn nháy lên vì người ta vừa bấm sang tab khác là một câu trả lời cho một câu không ai hỏi.
  */
-export const DEFAULTS = { tab: 'work', tall: true, inline: false, width: 360, hero: true, est: 'mid' };
+export const DEFAULTS = { tab: 'work', tall: true, inline: false, width: 360, hero: true, est: 'mid', skyEcho: false };
 
 /* QUẢN GIA — nhân vật của popover. Hình của nó nằm ở `lib/pet.js`, không ở đây, vì thị
    trấn cũng vẽ đúng nhân vật ấy trong nhà; xem khối chú thích ở đầu file kia. Chỗ này chỉ
@@ -80,19 +105,15 @@ const MOON = [
   '..###..',
 ];
 
-/**
- * Bốn buổi trong ngày, lấy theo GIỜ MÁY.
- *
- * Popover mở ra rồi đóng trong vài giây nên không cần hẹn giờ vẽ lại: mỗi lần mở là một
- * lần đọc đồng hồ. Ranh giới cố ý thô — không có buổi nào mang tin gì, chúng chỉ để cái
- * cửa sổ này giống chỗ người dùng đang ngồi.
- */
-export function phaseOf(hour) {
-  if (hour >= 5 && hour < 9) return 'dawn';
-  if (hour >= 9 && hour < 16) return 'day';
-  if (hour >= 16 && hour < 19) return 'dusk';
-  return 'night';
-}
+/* `phaseOf` đã dọn sang `petmath.js` ở lượt này. Lý do: từ lượt này bản đồ thị trấn cũng đổi
+   trời theo giờ, mà để `views/pet.js` đi hỏi `menubar-view.js` một hàm năm dòng về cái đồng
+   hồ là kéo trọn khung cảnh popover vào một màn không dùng tới nó. `petmath.js` vốn đã là
+   nhà của mấy hàm thuần ăn theo giờ (`moveForHour`, `wakeOf`).
+
+   KHÔNG xuất lại từ đây. Bản đầu của lượt này có một dòng `export { phaseOf }` để "chỗ gọi
+   cũ khỏi phải đổi" — soi lại thì không có chỗ gọi cũ nào: hai người dùng duy nhất là chính
+   file này và `views/pet.js`, cả hai lấy thẳng từ `petmath.js`. Một cửa xuất không ai đi qua
+   là một cửa mà lần dọn sau phải đoán xem có ai đi qua không. */
 
 /** Sao nền: toạ độ cố định, KHÔNG ngẫu nhiên — mỗi lần mở popover mà trời khác nhau
  *  thì mắt bám vào chỗ đổi, mà chỗ đổi ấy không mang tin gì. Chừa trống góc trên-trái
@@ -108,8 +129,31 @@ export const TABS = ['work', 'token'];
 const WORK_TONE = { alert: 'crit', warn: 'warn', calm: 'ok', mute: 'later' };
 
 /**
- * NỬA TRÊN của popover: trời theo buổi, mặt trời hoặc mặt trăng, quản gia và đồ đạc của
- * nó, rồi một dải chân mang thanh đói với cái ví.
+ * NỬA TRÊN của popover: trời theo buổi, mặt trời hoặc mặt trăng, quản gia và đồ đạc của nó.
+ *
+ * ## Dải chân đã BIẾN MẤT — mọi thứ của con vật giờ nằm trong chính bức tranh
+ *
+ * Trước lượt này khung này là hai tầng: bức tranh 94px, rồi một dải 39px mang thanh đói,
+ * đồng hồ tập trung và cái ví. Người dùng chỉ ra chỗ hỏng: hai tầng ấy nói về đúng một con
+ * vật, nên cái viền giữa chúng là một cái viền không ngăn cách hai thứ gì cả — nó chỉ tốn
+ * 39px trên một cửa sổ 561px.
+ *
+ * Ba mảnh dọn vào ba chỗ khác nhau TRONG tranh, và chỗ nào cũng suy từ loại của mảnh ấy:
+ *
+ * - **No và nhịp** → sổ mở ra bên TRÁI nhân vật, bấm mới hiện, tự hiện khi anh ta đang nói.
+ *   Chúng là *trạng thái*, mà bức tranh đã kể được một nửa (mắt nhắm, bụng kêu) — nên chúng
+ *   được phép chờ một cú bấm.
+ * - **Bên phải** → chỗ anh ta nói và nghĩ (xem `speaking`/`butlerThinks` bên `lib/pet.js`).
+ * - **Ví** → KHÔNG vào tranh. Nó xuống một hàng riêng ngay dưới, mang theo cái tên "Cửa
+ *   hàng" (xem `.mb-money`). Bản đầu treo nó thành tấm biển trong tranh và người dùng bác
+ *   ngay: bức tranh chỉ rộng 326px, thêm một vật thường trực 100px là góc trái-dưới hết chỗ
+ *   cho món đồ đã mua — gộp mà làm khung chật hơn thì gộp để làm gì.
+ *
+ * Phép gộp vì thế đọc được thành một câu: **trạng thái vào tranh, cửa ở lại ngoài tranh.**
+ *
+ * Bức tranh cao 148px chứ không 94px như trước, và chỗ thêm ra là chỗ để mỗi thứ có DẢI
+ * RIÊNG: bong bóng thoại chiếm y 6–81, còn nhân vật và cái sổ bắt đầu đúng ở y 81. Ở 94px
+ * thì ba thứ chồng lên nhau và cái sổ che mất cả mặt trời.
  *
  * Trọn khối này là TRÒ CHƠI, và đó là luật của nó: không một con số hạn mức nào được lọt
  * vào trong cái viền. Dòng trạng thái từng nằm ở đây và đã dọn xuống nửa dưới (xem
@@ -257,20 +301,42 @@ const inPark = (pet) => Boolean(pet?.on) && whereOf(pet.doing) === 'park';
  * không có con vật nào để nói về, mà cái khung vẫn phải nói được một điều gì đó.
  */
 function moodOfScene(pet, tone) {
-  if (!pet?.on) return { pose: 'stand', dozing: tone === 'crit' || tone === 'warn' || tone === 'mute' };
-  if (pet.doing) return { pose: poseOf(pet.doing), dozing: false };
-  return { pose: 'stand', dozing: pet.focusMood === 'spent' || pet.mood === 'starving' };
+  // Trò chơi TẮT: không có con vật nào để nói về, nên đôi mắt trả lại cho băng hạn mức —
+  // đúng như trước khi lớp trò chơi tồn tại. Đây là nhánh DUY NHẤT còn đọc `tone`.
+  if (!pet?.on) {
+    return { state: 'off', pose: 'stand', eyes: 'shut', dozing: tone === 'crit' || tone === 'warn' || tone === 'mute', mark: null };
+  }
+  // Mọi nhánh còn lại do CON VẬT quyết, và luật nằm ở `butlerLook` — chung với bản đồ thị
+  // trấn. Trước lượt này chỗ này giữ một bản luật riêng, và bản ấy gộp "đói lả" với "kiệt
+  // tập trung" vào cùng một hình ngủ gật; xem `stateOf` bên `petmath.js` để biết thứ hạng
+  // giờ là gì và vì sao.
+  const look = butlerLook(pet, { cheer: false });
+  return { ...look, dozing: look.eyes === 'shut' };
 }
 
-function scene(b, phase, pet, bump = 0) {
+function scene(b, phase, pet, bump = 0, skyEcho = false) {
   const tone = toneOf(b);
-  const { pose, dozing } = moodOfScene(pet, tone);
+  const { state, pose, dozing, mark } = moodOfScene(pet, tone);
   const rows = butlerRows(pose, dozing ? 'shut' : 'open');
   const night = phase === 'night';
   // Trò chơi tắt, hoặc chưa hỏi được sổ → khung cảnh y như trước khi có nó. Không có
   // nhánh nào bày một cái thanh rỗng hay một ô xám chờ dữ liệu: popover mở ra trong vài
   // giây, và một chỗ trống đang chờ thì tệ hơn hẳn một chỗ không có gì.
   const on = Boolean(pet?.on);
+  const nudge = on ? nudgeOf(pet) : null;
+  // NÓI hay NGHĨ — luật ở `speaking`/`butlerThinks`/`butlerTalk` bên `lib/pet.js`, không ở
+  // đây. Chỗ này chỉ chọn cái hình cho mỗi giọng.
+  //
+  // Từ lượt 19 CẢ HAI bong bóng đều dựng, mọi lúc, và cái quyết định thứ nào hiện ra là
+  // thuộc tính `open` của `details` — tức là một cú bấm, không phải một câu `if` ở đây. Lý do
+  // là ràng buộc đã dựng nên cái `details` này: popover thật chạy trong WKWebView, trang demo
+  // gọi CHUNG hàm vẽ này, và không bên nào có một handler chung để nghe cú bấm. Đổi bong bóng
+  // bằng CSS thì không cần bên nào nghe cả.
+  //
+  // `loud` vì thế chỉ còn một việc: mở SẴN cái sổ ở hai bậc gấp. Nó không còn chọn bong bóng.
+  const loud = on && speaking(pet);
+  const talk = butlerTalk(pet);
+  const thoughts = on ? butlerThinks(pet) : [];
   const worn = on ? (pet.worn ?? {}) : {};
   // Trả thẳng cả cái thẻ chỗ đứng, không trả mảng hình: chỗ nào cũng đúng một món (bảng
   // `worn` khoá theo chỗ), nên nhánh "có món thì bọc, không thì thôi" lặp lại y hệt ở sáu
@@ -278,7 +344,10 @@ function scene(b, phase, pet, bump = 0) {
   const deco = (slot) =>
     worn[slot] ? html`<div class="pet-slot slot-${slot}">${itemArt(worn[slot])}</div>` : '';
 
-  return html`<div class="mb-scene tone-${tone}">
+  // `--now` (khoá pha) dọn lên `.mb-wrap` ở lượt 24 — xem `popoverView` cuối file. Nó từng
+  // ngồi ngay đây, và chỗ ấy hụt: mọi thứ NGOÀI bức tranh mà vẫn trong popover — chấm nhịp
+  // ở câu quản gia, vân bò của mảng dự phóng — không với tới được nó.
+  return html`<div class="mb-scene tone-${tone} pet-${state}">
     <!-- Bức tranh và hàng trò chơi nằm trong MỘT cái khung. Trước đây chúng là hai khối
          rời cách nhau 8px, mà chen đúng vào giữa là câu hạn mức — một con số THẬT kẹp
          giữa hai nửa của một trò chơi. Gộp lại thì cái khung trả lời trọn một câu hỏi
@@ -288,9 +357,59 @@ function scene(b, phase, pet, bump = 0) {
     <div class="mb-stage">
       <div class="mb-sky">
         ${STARS.map(([x, y]) => html`<i class="mb-star" style="left:${x}%;top:${y}%"></i>`)}
-        ${night
-          ? html`<div class="mb-moon">${pixels(MOON, { o: 'core' }, false)}</div>`
-          : html`<div class="mb-sun">${pixels(SUN, { o: 'core' }, false)}</div>`}
+        <!-- MẶT TRỜI LÀ CÔNG TẮC THEME, từ lượt 18. Người dùng xin: "bấm vào mặt trời trên
+             popover có thể chuyển chế độ, mặc định là auto".
+             Đây là chỗ đúng cho nó dù mọi thứ khác trong cái viền này là trò chơi: mặt trời
+             và mặt trăng là hình vẽ SẴN CÓ của sáng và tối, và một nút riêng ở hàng chrome
+             thì phải tự dựng lấy một cặp biểu tượng thứ hai nói y hệt hai cái này. Ngoại lệ
+             hẹp và có điều kiện: nó không đọc một số liệu nào, nó chỉ nhận một cú bấm.
+             Hình vẫn do GIỜ quyết, không do theme — trăng lúc nửa đêm kể cả khi đang ép nền
+             sáng. Bức tranh nói về chỗ người dùng đang ngồi; theme nói về cái cửa sổ.
+             data-sky chở chế độ KẾ TIẾP, cùng quy ước với data-lang ở hàng trên: chỗ nghe
+             không phải tính lại vòng xoay lần thứ hai.
+
+             ## NHÃN chữ, lượt 20 — vì sao tooltip là một câu trả lời hỏng
+
+             Người dùng: *"tôi chỉ biết bấm bấm nhưng không biết mình đang ở trạng thái nào"*.
+             Đúng, và bản lượt 18 để toàn bộ phản hồi trong thuộc tính title. Ba chỗ hỏng:
+             một tooltip phải RÊ CHUỘT và ĐỢI, mà cửa sổ này mở rồi đóng trong vài giây; nó
+             không tồn tại trên bàn phím; và ba chế độ thì chỉ có HAI cái nền phân biệt được
+             bằng mắt — auto-ra-tối và ép-tối vẽ ra đúng một màn hình giống hệt nhau.
+
+             ## Lượt 21 đảo lại: thường trực → chỉ hiện sau cú bấm, DƯỚI mặt trời, tan sau 3s
+
+             Người dùng: *"Nội dung nền này chỉ cần hiện lúc bấm vào sau 3s tự fade đi và nó sẽ
+             hiện ở dưới mặt trời thay vì bên phải"*.
+
+             Lượt 20 chọn thường trực và lý lẽ khi ấy là "nháy lên rồi tắt thì lần mở sau lại mù".
+             Lý lẽ ấy đúng về một chuyện và sai về một chuyện. Đúng: sau khi nhãn tan, cái nút lại
+             không tự khai chế độ. Sai: nó đánh đổi bằng thứ đắt hơn — một nhãn chữ NẰM VĨNH VIỄN
+             giữa một bức tranh, tức là cái duy nhất trong cả khung cảnh không phải hình vẽ. Nó
+             cũng ăn mất dải y 15–31, dải trống duy nhất còn lại của bầu trời.
+
+             Cái chuộc lại chỗ mất kia là tooltip: nó vẫn ở nguyên trên nút và vẫn nói đủ "đang X,
+             bấm sang Y". Tooltip hỏng khi nó là ĐƯỜNG DUY NHẤT — đó là ca của lượt 18. Làm lớp
+             thứ hai sau một phản hồi tức thì thì nó đúng vai.
+
+             DƯỚI chứ không bên phải, và chỗ đứng ấy có một cái giá đo được: món lơ lửng ngồi
+             cách trái 58px, cách trần 42px (xem slot-air), nên một cái nhãn dưới mặt trời có
+             thể chạm mép trái của nó trong 3 giây. Nhãn thắng, và nó thắng vì nó là phản hồi
+             cho cú bấm vừa xong — thứ đang được nhìn. Xem mb-sky-tag trong styles.css để biết
+             cách nó đè lên.
+
+             Chú thích này CỐ Ý không có một dấu backtick nào, kể cả quanh tên class và tên
+             file: khối chú thích HTML này nằm trong một template literal, nên một dấu backtick
+             ở đây ĐÓNG LUÔN chuỗi — CLAUDE.md điều 3. Lượt 20 lọt vào nó một lần ở views/pet.js,
+             và lượt 21 lọt lại đúng ở đây, lần này cách dòng cảnh báo cũ hẳn một file.
+
+             Nó vẫn nằm TRONG cái nút, nên nó vừa là nhãn vừa là thêm vùng bấm — hai thứ ấy phải
+             là một, nếu không thì cái nhãn thành một vật thứ hai nằm cạnh cái nút, và người ta
+             sẽ bấm vào nhãn. -->
+        <button type="button" class="${night ? 'mb-moon' : 'mb-sun'}" data-sky="${nextTheme()}"
+          title="${t('mb.sky', { now: t(`mb.theme.${themeMode()}`), next: t(`mb.theme.${nextTheme()}`) })}"
+          >${pixels(night ? MOON : SUN, { o: 'core' }, false)}${skyEcho
+            ? html`<b class="mb-sky-tag">${t(`mb.skyTag.${themeMode()}`)}</b>`
+            : ''}</button>
         <div class="mb-cloud">${pixels(CLOUD, {}, false)}</div>
         ${inPark(pet)
           ? html`<div class="mb-park">
@@ -302,7 +421,21 @@ function scene(b, phase, pet, bump = 0) {
              DOM là toàn bộ thứ tự lớp ở đây, không có z-index nào — thêm z-index vào một
              khung cảnh chỉ có sáu vật là dựng một hệ thứ hai để nói điều thứ tự đã nói. -->
         ${deco('back')}${deco('top')}
-        <div class="mb-sprite ${dozing ? 'dozing' : ''}">
+        <!-- BẤM VÀO NHÂN VẬT thì SỔ TRẠNG THÁI mở ra bên trái anh ta. Dựng bằng
+             details/summary chứ không bằng một cái nút cộng một dòng JS, và lý do là một
+             ràng buộc của bề mặt này chứ không phải khẩu vị: popover thật chạy trong
+             WKWebView, mà trên macOS thì một cú bấm chuột lên nút KHÔNG trao focus cho nó —
+             nên mọi mẹo dựa vào focus sẽ chạy ở trình duyệt và câm ở đúng chỗ nó phải chạy.
+             details thì mở bằng chính trạng thái DOM, không mượn focus của ai.
+             Rẻ hơn một cái nút cộng handler nữa: trang demo và popover thật dùng chung một
+             hàm vẽ này, nên một handler phải gắn ở HAI chỗ mới đủ. Không handler thì không
+             có chỗ thứ hai để quên.
+             Thuộc tính open bật sẵn khi anh ta đang NÓI — hai trạng thái mà bức tranh vẽ ra
+             một người ngừng làm việc. Lúc ấy cái sổ không còn là thứ phải xin mới thấy.
+             details mang display: contents, nên summary vẫn là con trực tiếp của .mb-sky và
+             phép đặt tuyệt đối của .mb-sprite không phải đổi một dòng nào. -->
+        <details class="mb-who" ${loud ? 'open' : ''}>
+        <summary class="mb-sprite ${dozing ? 'dozing' : ''}" title="${t('pet.statOpen')}">
           ${pixels(rows, BUTLER_CHARS)}
           <!-- MÍ MẮT: hai mảng che đúng hai ô mắt, cụp xuống rồi mở ra.
                Nó không vẽ lại sprite. Chớp mắt bằng cách hoán hai hàng pixel là một lượt
@@ -318,6 +451,21 @@ function scene(b, phase, pet, bump = 0) {
                thứ nói "đang ngủ". Chúng bay ra ngoài khung 64px của sprite — sang phải và
                lên trên — nên chỗ đứng của chúng là chỗ trống, không đè lên cái đầu. -->
           ${dozing ? html`<span class="mb-zzz zz1">z</span><span class="mb-zzz zz2">z</span><span class="mb-zzz zz3">z</span>` : ''}
+          <!-- Nét trạng thái — bụng kêu khi đói, giọt mồ hôi khi sắp hết nhịp. Nó nằm
+               TRONG mb-sprite cùng lý do với món đồ đang cầm: nó bám vào thân của đúng tư
+               thế đang vẽ (xem bellyOf trong lib/pet.js), nên đổi tư thế là nó đi theo.
+               Ngủ gật thì không có nét nào — ba chữ z đã là nét của trạng thái ấy, và hai
+               nét cùng lúc trên một sprite 64px là hai thứ tranh nhau một chỗ nhìn.
+               ĐÓI LẢ thì nét crave phải nhường chỗ cho tấm bảng NÓI trên bề mặt NÀY, và chỉ ở
+               đây. Crave là một bong bóng nghĩ vẽ bằng pixel, neo ra ngoài mép phải cái đầu —
+               tức đúng chỗ tấm bảng vừa dọn tới, và nói đúng một câu với nó. Bản đầu để cả
+               hai: cái bong bóng pixel 44px nằm trọn sau tấm bảng, mất trắng. Bản đồ thị trấn
+               không có tấm bảng nào nên ở đó nó ở lại nguyên.
+               Việc nhường ấy do CSS quyết chứ không do chỗ này, từ lượt 19: tấm bảng giờ hiện
+               theo cú BẤM, mà cú bấm thì không dựng lại DOM — nên một câu if ở đây sẽ đóng
+               băng theo trạng thái lúc vẽ, và gập cái sổ lại lúc đang đói lả là mất cả tấm
+               bảng lẫn cái bong bóng pixel. Xem mb-who trong styles.css. -->
+          ${markArt(mark, pose)}
           <!-- Thứ quản gia đang dùng — món ăn, cốc nước, cái tạ — và nó VƠI DẦN rồi biến
                mất đúng lúc việc ấy xong (doing do server tính, xem doingOf). Nó là phần
                thưởng cho cú bấm mua: không có nó thì mua đồ ăn chỉ là một con số tụt đi và
@@ -335,28 +483,103 @@ function scene(b, phase, pet, bump = 0) {
                 ${doingArt(pet.doing)}
               </div>`
             : ''}
+          <!-- Vòng đếm ngược, bay ở vai TRÁI. Bên phải đã là tay cầm đồ (butlerHand rơi về
+               mép phải ở mọi tư thế), nên hai thứ của cùng một việc đứng hai bên người và
+               không tranh chỗ nhau. Nó chạy trọn bằng CSS từ lượt vẽ đầu — điều kiện sống
+               ở đây, vì popover không có nhịp vẽ lại nào. Xem doingRing trong lib/pet.js. -->
+          ${on && pet.doing ? doingRing(pet.doing) : ''}
+        </summary>
+        <!-- SỔ TRẠNG THÁI — độ no và nhịp tập trung, dọn từ dải chân vào ĐÂY.
+             Bên TRÁI nhân vật, vì bên phải đã là chỗ nói và nghĩ: hai thứ về cùng một con
+             vật đứng hai bên nó thì mắt không phải chọn xem đọc cái nào trước, còn xếp
+             chồng lên nhau thì phải.
+             Từ lượt 18 nó là CHỮ CÓ MÀU, không còn khay đĩa với mặt đồng hồ — người dùng xin
+             đúng thế. Lý lẽ đầy đủ ở statWords bên lib/pet.js; gọn lại: hai vật pixel ấy
+             đứng trên một bức tranh pixel và cãi nhau với nó bằng chính ngôn ngữ nét của nó,
+             còn chữ thì thuộc lớp giao diện nên nó không tranh chỗ nhìn với thứ gì.
+             Nó ĐÈ lên bức tranh — che cả mặt trời và món trang trí góc trái — và điều đó
+             được phép đúng vì nó không thường trực: hoặc vừa được bấm ra, hoặc đang ở một
+             trạng thái mà bức tranh phía sau không còn gì đáng ngắm. Cùng lý lẽ đã ghi cho
+             bong bóng thoại. -->
+        <div class="mb-stat">
+          ${on ? statWords(pet) : html`<p class="mb-stat-off">${butlerSays(pet)}</p>`}
         </div>
+        <!-- HỘI THOẠI — nửa phải bầu trời, đè lên bức tranh. Hai giọng.
+             Từ lượt 18 chúng khác nhau ở BỐN kênh, không phải hai. Người dùng báo thẳng:
+             "không thấy được rõ đâu là nghĩ đâu là nói". Đúng — hai bong bóng cũ cùng một sắc
+             kem, cùng một chỗ đứng, khác nhau đúng ở góc bo và ở cái đuôi, mà cái đuôi thì nằm
+             ngoài vùng mắt nhìn khi đang đọc chữ.
+             Bốn kênh giờ là: NÉT VIỀN (liền dày / đứt mảnh), DÁNG CHỮ (đứng đậm / nghiêng),
+             ĐUÔI (một mũi nhọn chỉ vào người / hai chấm tròn rơi xuống), và ĐỘ ĐẶC. Hình và
+             nét chứ không phải màu, vì theme daltonized không được dựa vào mỗi khác biệt sắc.
+             Từ lượt 19 có kênh thứ NĂM, và nó là kênh mạnh nhất: hai bong bóng không bao giờ
+             cùng lúc trên màn hình, và cái quyết định là CÚ BẤM. Không bấm thì anh ta nghĩ;
+             bấm thì anh ta nói. Người dùng xin đúng thế — "bấm vào quản gia ngoài hiển thị
+             bảng status thì kết hợp nói chuyện nữa chứ".
+             Chỉ bong bóng NÓI nằm TRONG cái details, và bong bóng NGHĨ đứng NGOÀI ngay sau nó.
+             Bản đầu của lượt 19 nhét cả hai vào trong rồi ẩn hiện bằng CSS, và mở trang ra thì
+             bong bóng nghĩ biến mất sạch: trình duyệt bọc phần ruột của một details ĐANG ĐÓNG
+             trong một lớp riêng mang content-visibility hidden, mà một luật display ở ngoài thì
+             không với tới lớp ấy. Đo được: bong bóng vẽ ở y=35 trong khi bầu trời bắt đầu ở
+             y=165, tức nó rơi hẳn ra ngoài khung rồi bị overflow hidden cắt.
+             Nên luật đảo lại: cái phải hiện khi ĐÓNG thì đứng ngoài, cái phải hiện khi MỞ thì
+             đứng trong. Bong bóng nghĩ tắt đi lúc mở nhờ một selector anh-em (xem mb-who trong
+             styles.css) — quan hệ anh-em đọc trên cây DOM, mà display contents chỉ đổi cây HỘP,
+             nên nó vẫn đúng.
+             NÓI thì luôn dựng, kể cả lúc trò chơi tắt: mẹo không đọc sổ, nên nó vẫn có gì đó
+             để nói khi con vật không có. NGHĨ thì tắt hẳn lúc ấy — không có con vật nào để mà
+             nghĩ thay.
+             Mỗi câu chở theo một hình tự vẽ (xem FACES bên lib/pet.js) — người dùng xin
+             "thêm emoji cho vui vẻ". Nó là huy hiệu của câu, không phải một kênh tin: bỏ nó đi
+             thì không câu nào mất nghĩa.
+             HAI bảng hình, không một, từ lượt 20: câu NGHĨ và câu trạng thái mang KHUÔN MẶT,
+             còn câu MẸO mang HUY HIỆU LOẠI (xem TIP_ART bên lib/pet.js). Người dùng xin đúng
+             thế — "hiển thị emoji khác thay vì mặt trạng thái" — và nó đúng: mẹo là câu duy
+             nhất không nói về quản gia, nên mượn bảng chữ "quản gia đang thế nào" để nói nó là
+             mời người đọc hiểu nhầm. talkArt chọn bảng, chỗ này không phải biết có mấy bảng. -->
+        <div class="mb-bubble say">
+          <span class="mb-plaque">${talkArt(talk)}<b>${talk.say}</b></span>
+        </div>
+        </details>
+        <!-- Ba câu nghĩ nằm chồng lên nhau trong MỘT ô lưới và thay phiên nhau bằng CSS —
+             popover không có nhịp vẽ lại nào, nên một cái hẹn giờ ở đây sẽ phải sống suốt thời
+             gian cửa sổ mở để làm đúng việc mà ba cái animation-delay đã làm.
+             aria-hidden: ba câu đọc liền một mạch là ba câu vô nghĩa, mà chúng vốn không chở
+             tin nào — đó là điều kiện để chúng được phép tồn tại. Bong bóng NÓI thì không
+             giấu: nó là thứ người ta vừa bấm để lấy. -->
+        ${thoughts.length
+          ? html`<div class="mb-bubble think" aria-hidden="true">
+              ${thoughts.map(
+                (o, i) => html`<i class="mb-thought t${i + 1}">${faceArt(o.face)}<em>${o.say}</em></i>`,
+              )}
+            </div>`
+          : ''}
         ${deco('left')}${deco('right')}${deco('air')}
       </div>
-      <!-- Dải chân của khung: thanh đói và ví. Nó ở TRONG khung chứ không đứng dưới khung
-           vì cơn đói với cái ví là trạng thái của chính con vật vừa vẽ ở trên — tách ra
-           thành một hàng rời là bắt người đọc tự nối lại. Không con số hạn mức nào lọt
-           vào đây, và đó là điều kiện để cả cái khung được phép vui. -->
+      <!-- CỬA VÀO CỬA HÀNG — một hàng riêng DƯỚI bức tranh, mang tên tiệm và số dư.
+           Bản đầu của lượt này treo cái ví thành một tấm biển ngay trong tranh, ở góc
+           trái-dưới. Người dùng bác ngay và lý do đo được: bức tranh rộng 326px mà đã phải
+           chở sổ trạng thái, bong bóng thoại, nhân vật và sáu chỗ trang trí — thêm một vật
+           thường trực 100px nữa thì góc trái-dưới không còn chỗ cho món đồ đã mua, và cả
+           khung đọc thành chật chứ không đọc thành rộng.
+           Ở đây thì nó trả lời câu hỏi tốt hơn hẳn một tấm biển: hàng này có TÊN — nó ghi
+           thẳng "Cửa hàng" chứ không bắt người ta đoán rằng một đống xu nghĩa là bấm được.
+           Chỉ có cái ví, không có hai chỉ số kia: đó là toàn bộ phép gộp của lượt này —
+           trạng thái vào tranh, cửa ở lại ngoài tranh. -->
       ${on
-        ? html`<a class="mb-pet mood-${pet.mood}" href="now://open?view=pet" title="${t('pet.openShop')}">
-            <!-- Độ no LUÔN bên trái, tập trung luôn bên phải. Chỗ đứng TỪNG là một trong
-                 ba kênh phân biệt hai chỉ số; từ 5/8 nó chỉ còn là thói quen đọc, vì một
-                 cái thanh nằm ngang cạnh một cái đồng hồ cát đứng thì không lẫn được nữa
-                 dù đứng đâu. Đồng hồ cát vẽ đúng MỘT cỡ ở cả hai bề mặt — xem focusGlass
-                 trong lib/pet.js để biết vì sao không thu nhỏ nó cho vừa dải này. -->
-            ${hungerBar(pet)}${focusGlass(pet)}${wallet(pet, bump)}
+        ? html`<a class="mb-money" href="now://open?view=pet" title="${t('pet.openShop')}">
+            <b>${t('nav.pet')}</b><i class="mb-money-go" aria-hidden="true">›</i>${wallet(pet, bump)}
           </a>`
         : ''}
       <!-- Lời nhắc sức khoẻ. Nó nằm TRONG cái khung của con vật chứ không đứng riêng, vì
-           nó nói về đúng cái thanh tím ngay trên nó. Và nó là dòng DUY NHẤT trong popover
-           nói về người dùng chứ không nói về số liệu — nên nó cũng là dòng duy nhất được
-           phép biến mất hoàn toàn khi không có việc gì để nói. -->
-      ${on && nudgeText(pet) ? html`<p class="mb-nudge focus-${pet.focusMood}">${nudgeText(pet)}</p>` : ''}
+           nó nói về đúng hai chỉ số trong cái sổ ngay trên nó. Và nó là dòng DUY NHẤT trong
+           popover nói về người dùng chứ không nói về số liệu — nên nó cũng là dòng duy nhất
+           được phép biến mất hoàn toàn khi không có việc gì để nói.
+           Không còn bậc lv-urge ở đây. Bậc to giờ là chính cái bong bóng NÓI cộng cái sổ tự
+           mở — hai kênh cho cùng một tin đã là đủ, và một sợi viền đang thở làm kênh thứ ba
+           thì cái đang cạnh tranh không còn là sự chú ý của người đọc mà là chỗ nhìn. Bậc ấy
+           vẫn sống nguyên ở màn Cửa hàng, nơi nó có một cái nút để dẫn đi (xem town-alert). -->
+      ${on && nudge ? html`<p class="mb-nudge focus-${pet.focusMood}">${nudge.say}</p>` : ''}
     </div>
   </div>`;
 }
@@ -572,7 +795,12 @@ export function popoverView(s, opts = {}) {
   // phải đổi theo, nếu không thì bên trong là nửa đêm mà nền vẫn hắt nắng chiều.
   // `opts.phase` chỉ có ở bàn chỉnh — app không truyền, và không được truyền.
   const phase = o.phase && o.phase !== 'auto' ? o.phase : phaseOf(new Date().getHours());
-  return html`<div class="mb-wrap sky-${phase}" style="--mb-w:${o.width}px">
+  // `--now` khoá pha MỌI hoạt hình nền của cửa sổ này vào đồng hồ tường, nên ba lượt vẽ của
+  // một lần mở popover không còn giật cả bức tranh về vạch xuất phát ba lần. Xem `lifeClock`
+  // trong `lib/pet.js` và khối "KHOÁ PHA" trong `styles.css`.
+  // Đặt ở GỐC CỬA SỔ chứ không ở gốc bức tranh: hai thứ giật thấy rõ nhất nằm trong tranh
+  // (quầng mặt trời, đám mây), nhưng chấm nhịp và vân thanh hạn mức thì ở ngoài nó.
+  return html`<div class="mb-wrap sky-${phase}" style="--mb-w:${o.width}px;${lifeClock()}">
     <!-- Số phiên đang thức đi CHUNG hàng với tuổi lần quét, không chiếm hàng riêng: cả
          hai đều là tình trạng của chính cái số đang hiện, không phải việc phải làm. -->
     <!-- Mark + tên gói trong MỘT cái nút, và đó là cửa ra dashboard — không có hàng nút
@@ -588,6 +816,76 @@ export function popoverView(s, opts = {}) {
       <span class="mb-age">
         ${st.awake ? html`${t('mb.awake', { n: st.awake })} · ` : ''}${t('mb.scan', { ago: ago(Date.now() - (s?.generatedAt ?? Date.now())) })}
       </span>
+      <!-- ĐỔI NGÔN NGỮ, và nó phải có mặt ở đây chứ không mượn được nút của dashboard:
+           WKWebView trong app Swift có kho localStorage RIÊNG, không chung với Safari. Nên
+           người dùng bấm đổi sang tiếng Anh trên dashboard xong mở popover ra thì vẫn là
+           tiếng Việt, và không có đường nào trong popover để sửa. Đây là lần thứ ba cái kho
+           riêng ấy lộ ra (hai lần trước: tab đang mở, và theme — xem menubar.html).
+           Đứng ở đây chứ không trong bức tranh: đây là một CÔNG TẮC của cửa sổ, mà mọi thứ
+           trong cái viền kia là trò chơi.
+
+           ## HAI ô thay cho một nút, lượt 20 — và đây là lần thứ hai người dùng xin đúng cái đã có
+
+           Người dùng, lượt 20: *"Cho phép đổi ngôn ngữ ở popover"*. Nút ấy đã có từ lượt 18, và
+           nó chạy. Nên cái hỏng không phải chức năng, nó là chuyện KHÔNG AI THẤY — đo trên
+           popover thật: 45×21px, chữ 10.5px màu #8f96a4, viền #262b37 trên một cái nền #14171f.
+           Tương phản viền-với-nền 1,3:1, tức cái viền không tồn tại; còn lại là hai chữ xám
+           cạnh một dòng chữ xám khác cùng cỡ ("2 phiên thức · quét vừa xong").
+
+           Bản cũ bày ngôn ngữ ĐANG bật, đúng quy ước nút trên dashboard. Quy ước ấy sai ở ĐÂY,
+           và lý do là một khác biệt thật giữa hai bề mặt: trên dashboard cái nút đứng trong một
+           thanh đầy nút khác, nên nó thừa hưởng nghĩa "hàng này bấm được". Popover có đúng ba
+           thứ ở hàng trên và hai thứ kia là một wordmark với một dòng chữ tình trạng — không
+           có hàng nào để thừa hưởng. Một ô chữ đơn độc bày "VI" thì nó đọc thành một cái nhãn.
+
+           Hai ô thì cái nhìn thấy không còn là một trạng thái, nó là một LỰA CHỌN: ô kia có
+           mặt trên màn hình, và thứ duy nhất nó có thể là — một chỗ để bấm sang.
+
+           ## MỘT nút mở ra danh sách, lượt 21 — vì cái dải kia không sống qua ngôn ngữ thứ ba
+
+           Người dùng: *"Hiển thị ngôn ngữ gọn lại thành một nút chọn thôi. Sau này có nhiều
+           ngôn ngữ thì sao"*. Đó là một câu hỏi về ĐỘ CO GIÃN, và nó có câu trả lời đo được:
+           dải phơi hết lựa chọn nở TUYẾN TÍNH. Hai ô đo được 91,7px trong một hàng rộng 328px,
+           mà hàng ấy còn phải nuôi nút NOW (58,4px) và dòng tình trạng (cần 148px trên một
+           dòng) — tức trần thật của công tắc là chừng 121px. Ngôn ngữ thứ ba đã là 137px và
+           hàng gãy làm đôi; thứ tư thì gãy chắc chắn. Một bố cục chỉ đúng ở đúng một con số
+           thì nó không phải bố cục, nó là một sự trùng hợp.
+
+           Một nút mở ra danh sách thì bề rộng KHÔNG phụ thuộc số ngôn ngữ nữa — nó là bề rộng
+           của một mục cộng cái mũi. Danh sách dài ra theo chiều dọc, chiều mà popover có sẵn.
+
+           Nút đóng lại bày ngôn ngữ ĐANG bật, tức là quay về đúng thứ lượt 20 đã bỏ. Nó đứng
+           được ở đây vì có thêm cái MŨI: lượt 20 hỏng vì một ô chữ đơn độc "VI" không nói được
+           mình là nút hay là nhãn, còn một cái mũi chỉ xuống thì chỉ có đúng một nghĩa, và đó
+           là nghĩa mà mọi hộp chọn trên đời đã dạy. Cái dải hai ô mua được điều đó bằng cách
+           phơi ô thứ hai ra — đắt, và chỉ trả nổi khi có đúng hai ngôn ngữ.
+
+           Dựng bằng details/summary chứ không bằng một cái nút cộng JS, cùng ràng buộc đã dựng
+           nên sổ trạng thái của quản gia: popover thật chạy trong WKWebView, mà trên macOS một
+           cú bấm chuột lên nút KHÔNG trao focus cho nó — nên mọi mẹo dựa vào focus sẽ chạy ở
+           trình duyệt và câm ở đúng chỗ nó phải chạy. Thêm nữa trang demo dùng chung hàm vẽ
+           này mà không có handler nào, nên bất cứ thứ gì cần JS để mở sẽ chết ở một trong hai
+           chỗ. details mở bằng chính trạng thái DOM.
+
+           Không cần đóng lại bằng tay: mọi cú bấm vào một mục đều đi qua handler ngôn ngữ ở
+           menubar.js, và handler ấy VẼ LẠI — thẻ details mới dựng thì mặc định đóng.
+
+           Mỗi mục chở data-lang của CHÍNH nó chứ không chở "cái kế tiếp": một danh sách bốn
+           mục thì "kế tiếp" không còn là một khái niệm. -->
+      <details class="mb-langbox">
+        <summary class="mb-lang-now" title="${t('mb.langPick')}" aria-label="${t('mb.langGroup')}">
+          <span aria-hidden="true">${LANG_FLAG[getLang()]}</span>${getLang().toUpperCase()}<i
+            class="mb-caret" aria-hidden="true"></i>
+        </summary>
+        <div class="mb-lang-menu" role="group" aria-label="${t('mb.langGroup')}">
+          ${LANGS.map(
+            (l) => html`<button type="button" class="mb-lang ${l === getLang() ? 'on' : ''}"
+              data-lang="${l}" aria-pressed="${l === getLang()}"
+              title="${l === getLang() ? t('mb.langOn', { name: LANG_LABEL[l] }) : t('mb.lang', { next: LANG_LABEL[l] })}"
+              ><span aria-hidden="true">${LANG_FLAG[l]}</span>${LANG_LABEL[l]}</button>`,
+          )}
+        </div>
+      </details>
     </div>
 
     <!-- HAI nửa, đúng thứ tự này: con vật trước, số liệu sau.
@@ -595,7 +893,7 @@ export function popoverView(s, opts = {}) {
          theo tab, nên một hàng tab ngay trên nó mời người đọc hiểu rằng nó có đổi. Dời
          xuống dưới thì tab đứng ngay trên đúng thứ nó điều khiển, và ranh giới giữa hai
          nửa rơi đúng chỗ nó vốn phải rơi: hết trò chơi, sang hoá đơn. -->
-    ${o.hero ? scene(b, phase, o.pet, o.bump) : ''}
+    ${o.hero ? scene(b, phase, o.pet, o.bump, o.skyEcho) : ''}
 
     <div class="mb-data">
       ${saying(b)}

@@ -1,5 +1,5 @@
 import { $, mount, copy, html, clock, esc, raw } from './lib/dom.js';
-import { t, getLang, setLang, nextLang, LANG_LABEL, locale, applyStaticI18n, onLangChange } from './lib/i18n.js';
+import { t, getLang, setLang, nextLang, LANG_FLAG, LANG_LABEL, locale, applyStaticI18n, onLangChange } from './lib/i18n.js';
 import { briefing } from './lib/butler.js';
 import { quotaStrip, stripRows } from './lib/quota.js';
 import { parseTip } from './lib/tip.js';
@@ -17,6 +17,7 @@ import { renderUsage } from './views/usage.js';
 import { renderLookback } from './views/lookback.js';
 import { renderBench, initBench } from './views/bench.js';
 import { renderPet, initPet } from './views/pet.js';
+import { loadState, saveState } from './lib/statecache.js';
 
 // Nhãn và tiêu đề giữ dưới dạng KHOÁ i18n rồi dịch lúc vẽ — không phải chuỗi cố định,
 // vì cả VIEWS được dựng một lần lúc nạp module còn ngôn ngữ thì đổi được giữa chừng.
@@ -115,13 +116,26 @@ let lastDrawAt = 0;
  */
 const MAX_STALE_MS = 5 * 60 * 1000;
 
-function apply(state) {
+/**
+ * Lượt vẽ đang xem có phải là bản NHỚ không — xem `lib/statecache.js`.
+ *
+ * Nó chỉ sống từ lúc mở tab tới lúc sự kiện SSE đầu tiên về, tức là vài trăm mili giây; nhưng
+ * trong quãng ấy thanh trên phải nói khác đi, nếu không thì trang đang bày một bức tranh cũ
+ * dưới cái nhãn "trực tiếp". Cùng nguyên tắc đã dựng ra dải "mất kết nối".
+ */
+let cached = false;
+
+function apply(state, opts = {}) {
   const print = fingerprint(state);
   const same = print === lastPrint && Date.now() - lastDrawAt < MAX_STALE_MS;
   lastPrint = print;
   app.state = state;
   stopBoot();
-  setPulse(true);
+  cached = Boolean(opts.cached);
+  // Bản nhớ KHÔNG được tắt màn hình chờ theo kiểu "xong rồi": nó chưa xong, nó mới chỉ có cái
+  // để nhìn. `setPulse(false)` giữ nguyên đường đi cũ của dải cảnh báo, còn `cached` đổi câu
+  // chữ của nó — xem `setPulse`.
+  setPulse(!cached);
   if (same) {
     // Không có gì mới: chỉ nhích lại giờ cập nhật, giữ nguyên DOM — cùng đó là giữ
     // nguyên vệt bôi đen, focus, và cả cái tooltip đang mở.
@@ -146,16 +160,33 @@ function connect() {
  * Mất kết nối thì trang vẫn còn dữ liệu cũ trên màn hình — và trông y hệt dữ liệu
  * mới. Một chấm đỏ 6px ở góc không đủ để chặn việc đó: phải nói thẳng ra là đang
  * xem ảnh chụp lúc mấy giờ, nếu không sếp tin nhầm một bức tranh đã chết.
+ *
+ * Từ lượt 22 có HAI ca cùng bày một bức tranh cũ, và chúng phải nói hai câu khác nhau vì
+ * việc phải làm khác hẳn nhau:
+ *
+ * - **Mất kết nối** — server đã im, và nó sẽ còn im. Có một cái nút để thử lại.
+ * - **Bản nhớ** — server chưa kịp trả lời lượt đầu, số thật đang trên đường về. Không phải
+ *   làm gì cả, chỉ đợi vài trăm mili giây.
+ *
+ * Dùng chung một câu "mất kết nối" cho cả hai là mời người ta đi bấm một cái nút cho một
+ * chuyện tự nó xong.
  */
 let online = false;
 function setPulse(ok) {
   online = ok;
   const el = $('#pulse');
   el.classList.toggle('off', !ok);
-  $('#pulse-t').textContent = ok ? t('top.live') : t('top.lost');
+  el.classList.toggle('stale', !ok && cached);
+  $('#pulse-t').textContent = ok ? t('top.live') : t(cached ? 'top.stale' : 'top.lost');
   $('#offline').hidden = ok || !app.state;
   if (!ok) {
+    // Cả ba mảnh chữ viết lại ở đây chứ không để `data-i18n` tĩnh lo: khối này chở hai câu
+    // khác nhau, mà `applyStaticI18n` thì chỉ biết đúng một khoá cho mỗi thẻ.
+    $('#offline').classList.toggle('warm', cached);
+    $('#off-pre').textContent = t(cached ? 'off.cachePre' : 'off.pre');
+    $('#off-post').textContent = t(cached ? 'off.cachePost' : 'off.post');
     $('#off-t').textContent = clock(app.state?.generatedAt);
+    $('#offretry').hidden = cached;
     return;
   }
   el.classList.remove('beat');
@@ -1186,9 +1217,8 @@ applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
    Toàn bộ chữ nằm ở `lib/i18n.js`; đổi ngôn ngữ chỉ là đổi một biến rồi vẽ lại —
    đúng cơ chế của nút đổi nền. Nút hiện MÃ ngôn ngữ đang bật (VI/EN). Phần tĩnh
    trong `index.html` do `applyStaticI18n` dịch, phần động do `render()` dịch. */
-// Cờ hiện là cờ của ngôn ngữ ĐANG bật, khớp với mã ngay bên cạnh. Trên hệ không vẽ
-// được emoji cờ (Windows) thì glyph tự lùi về hai chữ mã vùng — nên mã "VI/EN" vẫn giữ.
-const LANG_FLAG = { vi: '🇻🇳', en: '🇬🇧' };
+// Cờ hiện là cờ của ngôn ngữ ĐANG bật, khớp với mã ngay bên cạnh. Bảng ấy dọn sang
+// `lib/i18n.js` ở lượt này — popover có nút thứ hai đọc chung nó.
 function refreshLang() {
   $('#lang-flag').textContent = LANG_FLAG[getLang()] ?? '';
   $('#lang-t').textContent = getLang().toUpperCase();
@@ -1374,5 +1404,37 @@ initBench(render);
 // gọi vẽ lại, mà nó thì không được biết mình đang ở nhà ai.
 initPet(render);
 
+/**
+ * CẤT sổ lúc tab đi khuất, không phải ở mỗi lượt SSE.
+ *
+ * Bản nhớ chỉ có ích cho lần mở SAU, nên lúc rời đi là lúc duy nhất nó cần được ghi — và đó
+ * cũng là lúc 12,8ms của `JSON.stringify` một sổ 534 KB không ai thấy. Ghi ở `apply()` thì
+ * mỗi 30 giây lại có một cục 12,8ms rơi vào giữa lúc người ta đang cuộn trang. Đo và lý lẽ
+ * đầy đủ ở `lib/statecache.js`.
+ *
+ * Hai sự kiện chứ không một: `visibilitychange` bắt được chuyện đổi tab hay ẩn cửa sổ (ca
+ * thường gặp nhất), còn `pagehide` bắt được chuyện đóng hẳn và điều hướng đi — Safari không
+ * đảm bảo `beforeunload`, nên `pagehide` là cái duy nhất chắc chắn nổ trên bề mặt này.
+ */
+const stash = () => {
+  if (app.state && !cached) saveState(app.state);
+};
+addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') stash();
+});
+addEventListener('pagehide', stash);
+
 connect();
+/**
+ * VẼ NGAY bằng bản nhớ, rồi để SSE đè lên.
+ *
+ * Phải đứng SAU `connect()` và TRƯỚC `render()`: sau, vì lượt hỏi thật đáng được lên đường
+ * trước khi ta tiêu 4,4ms đọc lại 534 KB; trước, vì `render()` mà thấy `app.state` còn rỗng
+ * thì nó đi vào `startBoot()` và cái màn hình chờ ấy sẽ loé lên rồi biến mất.
+ *
+ * `loadState` trả `null` khi không có bản nhớ, khi nó hỏng, hay khi nó quá 90 phút — và cả ba
+ * ca ấy rơi đúng vào đường đi cũ, không thêm một nhánh nào.
+ */
+const warm = loadState();
+if (warm) apply(warm, { cached: true });
 render();

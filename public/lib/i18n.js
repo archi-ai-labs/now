@@ -49,6 +49,17 @@ const LANG_KEY = 'now-lang';
 /** Tên hiển thị của mỗi ngôn ngữ, dùng cho nút chuyển. */
 export const LANG_LABEL = { vi: 'Tiếng Việt', en: 'English' };
 
+/**
+ * Cờ của ngôn ngữ ĐANG bật — cùng bảng cho cả hai nút đổi ngôn ngữ.
+ *
+ * Ở đây chứ không ở `app.js` từ lượt này: popover cũng có nút đổi ngôn ngữ, mà hai bản
+ * chép của một bảng hai dòng là hai chỗ sẽ lệch đúng lần đầu ai đó thêm ngôn ngữ thứ ba.
+ *
+ * Trên hệ không vẽ được emoji cờ (Windows) thì glyph tự lùi về hai chữ mã vùng — nên hai
+ * chữ "VI"/"EN" cạnh nó vẫn phải giữ, không được coi cái cờ là đủ.
+ */
+export const LANG_FLAG = { vi: '🇻🇳', en: '🇬🇧' };
+
 function readLang() {
   try {
     const v = localStorage.getItem(LANG_KEY);
@@ -166,6 +177,27 @@ const DICT = {
     // "NOW", nên chỗ duy nhất còn gọi tên đích là đây. Phải mở bằng động từ.
     'mb.open': 'Mở dashboard',
     'mb.openUsage': 'Mở màn Token',
+    // Không dùng lại `lang.title`: câu đó có đuôi "(l)" — phím tắt của dashboard. Popover
+    // không có phím tắt nào, nên chép nguyên câu sang là chỉ cho người ta một phím không
+    // tồn tại ở đây.
+    'mb.lang': (o) => `Bấm để đổi sang ${o.next}`,
+    'mb.langOn': (o) => `Đang đọc bằng ${o.name}`,
+    'mb.langGroup': 'Ngôn ngữ',
+    // Câu của cái nút ĐÓNG LẠI. Nó không kể tên ngôn ngữ nào cả, và đó là chủ ý: cái nút đã
+    // bày sẵn ngôn ngữ đang bật ngay trên mặt nó, nên một tooltip nhắc lại thì tốn một dòng
+    // để nói thứ mắt vừa đọc. Cái nó phải nói là việc còn thiếu — rằng bấm vào sẽ MỞ RA.
+    'mb.langPick': 'Chọn ngôn ngữ',
+    // Nút NỀN, gắn lên mặt trời. Câu nói ra cả chế độ đang bật lẫn chế độ sắp tới.
+    'mb.sky': (o) => `Nền: ${o.now} — bấm để chuyển sang ${o.next}`,
+    'mb.theme.auto': 'theo macOS',
+    'mb.theme.light': 'sáng',
+    'mb.theme.dark': 'tối',
+    // NHÃN gắn cạnh mặt trời, từ lượt 20 — bản ngắn của ba câu ngay trên. Ngắn vì nó nằm TRONG
+    // bức tranh và cạnh nó là chỗ đứng của món trang trí treo cao; câu dài đẩy hai vật vào nhau.
+    // Người dùng: *"tôi chỉ biết bấm bấm nhưng không biết mình đang ở trạng thái nào"*.
+    'mb.skyTag.auto': 'TỰ ĐỘNG',
+    'mb.skyTag.light': 'NỀN SÁNG',
+    'mb.skyTag.dark': 'NỀN TỐI',
     'mb.noQuota': 'chưa đọc được hạn mức',
     'mb.offline': 'không nối được tới server',
 
@@ -176,6 +208,7 @@ const DICT = {
     'top.live': 'trực tiếp',
     'top.lost': 'mất kết nối',
     'top.scanning': 'đang quét',
+    'top.stale': 'bản đã lưu',
     'top.connect': 'nối',
     'top.pulseTitle': 'Bấm để quét lại (r)',
     'top.sub': (o) =>
@@ -215,6 +248,18 @@ const DICT = {
     'pet.starved': 'đói lả rồi',
     'pet.leftMin': (o) => `còn ${o.n} phút nữa thì đói`,
     'pet.leftHour': (o) => `còn ${o.n} giờ nữa thì đói`,
+    // Bản NGẮN, cho dải popover. Vế bị cắt ("nữa thì đói", "đã ngồi … liền") là vế mà chính
+    // cái hình đứng ngay cạnh đã nói: thanh mười ô LÀ cơn đói, cái bầu cát LÀ quãng ngồi.
+    // Bản dài ở lại màn Cửa hàng, chỗ có nhãn và có chỗ để đọc chậm.
+    'pet.starvedShort': 'đói lả',
+    'pet.leftMinShort': (o) => `còn ${o.n} phút`,
+    'pet.leftHourShort': (o) => `còn ${o.n} giờ`,
+    'pet.satMinShort': (o) => `${o.n} phút liền`,
+    'pet.satRestedShort': 'vừa nghỉ',
+    // Nhãn nói TRẠNG THÁI ĐANG LÀ GÌ, không nói cú bấm sẽ làm gì — cùng cách "Tắt trò chơi"
+    // ngay cạnh nó đã viết. Phần "bấm để đổi" do `aria-pressed` chở, không do chữ chở.
+    'pet.soundOn': 'Tiếng: bật',
+    'pet.soundOff': 'Tiếng: tắt',
     'pet.mood.starving': 'Đói lả',
     'pet.mood.hungry': 'Đang đói',
     'pet.mood.fine': 'Ổn',
@@ -229,10 +274,108 @@ const DICT = {
     // Nhãn phải nói đúng nó ĐO GÌ. Nó không biết bạn có rời ghế hay không, nó chỉ biết
     // máy im — giấu chỗ đó đi là dán nhãn đo lường lên một phép đoán.
     'pet.focusNote': 'Đếm từ quãng lặng gần nhất của Claude Code; im trên 10 phút là đầy lại. Một nhịp 90 phút (chu kỳ nghỉ-hoạt động cơ bản).',
+    'pet.nudge.starving': 'Đói lả rồi — anh ta buông bàn phím, màn hình tắt ngóm, đầu chỉ còn nghĩ đến đồ ăn. Một xu là xong.',
     'pet.nudge.dip': (o) => `Đã ${o.n} phút ngồi liền — hết pha tỉnh của một nhịp 90 phút. Đứng dậy đi lại 3 phút.`,
     'pet.nudge.spent': (o) => `${o.n} phút rồi. Não đang ở đáy chu kỳ — nghỉ 10 phút rồi quay lại còn nhanh hơn cố ngồi.`,
     'pet.nudge.afternoon': (o) => `${o.n} phút, mà đầu giờ chiều lại đúng đáy nhịp ngày. Ra chỗ có nắng đi bộ 5 phút — với cú trũng này, ánh sáng ăn đứt cà phê.`,
     'pet.nudge.night': (o) => `Quá 22h và đã ${o.n} phút ngồi liền. Cái này để mai; ngủ mới là thứ dọn được cái đầu.`,
+    // ── Quản gia tự nói, khi bấm vào anh ta trên popover ──────────────────────────
+    //
+    // Ngôi THỨ NHẤT, và đó là chỗ mấy câu này khác mọi câu khác trong bảng: dải thông số
+    // ngay dưới đã in đủ số ("còn no 42%", "đã ngồi 82 phút liền"), nên một bong bóng đọc
+    // lại mấy con số ấy là một cú bấm không trả về gì. Cái nó thêm vào là NGƯỜI — cùng một
+    // trạng thái, nói bằng giọng của kẻ đang ở trong nó.
+    //
+    // Một câu cho mỗi giá trị của `stateOf`, cộng `cheer` (sự kiện) và `off` (trò chơi tắt).
+    // Thiếu một khoá là một bong bóng trống, nên có bài test canh đủ bộ.
+    //
+    // NGẮN LẠI ở lượt 18, và đó là một phép đo chứ không phải một lần biên tập: từ lượt này
+    // mỗi bong bóng chở thêm một khuôn mặt 21px ở đầu dòng, nên bề rộng chữ tụt từ 128px
+    // xuống 100px. Câu 91 ký tự cũ ra năm dòng, tràn khỏi mép trên bức tranh và bị cắt cụt —
+    // thấy được ngay ở trạng thái đói lả. Trần giờ là 56 ký tự cho MỌI câu vào bong bóng, và
+    // có bài test canh. Xem `MAX` trong `test/pet.test.js`.
+    //
+    // Cắt ngắn cũng đúng về nội dung: hai câu dài nhất là hai câu GẤP nhất, mà một người
+    // đang đói lả thì không nói một câu dài dòng.
+    'pet.says.well': 'Đang ổn. Màn hình sáng, tay còn trên phím.',
+    'pet.says.hungry': 'Bụng bắt đầu kêu. Vẫn gõ được, nhưng không lâu.',
+    'pet.says.starving': 'Đói lả rồi. Tôi buông bàn phím đây.',
+    'pet.says.dip': 'Sắp hết pha tỉnh. Cho tôi đứng dậy vài phút.',
+    'pet.says.spent': 'Quá nhịp rồi. Tôi ngủ gật ngay ở bàn đây.',
+    'pet.says.busy': 'Đang dở việc — chờ tôi một lát.',
+    'pet.says.cheer': 'Đồ mới! Ưng quá đi mất.',
+    'pet.says.off': 'Trò chơi đang tắt. Sổ vẫn còn nguyên đấy.',
+    // Nhãn của cú bấm vào nhân vật. Nó phải kể ra CẢ HAI thứ mở ra từ lượt 19 — cái sổ và
+    // câu nói — vì hai thứ ấy hiện cùng lúc ở hai bên người, và một nhãn chỉ hứa một nửa là
+    // một nhãn dạy người ta bỏ qua nửa kia.
+    // `pet.saysOpen` từng đứng ngay đây và đã GỠ: nó ra đời cho một cái nút riêng ở lượt 15,
+    // cái nút ấy nhập vào chính `summary` này ở lượt 17, và từ đó không chỗ nào gọi nó nữa.
+    'pet.statOpen': 'Xem trạng thái, và nghe quản gia nói một câu',
+    // ── Quản gia NGHĨ ────────────────────────────────────────────────────────────
+    //
+    // Hai câu cho mỗi bối cảnh, và câu thứ ba của bộ ba là chính `pet.says.*` ở trên —
+    // xem `butlerThinks`. Nên mấy câu này KHÔNG được nói về trạng thái: trạng thái đã có
+    // người nói, và hai câu cùng nói một điều trong một bộ ba xoay vòng thì bộ ba ấy chỉ
+    // còn hai câu.
+    //
+    // Luật của cả nhóm: **không câu nào được chở tin mà bức tranh không vẽ ra.** Một câu
+    // nghĩ nhắc tới cơn mưa là dựng ra một hệ thời tiết không tồn tại; nhắc tới người qua
+    // đường là mượn thứ chỉ có trên bản đồ thị trấn. Chúng chỉ được nói về đúng thứ đang ở
+    // trong khung: mặt trời, đám mây, ngôi sao, buổi trong ngày, và chính việc anh ta đang làm.
+    //
+    // TRẦN ĐỘ DÀI: **46 ký tự**, và nó là một phép đo hình học chứ không phải khẩu vị. Bong
+    // bóng rộng 150px ở cỡ chữ 11px, tức ~26 ký tự một dòng; câu dài nhất hiện có (bản EN của
+    // `pet.says.dip`, 74 ký tự) đã cho ra bốn dòng và đáy rơi đúng y=81, còn món trang trí góc
+    // phải-dưới bắt đầu ở y=82. Dài hơn nữa là chữ đè lên món đồ người dùng vừa mua.
+    'pet.think.eat.1': 'Còn nóng. Húp cái đã rồi tính tiếp.',
+    'pet.think.eat.2': 'Một bát là ngồi thêm được mấy tiếng nữa.',
+    'pet.think.water.1': 'Nước lã thôi mà tỉnh cả người.',
+    'pet.think.water.2': 'Ly này tôi nợ cái đầu từ sáng.',
+    'pet.think.eyes.1': 'Nhìn ra xa một lúc. Mắt cũng cần đổi tiêu cự.',
+    'pet.think.eyes.2': 'Ngoài kia chẳng có gì, mà nhìn vẫn dễ chịu.',
+    'pet.think.stretch.1': 'Vai cứng như gỗ. Kéo một cái đã.',
+    'pet.think.stretch.2': 'Ngồi lâu thì cái lưng đòi trước cái đầu.',
+    'pet.think.walk.1': 'Đi vài vòng cho chân nhớ ra là mình còn chân.',
+    'pet.think.walk.2': 'Nghĩ ngợi lúc đi bộ dễ hơn lúc ngồi.',
+    'pet.think.sun.1': 'Nắng ấm phết. Đứng đây thêm chút nữa.',
+    'pet.think.sun.2': 'Ánh sáng thật thì không màn hình nào giả được.',
+    'pet.think.dawn.1': 'Sáng sớm yên thật. Chưa ai gọi gì.',
+    'pet.think.dawn.2': 'Giờ này đầu còn sạch — để dành cho việc khó.',
+    'pet.think.day.1': 'Nắng lên tới nóc rồi đấy.',
+    'pet.think.day.2': 'Giữa trưa là lúc dễ ngồi quên giờ nhất.',
+    'pet.think.dusk.1': 'Trời xuống màu rồi.',
+    'pet.think.dusk.2': 'Sắp hết một ngày. Còn gì dở thì chốt nốt đi.',
+    'pet.think.night.1': 'Khuya rồi. Sao lên gần kín trời.',
+    'pet.think.night.2': 'Đêm yên thì gõ nhanh, nhưng mai trả nợ.',
+    // ── Quản gia MÁCH MẸO ────────────────────────────────────────────────────────
+    //
+    // Tám câu, và chúng khác cả hai nhóm trên ở đúng một chỗ: **chúng nói với người đọc, không
+    // nói về con vật.** Đó là lý do chúng đi vào bong bóng NÓI (chỉ hiện khi được bấm) chứ
+    // không vào bộ ba câu nghĩ — lý lẽ đầy đủ ở `butlerTip` bên `lib/pet.js`.
+    //
+    // Luật nội dung, và nó hẹp hơn hẳn luật của câu nghĩ: **chỉ nhận thứ kiểm được.** Một mẹo
+    // bảo người ta gõ một lệnh không có thật thì tệ hơn hẳn không có mẹo nào — nó tiêu đúng
+    // cái vốn mà cả bảng này sống nhờ. Nên `/now` là skill DUY NHẤT được gọi tên: nó nằm trong
+    // `plugin/skills/` của chính kho này, tức ai cài dashboard là có nó. Mấy skill đi kèm của
+    // bên khác thì bản này không kiểm được, và một cái tên đoán ra là một cái tên sẽ sai.
+    //
+    // Cùng trần độ dài với hai bảng trên, và có bài test canh.
+    'pet.tip.claudeMd': 'Luật lặp lại thì viết vào CLAUDE.md, đừng nhắc lại.',
+    'pet.tip.compact': 'Ngữ cảnh dài quá thì /compact rồi kể tiếp.',
+    'pet.tip.clear': 'Sang việc khác thì /clear cho khỏi lẫn ngữ cảnh.',
+    'pet.tip.plan': 'Việc lớn thì chốt kế hoạch trước, gõ code sau.',
+    'pet.tip.skill': 'Việc làm tới lần thứ ba thì đóng nó thành skill.',
+    'pet.tip.diff': 'Đọc diff trước khi commit, đừng đọc lời tóm tắt.',
+    'pet.tip.now': 'Quay lại dự án cũ thì gọi /now trước khi gõ gì.',
+    'pet.tip.look': 'Sửa giao diện xong thì mở ra nhìn. Test xanh chưa đủ.',
+    'pet.tip.scope': 'Luật riêng bạn vào ~/.claude, luật dự án vào repo.',
+    'pet.tip.small': 'Một lượt một việc. Diff đọc được thì mới duyệt được.',
+    'pet.tip.agent': 'Việc lục cả kho thì giao agent phụ, đỡ tốn ngữ cảnh.',
+    'pet.tip.esc': 'Nó đi sai hướng thì bấm Esc ngắt, đừng chờ hết.',
+    'pet.tip.paste': 'Lỗi thì dán nguyên stack trace, đừng kể lại bằng lời.',
+    'pet.tip.verify': 'Đừng tin lời nó nói xong. Bắt nó chạy lệnh rồi xem.',
+    'pet.tip.file': 'Biết file nào thì nói thẳng đường dẫn, đỡ một vòng mò.',
+    'pet.tip.shot': 'Giao diện lệch thì dán ảnh chụp màn hình vào.',
     // Bốn động tác nghỉ. Mỗi câu `why` phải nói ra BẰNG CHỨNG của động tác ấy, không nói
     // ra lợi ích của nó — "uống nước cho tỉnh táo" là một mẩu quảng cáo, còn "mất 1–2%
     // nước là đã đo được sa sút ở chú ý" là một câu kiểm chứng được. Đó cũng là điều kiện
@@ -290,7 +433,7 @@ const DICT = {
     'town.lotNote':
       'Đất trống. Thị trấn rộng thêm khi dashboard có thêm việc đáng một toà nhà — không phải một món sắp bán.',
 
-    'pet.homeHint': 'Quản gia sống ở đây — nhà bỏ mái nên nhìn được vào trong, và anh ta đi lại trên sàn khi rảnh. Ba việc nghỉ ngay tại bàn cũng bấm từ đây.',
+    'pet.homeHint': 'Quản gia sống ở đây — nhà bỏ mái nên nhìn được vào trong, và anh ta ngồi gõ máy ở bàn khi đang ổn. Đói lả hoặc hết nhịp thì màn hình tắt. Ba việc nghỉ ngay tại bàn cũng bấm từ đây.',
     'pet.homeBare': 'Khung trời đang trống trơn. Ghé tiệm trang trí đi.',
     'pet.noMoves': 'Server bản này chưa có bảng động tác nghỉ.',
 
@@ -317,6 +460,7 @@ const DICT = {
     'pet.slot.top': 'Treo cao',
     'pet.slot.back': 'Nền trời',
     'pet.slotEmpty': 'đang để trống',
+    'pet.shelfOwn': (o) => `đã có ${o.own} trên ${o.all} món ở chỗ này`,
     'pet.wear': 'đổi sang',
     'pet.wearOff': 'cất đi',
     'pet.tooPoor': (o) => `còn thiếu ${o.n} xu`,
@@ -382,19 +526,37 @@ const DICT = {
     'pet.item.beanie': 'Mũ len',
     'pet.item.hat': 'Nón chóp',
     'pet.item.crown': 'Vương miện',
+    'pet.item.wreath': 'Vòng hoa',
+    'pet.item.halo': 'Vòng hào quang',
+    'pet.item.helm': 'Mũ cánh chuồn',
     'pet.item.cactus': 'Xương rồng',
     'pet.item.plant': 'Chậu cây',
     'pet.item.bonsai': 'Bonsai',
+    'pet.item.sakura': 'Cây anh đào',
+    'pet.item.kumquat': 'Cây quất',
+    'pet.item.bamboo': 'Khóm trúc',
     'pet.item.mushroom': 'Cây nấm',
     'pet.item.dog': 'Con chó',
     'pet.item.cat': 'Con mèo',
+    'pet.item.crane': 'Con hạc',
+    'pet.item.koipond': 'Hồ cá koi',
+    'pet.item.torii': 'Cổng torii',
     'pet.item.balloon': 'Bóng bay',
+    'pet.item.chime': 'Chuông gió',
     'pet.item.kite': 'Con diều',
     'pet.item.lantern': 'Đèn lồng',
+    'pet.item.firework': 'Pháo hoa',
+    'pet.item.airship': 'Khinh khí cầu',
     'pet.item.bunting': 'Dây cờ',
     'pet.item.lights': 'Đèn nháy',
+    'pet.item.wisteria': 'Giàn tử đằng',
+    'pet.item.roses': 'Vòm hoa hồng',
+    'pet.item.awning': 'Mái hiên sọc',
     'pet.item.hills': 'Dãy đồi',
     'pet.item.rainbow': 'Cầu vồng',
+    'pet.item.aurora': 'Cực quang',
+    'pet.item.skyline': 'Đường chân trời',
+    'pet.item.peak': 'Đỉnh núi tuyết',
 
     // Ngôn ngữ
     'lang.title': (o) => `Ngôn ngữ: Tiếng Việt — bấm để đổi sang ${o.next} (l)`,
@@ -408,6 +570,10 @@ const DICT = {
     // Mất kết nối
     'off.pre': 'Mất kết nối tới server — đang xem ảnh chụp lúc',
     'off.post': ', không còn tự cập nhật.',
+    // Bản NHỚ, khác hẳn ca mất kết nối ngay trên — xem `setPulse` trong `app.js`. Câu này
+    // không có lời chỉ việc phải làm, và đó là chủ ý: không có việc gì phải làm cả.
+    'off.cachePre': 'Bản đã lưu, chụp lúc',
+    'off.cachePost': ' — đang chờ lượt quét mới.',
     'off.retry': 'Thử lại',
 
     // Lần nạp đầu — CHƯA TỪNG có dữ liệu, khác hẳn "mất kết nối" (còn số cũ trên màn).
@@ -1782,6 +1948,17 @@ const DICT = {
     'mb.awake': (o) => `${o.n} ${p(o.n, 'session', 'sessions')} awake`,
     'mb.open': 'Open dashboard',
     'mb.openUsage': 'Open the Tokens screen',
+    'mb.lang': (o) => `Click to switch to ${o.next}`,
+    'mb.langOn': (o) => `Reading in ${o.name}`,
+    'mb.langGroup': 'Language',
+    'mb.langPick': 'Pick a language',
+    'mb.sky': (o) => `Background: ${o.now} — click to switch to ${o.next}`,
+    'mb.theme.auto': 'follows macOS',
+    'mb.theme.light': 'light',
+    'mb.theme.dark': 'dark',
+    'mb.skyTag.auto': 'AUTO',
+    'mb.skyTag.light': 'LIGHT BG',
+    'mb.skyTag.dark': 'DARK BG',
     'mb.noQuota': 'quota unreadable',
     'mb.offline': 'cannot reach the server',
 
@@ -1792,6 +1969,7 @@ const DICT = {
     'top.live': 'live',
     'top.lost': 'disconnected',
     'top.scanning': 'scanning',
+    'top.stale': 'saved copy',
     'top.connect': 'connect',
     'top.pulseTitle': 'Click to rescan (r)',
     'top.sub': (o) =>
@@ -1827,6 +2005,13 @@ const DICT = {
     'pet.starved': 'starving',
     'pet.leftMin': (o) => `hungry in ${o.n} min`,
     'pet.leftHour': (o) => `hungry in ${o.n} h`,
+    'pet.starvedShort': 'starving',
+    'pet.leftMinShort': (o) => `${o.n} min left`,
+    'pet.leftHourShort': (o) => `${o.n} h left`,
+    'pet.satMinShort': (o) => `${o.n} min straight`,
+    'pet.satRestedShort': 'just rested',
+    'pet.soundOn': 'Sound: on',
+    'pet.soundOff': 'Sound: off',
     'pet.mood.starving': 'Starving',
     'pet.mood.hungry': 'Hungry',
     'pet.mood.fine': 'Fine',
@@ -1839,10 +2024,57 @@ const DICT = {
     'pet.satMin': (o) => `${o.n} min at the desk`,
     'pet.satRested': 'just back from a break',
     'pet.focusNote': 'Counted from the last quiet spell in Claude Code; over 10 minutes quiet refills it. One 90-minute basic rest–activity cycle.',
+    'pet.nudge.starving': 'He is starving — hands off the keyboard, screen dark, food the only thing on his mind. One coin fixes it.',
     'pet.nudge.dip': (o) => `${o.n} minutes straight — that is the alert phase of a 90-minute cycle used up. Stand up and move for 3 minutes.`,
     'pet.nudge.spent': (o) => `${o.n} minutes. Your brain is at the bottom of the cycle — a 10-minute break beats pushing through.`,
     'pet.nudge.afternoon': (o) => `${o.n} minutes, and early afternoon is the daily trough. Walk outside for 5 minutes — for this dip, bright light beats coffee.`,
     'pet.nudge.night': (o) => `Past 10pm and ${o.n} minutes straight. Leave it for tomorrow; sleep is what actually clears your head.`,
+    'pet.says.well': 'All good. Screen on, hands on the keys.',
+    'pet.says.hungry': 'Stomach is talking. Still typing, but not for long.',
+    'pet.says.starving': 'Starving. Hands off the keys — all I see is food.',
+    'pet.says.dip': 'Alert phase running out. Let me get up a few minutes.',
+    'pet.says.spent': 'Past the cycle. I am dozing off right here at the desk.',
+    'pet.says.busy': 'Mid-something — give me a minute.',
+    'pet.says.cheer': 'New stuff! I love it.',
+    'pet.says.off': 'The game is off. The ledger is still there.',
+    'pet.statOpen': 'Show his status — and hear him out',
+    'pet.think.eat.1': 'Still hot. Let me get through this first.',
+    'pet.think.eat.2': 'One bowl buys a few more hours at the desk.',
+    'pet.think.water.1': 'Only water, and the whole head clears up.',
+    'pet.think.water.2': 'I have owed my head this glass since morning.',
+    'pet.think.eyes.1': 'Looking far off. Eyes need a new focus too.',
+    'pet.think.eyes.2': 'Nothing out there, really. Still feels better.',
+    'pet.think.stretch.1': 'Shoulders like wood. One good pull.',
+    'pet.think.stretch.2': 'Sit long enough and the back speaks first.',
+    'pet.think.walk.1': 'A few laps, so the legs remember they exist.',
+    'pet.think.walk.2': 'Thinking comes easier walking than sitting.',
+    'pet.think.sun.1': 'Warmer than it looks. A minute more here.',
+    'pet.think.sun.2': 'Real light. No screen fakes that.',
+    'pet.think.dawn.1': 'Quiet this early. Nobody has asked yet.',
+    'pet.think.dawn.2': 'Head still clean. Save it for the hard bit.',
+    'pet.think.day.1': 'Sun is right overhead now.',
+    'pet.think.day.2': 'Midday is the easiest time to lose track.',
+    'pet.think.dusk.1': 'The sky is turning.',
+    'pet.think.dusk.2': 'Nearly done. Close what is half-open.',
+    'pet.think.night.1': 'Late. The stars are almost all out.',
+    'pet.think.night.2': 'Quiet nights type fast. Tomorrow pays for it.',
+    // Mẹo — xem khối chú thích cùng tên ở bảng tiếng Việt.
+    'pet.tip.claudeMd': 'Repeating a rule? Put it in CLAUDE.md instead.',
+    'pet.tip.compact': 'Context getting long? /compact, then carry on.',
+    'pet.tip.clear': 'New task? /clear so the old one stops leaking in.',
+    'pet.tip.plan': 'Big change: settle the plan first, code second.',
+    'pet.tip.skill': 'Doing it a third time? Wrap it up as a skill.',
+    'pet.tip.diff': 'Read the diff before committing, not the summary.',
+    'pet.tip.now': 'Back on an old repo? Run /now before typing.',
+    'pet.tip.look': 'Changed the UI? Open it. Green tests are not proof.',
+    'pet.tip.scope': 'Your rules in ~/.claude; the repo\'s rules in the repo.',
+    'pet.tip.small': 'One task per turn. A readable diff is a reviewable one.',
+    'pet.tip.agent': 'Sweeping the whole repo? Send a subagent instead.',
+    'pet.tip.esc': 'Heading the wrong way? Hit Esc. Don\'t wait it out.',
+    'pet.tip.paste': 'Paste the whole stack trace. Don\'t paraphrase it.',
+    'pet.tip.verify': 'Don\'t trust "done" — make it run the command.',
+    'pet.tip.file': 'Know the file? Name the path. Saves a search round.',
+    'pet.tip.shot': 'UI looks off? Paste a screenshot, not a paragraph.',
     'pet.secFree.home': 'Short breaks at your desk — free',
     'pet.secFree.park': 'Short breaks outdoors — free',
     'pet.freeHint.home':
@@ -1886,7 +2118,7 @@ const DICT = {
     'town.lotNote':
       'An empty lot. The town grows when the dashboard gains something worth a building of its own — not when something new goes on sale.',
 
-    'pet.homeHint': 'The butler lives here — the roof is off so you can see inside, and he paces the floor when idle. The three at-your-desk breaks start from here too.',
+    'pet.homeHint': 'The butler lives here — the roof is off so you can see inside, and he sits typing at the desk while things are fine. Starving or spent, the screen goes dark. The three at-your-desk breaks start from here too.',
     'pet.homeBare': 'The sky is bare. Go have a look at the trinket shop.',
     'pet.noMoves': 'This server build has no break table yet.',
 
@@ -1911,6 +2143,7 @@ const DICT = {
     'pet.slot.top': 'Strung along the top',
     'pet.slot.back': 'Backdrop',
     'pet.slotEmpty': 'empty right now',
+    'pet.shelfOwn': (o) => `${o.own} of ${o.all} owned for this spot`,
     'pet.wear': 'put this up',
     'pet.wearOff': 'take it down',
     'pet.tooPoor': (o) => `${o.n} coins short`,
@@ -1972,19 +2205,37 @@ const DICT = {
     'pet.item.beanie': 'Bobble hat',
     'pet.item.hat': 'Top hat',
     'pet.item.crown': 'Crown',
+    'pet.item.wreath': 'Flower wreath',
+    'pet.item.halo': 'Golden halo',
+    'pet.item.helm': 'Winged court cap',
     'pet.item.cactus': 'Cactus',
     'pet.item.plant': 'Potted plant',
     'pet.item.bonsai': 'Bonsai',
+    'pet.item.sakura': 'Cherry tree',
+    'pet.item.kumquat': 'Kumquat tree',
+    'pet.item.bamboo': 'Bamboo grove',
     'pet.item.mushroom': 'Mushroom',
     'pet.item.dog': 'Dog',
     'pet.item.cat': 'Cat',
+    'pet.item.crane': 'Crane',
+    'pet.item.koipond': 'Koi pond',
+    'pet.item.torii': 'Torii gate',
     'pet.item.balloon': 'Balloon',
+    'pet.item.chime': 'Wind chime',
     'pet.item.kite': 'Kite',
     'pet.item.lantern': 'Lantern',
+    'pet.item.firework': 'Firework',
+    'pet.item.airship': 'Hot-air balloon',
     'pet.item.bunting': 'Bunting',
     'pet.item.lights': 'Fairy lights',
+    'pet.item.wisteria': 'Wisteria vine',
+    'pet.item.roses': 'Rose arch',
+    'pet.item.awning': 'Striped awning',
     'pet.item.hills': 'Rolling hills',
     'pet.item.rainbow': 'Rainbow',
+    'pet.item.aurora': 'Aurora',
+    'pet.item.skyline': 'City skyline',
+    'pet.item.peak': 'Snow peak',
 
     // Language
     'lang.title': (o) => `Language: English — click to switch to ${o.next} (l)`,
@@ -1998,6 +2249,8 @@ const DICT = {
     // Disconnected
     'off.pre': 'Lost connection to server — showing a snapshot from',
     'off.post': ', no longer updating.',
+    'off.cachePre': 'Saved copy, taken at',
+    'off.cachePost': ' — waiting for a fresh scan.',
     'off.retry': 'Retry',
 
     // First load — no data has EVER arrived, unlike "disconnected" where stale numbers

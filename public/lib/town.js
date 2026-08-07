@@ -75,8 +75,8 @@
  */
 
 import { html } from './dom.js';
-import { pixels } from './pixel.js';
-import { BUTLER_CHARS, BUTLER_H, BUTLER_W, butlerHand, butlerRows, doingArt, poseOf } from './pet.js';
+import { outline, pixels } from './pixel.js';
+import { BUTLER_CHARS, BUTLER_H, BUTLER_W, butlerFace, butlerHand, butlerLook, butlerRows, doingArt, doingRing, faceArt, markArt, poseOf } from './pet.js';
 import { whereOf } from './petmath.js';
 
 /* ── Hình học đẳng cự ──────────────────────────────────────────────────────────
@@ -756,6 +756,86 @@ const LAMP = ['.gg.', 'gggg', '.kk.', '..k.', '..k.', '..k.', '..k.', '..k.', '.
 const FLOWER = ['r.p.r', 'LLLLL', '.LLL.'];
 
 /**
+ * CÁI GIẾNG ở ngã ba sau — vật phong cảnh duy nhất đứng đúng một mắt lưới.
+ *
+ * ## Vì sao có nó
+ *
+ * Người dùng chỉ ra rằng mấy con đường cụt: chúng chạy quá toà nhà cuối rồi dừng giữa bãi
+ * cỏ. Hai con phố xuyên tâm chữa được bằng cách cho chúng CHẠY RA khỏi khung (xem `ROADS`),
+ * nhưng mặt sau thị trấn thì còn một vấn đề thứ hai mà phép ấy không chạm tới: mặt trước có
+ * hai đoạn khép xuống ô đất, mặt sau không có gì, nên bản đồ đọc thành một bức tranh vẽ dở
+ * ở nửa trên.
+ *
+ * Cái giếng là mốc để hai ngõ sau khép về. Không phải một toà nhà thứ sáu, và đó là chỗ
+ * quan trọng: một toà nhà không bấm được thì ai cũng thử bấm nó — đúng cái bẫy đã ghi cho ô
+ * đất. Một cái giếng thì không ai đợi nó mở ra một trang hàng.
+ *
+ * ## Vì sao rộng đúng ngần này, và vì sao KHÔNG có cần trục
+ *
+ * `WELL_W = 24` ô = 96px, và con số ấy có ràng buộc: hai ngõ gặp nhau NGAY TRÊN cái sân của
+ * nó, mỗi ngõ thò quá mắt lưới `ROAD_PAD`. Sân hẹp hơn hai lần con số ấy thì cái ngã ba thò
+ * ra ngoài sân và nằm trên cỏ. Có một bài test canh, và nó đo `ROAD_PAD` từ chính `ROADS`
+ * chứ không chép lại con số.
+ *
+ * Cao 15 hàng = 60px, và đây là con số phải trả giá để có. Nó đứng ở `(-1, -1)`, tức
+ * `y = -176`, mà mép trên `TOWN_BOX` ở `-248` — tức trần là 72px. Bản đầu dựng đúng 72px:
+ * sân, thành giếng, rồi một cái CẦN TRỤC hai cột một xà bên trên. Mở trang ra thì cái xà
+ * nằm đúng trên đường viền khung, và một vật chạm mép khung thì đọc thành BỊ CẮT — đúng
+ * cảm giác "cụt" mà cả lượt này đang đi sửa, chỉ là ở một chỗ khác.
+ *
+ * Cắt cần trục đi thì còn 60px và thừa ra 12px cỏ ở trên đầu. Đổi lại mất cái dáng "hai cột
+ * một xà". Cái gàu gỗ đứng trên thành giếng gánh phần ấy: nó nhỏ, nó nằm trong 60px, và ở
+ * cỡ này thì một cái gàu cạnh một cái lỗ tối nói "giếng" gọn hơn một cái khung gỗ.
+ */
+const WELL_W = 24;
+const WELL_H = 14;
+/** Hàng mà mặt sân bắt đầu, và tâm ngang của nó — mọi thứ đứng trên giếng đo từ hai số này,
+ *  cùng luật đã ghi ở `LOT_GROUND`. */
+const WELL_GROUND = WELL_H - WELL_W / 2;
+const WELL_MID = WELL_W / 2;
+/**
+ * Thành giếng rộng 12 ô, KHÔNG phải 8, và KHÔNG dựng bằng `boxed`.
+ *
+ * Hai chỗ đã hỏng trước khi ra được cái vành đá này, và cả hai đều là cùng một cái bẫy:
+ * `boxed` tô viền `k` cho mọi ô mặt trên thiếu ô cùng loại ở trên HOẶC ở dưới, và trên một
+ * mặt thoi bé thì gần như ô nào cũng thiếu.
+ *
+ * - Rộng 8 ô: mặt thoi chỉ bốn hàng, `boxed` ăn sạch → một khối đen tuyền.
+ * - Rộng 12 ô nhưng vẫn `boxed`: sáu hàng, viền ăn 24 trên 40 ô, cái miệng giếng khoét nốt
+ *   phần giữa → lại đen.
+ *
+ * Nên ở đây chỉ lấy HAI đường của `boxed`, không lấy cả ba: bờ trên (tách vành đá khỏi cỏ)
+ * và chân tường (dán nó xuống sân). Bỏ đường diềm — đường ấy sinh ra để tách mái khỏi vách,
+ * mà cái giếng thì mặt trên của nó không phải mái, nó là chỗ nhìn xuống nước.
+ */
+const WELL_CURB = 12;
+/** Đặt sao cho ĐỈNH DƯỚI của thành giếng rơi đúng TÂM cái sân — nó đứng giữa sân chứ không
+ *  đứng ở mép. `box(w, tall)` cao `w/2 + tall` hàng và đỉnh dưới nằm ở hàng CUỐI, nên trừ đi
+ *  `w/2 + tall - 1`. Thiếu số `-1` ấy là cả cái giếng lún xuống sân một hàng. */
+const WELL_CURB_Y = WELL_GROUND + WELL_W / 4 - (WELL_CURB / 2 + 2);
+export const WELL = layers(
+  // Sân, có đường chân — thiếu nó thì mặt sân với mặt cỏ chỉ chênh một bậc sáng và cả vật
+  // đọc thành một cái gò, đúng lỗi mà `rim` sinh ra để chữa.
+  stamp(blank(WELL_W, WELL_H), rim(diamond(WELL_W, 'b'), 'b', 'k', 1), 0, WELL_GROUND),
+  // Thành giếng mang đúng cặp vách của mọi toà nhà trong thị trấn — vách hứng nắng `f`, vách
+  // khuất `n`. Cái giếng không được có mặt trời riêng.
+  [
+    rim(rim(box(WELL_CURB, 3, 'd', 'f', 'n'), 'd', 'k', -1), 'fn', 'k', 1),
+    WELL_MID - WELL_CURB / 2,
+    WELL_CURB_Y,
+  ],
+  // Miệng giếng: một hình thoi TỐI khoét vào mặt thoi, nên nó tự nằm đúng phối cảnh mà không
+  // phải vẽ tay một hình tròn méo.
+  [diamond(4, 'k'), WELL_MID - 2, WELL_CURB_Y + 2],
+  // Cái gàu, đứng trên SÂN ở phía trái — không đứng trên vành đá: vành đá chỉ dày hai ô, và
+  // một cái gàu bốn ô đặt lên đó thì nó che mất chính cái vành vừa dựng.
+  //
+  // Vẽ tay, và đây là chỗ được phép: hình học của thị trấn thì DỰNG, còn chi tiết đè lên thì
+  // vẽ — một cái gàu bốn ô không có hình học nào để mà sai.
+  put(['wwww', 'wnnw', '.kk.'], WELL_MID - 8, WELL_GROUND + WELL_W / 4 + 1),
+);
+
+/**
  * Chòi nghỉ: mái chóp trên bốn cột, có sàn đá.
  *
  * Bốn cột chứ không ba, dù cột sau bị mái che khuất hoàn toàn: chỗ đứng của nó vẫn phải
@@ -907,10 +987,40 @@ const LOT = layers(
    52 ô (208px) cho lại đúng cái đã mất: sàn rộng gấp 3,25 lần thân người, vòng đi lại nới
    ra 88px, và giữa hai món đồ có chỗ TRỐNG. Chỗ trống ấy mới là thứ nói "rộng rãi" — thêm
    đồ vào một căn phòng to là làm nó chật lại, nên lượt này nới sàn mà KHÔNG thêm món nào
-   ngoài một cái kệ sát tường. */
+   ngoài một cái kệ sát tường.
+
+   ## Vì sao lượt này nới VÁCH chứ không nới SÀN
+
+   Nhận xét: *"home đang hơi bé"*. Đo lại thì nhà mình đã là vật RỘNG nhất bản đồ — sàn 208px
+   so với 96px của một cửa hàng. Nên "bé" ở đây không phải bề ngang, và chỗ hỏng lộ ra khi
+   xếp nó cạnh bốn hàng quán: **nó là vật duy nhất không có KHỐI.** Bốn chỗ kia có mái chóp,
+   mái vòm, mái bằng có lan can — mỗi cái cao 10 đến 16 hàng trên mặt thoi. Nhà mình có hai
+   vách cao 18 hàng rồi hết. Ở phối cảnh đẳng cự thì thứ mắt đọc thành "to" là CHIỀU CAO
+   trên mặt đất, không phải diện tích mặt nền: mặt nền càng rộng càng bẹt.
+
+   Nên vách 18 → 23 hàng (72px → 92px). Ba thứ được cùng lúc, và không thứ nào phải mua
+   bằng chỗ của người khác:
+
+   1. Cả khối cao thêm 20px, tức nhà mình vượt hẳn mái cửa hàng thay vì ngang bằng.
+   2. Bức tường sau có chỗ thật cho ô cửa sổ đứng ở nửa trên — trước đây 18 hàng bị hai ô
+      cửa ăn gần hết, nên chúng phải dính sát mép.
+   3. **Bản đồ KHÔNG rộng thêm một pixel nào**, nên không toà nhà nào phải nhỏ đi và bước
+      lưới đứng nguyên. Đây là chỗ khác hẳn lượt năm, lúc phóng to phải lấy chỗ của hai ô
+      đất; lần này chiều cao là hướng duy nhất còn trống, vì mọi vật đều neo ĐÁY-GIỮA.
+
+   **23 chứ không phải 26, và đó là một chỗ đã thử rồi lùi.** Bản đầu của lượt này lấy 26
+   (+8 hàng). Nhìn màn thật thì nó qua mất một mốc: vách cao bằng đúng chiều sâu của sàn
+   (26 hàng vách, 26 hàng thoi), nên căn phòng thôi đọc thành phòng và đọc thành một cái
+   GIẾNG — hai mảng tường đứng chiếm hơn nửa diện tích khối, mỗi mảng chỉ có một ô cửa nhỏ
+   trên nền trống. Chữa bằng cách treo thêm đồ lên tường thì lại phạm đúng câu đã ghi ngay
+   trên: thêm đồ vào một chỗ to là làm nó chật lại. 23 hàng đứng dưới mốc ấy — vách vẫn thấp
+   hơn chiều sâu sàn, tỉ lệ vẫn đọc ra là phòng.
+
+   Sàn giữ nguyên 52 ô. Nới cả hai là căn phòng vẫn cùng tỉ lệ, chỉ to đều lên — mà tỉ lệ
+   hiện tại không phải chỗ hỏng. */
 
 const HOME_W = 52;
-const HOME_WALL = 18;
+const HOME_WALL = 23;
 const HOME_X = 4;
 const HOME_FLOOR_Y = HOME_WALL;
 const HOME_FRAME_W = HOME_W + 8;
@@ -998,11 +1108,45 @@ const HOME_WALLS = facade(
   // Cửa sổ sáng đèn trên vách trái — khung tối, kính vàng, một nẹp chia đôi. Dựng bằng
   // `panel` nên nó nghiêng đúng độ dốc của vách; một ô cửa VUÔNG ở đây là chỗ mắt bắt lỗi
   // phối cảnh nhanh nhất, nhanh hơn cả một mái nhà lệch.
-  [layers(opening(14, 7, -1, 'k', 'g'), [panel(1, 5, 'k', -1), 6, 1]), HOME_X + 5, 5],
+  // Hàng 7 chứ không phải hàng 5 kể từ lượt vách cao lên 26: cửa sổ vẫn phải nằm ở NỬA TRÊN
+  // của bức tường (cửa sổ thật thì cao), nhưng dính sát mép trên thì nó đọc thành ô thông
+  // gió sát trần. Hai hàng là đủ để có một dải tường mỏng bên trên nó.
+  [layers(opening(14, 7, -1, 'k', 'g'), [panel(1, 5, 'k', -1), 6, 1]), HOME_X + 5, 7],
   // Bức tranh trên vách phải, để hai vách không đối xứng. Hai bức tường trống hệt nhau đọc
   // thành một cái hộp, không đọc thành một căn phòng.
-  [opening(12, 6, 1, 'k', 'v'), HOME_X + 33, 5],
+  [opening(12, 6, 1, 'k', 'v'), HOME_X + 33, 7],
 );
+
+/**
+ * ## Cỡ cái bàn KHÔNG do cái bàn quyết — nó do cái màn hình quyết
+ *
+ * Người dùng báo: "laptop máy tính nhìn bé quá". Đo thì đúng: mặt kính sáng chỉ 20×12px,
+ * đứng cạnh một nhân vật cao 64px. Và chỗ ĐÁNG ghi là vì sao nó bé — không phải vì ai đó vẽ
+ * bé, mà vì nó không có chỗ nào để lớn:
+ *
+ * Quản gia đứng ở ĐỈNH SAU mặt bàn, và anh ta được vẽ SAU cả căn phòng, nên anh ta che mọi
+ * thứ mình chồng lên. Tức mọi vật đứng trên bàn chỉ có đúng một dải trống để mọc lên: từ
+ * hàng chân anh ta xuống tới mép trước mặt bàn. Dải ấy cao đúng `DESK_W / 2` hàng, không
+ * hơn — nó LÀ chiều cao mặt thoi.
+ *
+ * Bàn cũ rộng 12 ô → dải 6 hàng = 24px, mà cái màn hình cũ đã cao 7 hàng. Nó không bé vì
+ * chọn sai cỡ; nó đã tràn sẵn một hàng rồi.
+ *
+ * Nên muốn màn hình to thì phải nới BÀN, và con số suy ngược từ vật đứng trên nó: laptop cần
+ * 12 hàng (8 màn + 4 đế), nên mặt bàn phải cao 12 hàng, nên `DESK_W = 24`.
+ *
+ * Bàn 24 ô rộng 96px thì không đứng vừa chỗ cũ nữa — mặt sàn thu vào bốn ô mỗi hàng, nên nó
+ * phải lùi về gần trục giữa phòng. `DESK_X` từ `HOME_X + 36` về `+ 28`, và `DESK_Y` xuống ba
+ * hàng. Mỗi con số đã kiểm bề rộng sàn ở đúng hàng nó chạm, cùng phép đã ghi cho bốn món đồ.
+ */
+const DESK_W = 24;
+const DESK_TALL = 4;
+const DESK_X = HOME_X + 28;
+const DESK_Y = HOME_FLOOR_Y + 17;
+/** Số hàng của MẶT bàn — `box(w, tall)` mở đầu bằng một hình thoi cao `w/2`. Thứ đứng trên
+ *  bàn phải đo từ con số này chứ không từ chiều cao cả cái bàn: đổi chiều cao chân bàn thì
+ *  cái laptop không được nhấc lên theo. */
+const TABLE_TOP = DESK_W / 2;
 
 /**
  * Cái bàn — và MÀU của nó là chỗ sửa chính trong căn phòng lượt này.
@@ -1033,7 +1177,7 @@ const HOME_WALLS = facade(
  * trên sàn tối đã tự tách ra rồi; thêm một đường viền vào đó là trả tiền hai lần cho một
  * việc, mà lần thứ hai thì trả bằng chính cái mặt bàn.
  */
-const TABLE = rim(box(12, 4, 'N', 'M', 'O'), 'MO', 'k', 1);
+const TABLE = rim(box(DESK_W, DESK_TALL, 'N', 'M', 'O'), 'MO', 'k', 1);
 
 /** Chậu cây trong nhà — cùng ngôn ngữ nét với cây ngoài phố (tán hai sắc), khác ở chỗ nó
  *  có một cái chậu. Đó là thứ nói "cây này được ai đó mang vào và tưới". */
@@ -1077,21 +1221,251 @@ const SHELF = [
  * `put` khai bằng chỗ CHÂN CHẠM SÀN, không khai bằng góc khung — một cái bàn khai bằng góc
  * khung là cái bàn sẽ trôi mỗi lần sửa chiều cao chân nó.
  */
-const HOME_ART = layers(
+/* Bốn hằng số của cái bàn khai ở TRÊN `TABLE` chứ không ở dưới, và đó là bắt buộc chứ không
+   phải gu: `TABLE` gọi `box(DESK_W, DESK_TALL, …)` ngay lúc nạp module, mà một `const` chưa
+   khởi tạo thì chưa đọc được — đặt dưới là cả trang trắng với đúng một dòng "Cannot access
+   DESK_W before initialization". Cùng cái bẫy đã ghi cho `sizeOf`.
+
+   Chúng tách ra thành hằng số vì có BA người đọc: bản vẽ căn phòng, cái laptop đứng trên mặt
+   bàn, và CHỖ ĐỨNG của quản gia lúc làm việc (`SPOT.desk`). Ba bản chép tay của cùng một toạ
+   độ là ba bản sẽ trôi khỏi nhau. */
+/**
+ * LAPTOP trên bàn — vật duy nhất trong nhà có ô mang class riêng (`screen`).
+ *
+ * Cần class riêng vì nó là thứ duy nhất trong bức tranh ĐỔI theo trạng thái: sáng khi quản
+ * gia đang gõ, tối khi anh ta đói lả hoặc hết nhịp. Gán cho nó một sắc `--art-*` có sẵn thì
+ * CSS không có chỗ nào để bám vào mà không đụng tới mấy ô khác cùng sắc.
+ *
+ * ## Laptop chứ không phải màn hình rời, và đây là chỗ đổi có lý do
+ *
+ * Một màn hình rời đòi một bàn phím rời để đọc ra "đang gõ", mà bàn phím thì phải nằm ở nửa
+ * TRƯỚC mặt bàn — đúng chỗ mà cái đế màn hình cũng muốn đứng. Hai vật tranh nhau một chỗ
+ * trên một mặt thoi cao 12 hàng. Laptop gộp cả hai thành MỘT vật: màn dựng đứng, đế nằm
+ * ngang, một cái bản lề nối chúng — và cái đế chính là bàn phím.
+ *
+ * ## Cái ĐẾ là nửa dưới của một hình thoi, không phải một chữ nhật
+ *
+ * Đây là phần duy nhất của laptop nằm PHẲNG trên bàn, nên nó phải mang đúng độ dốc 2:1 của
+ * mặt bàn — một chữ nhật đặt lên một mặt nghiêng là chỗ mắt bắt lỗi phối cảnh nhanh nhất
+ * (cùng câu đã ghi ở `panel`). Nó là ba hàng cuối của `rim(diamond(8), …)`, và ba hàng ấy đã
+ * đối chiếu với bề rộng mặt bàn ở từng hàng: hai hàng cuối vừa ĐÚNG BẰNG.
+ *
+ * Đế rộng 8 ô chứ không 12, và đây là chỗ bản đầu hỏng phải sửa sau khi mở trang ra nhìn:
+ * đế 12 ô khớp khít nửa trước mặt bàn, tức nó ĂN TRỌN nửa ấy — trên màn hình thì cả cái bàn
+ * biến mất dưới một mảng kem, và mảng kem ấy lại mang đúng sắc `foam` của bức vách bên trái
+ * ngay cạnh. Không đọc thành laptop trên bàn, đọc thành một tấm khăn trải. Thu về 8 ô thì
+ * mặt bàn lộ ra ở cả bốn phía và cái đế đọc ra là một VẬT đặt lên.
+ *
+ * Màn thì ngược lại — nó DỰNG ĐỨNG, nên nó là một chữ nhật thật và nó được phép rộng hơn mặt
+ * bàn ở hàng nó đứng. Một tấm kính đứng thẳng trong phối cảnh này chiếu ra đúng một chữ nhật.
+ *
+ * ## Ba dòng CHỮ trên mặt kính, và vì sao chúng là ba ký tự khác nhau
+ *
+ * Người dùng báo: "màn hình máy tính có chữ xuất hiện như đang làm việc hoặc bạn làm cách nào
+ * đó nhìn vui hơn nhấp nháy". Bản trước mặt kính là một mảng lam trơn 40×24px, và cái duy
+ * nhất nói "đang làm việc" là một nhịp mờ đi 28% mỗi 1,1 giây. Nhịp ấy chở đúng một tin — có
+ * điện — và nó là tin mà một cái đèn ngủ cũng chở được.
+ *
+ * Ba dòng chữ chở tin thứ hai, và đó là tin người ta thật sự đọc: **có ai đó đang gõ**. Điều
+ * kiện để nó nói được câu ấy là chúng phải hiện ra LẦN LƯỢT — ba dòng cùng bật một lúc là một
+ * trang đã viết xong, không phải một trang đang được viết.
+ *
+ * Nên mỗi dòng mang một ký tự riêng (`t`/`u`/`w`) chứ không chung một ký tự `c`: `pixels` gán
+ * class theo ký tự, và ba dòng cùng class thì CSS không có chỗ nào bám vào để cho chúng ba cái
+ * mốc thời gian khác nhau. Con trỏ `x` là ký tự thứ tư vì nó nháy theo nhịp RIÊNG, không theo
+ * nhịp của dòng nào — đó là cách một con trỏ văn bản vẫn hoạt động.
+ *
+ * Chữ tắt hẳn khi màn hình tắt, và nó tắt bằng cách mang đúng sắc của mặt kính tối chứ không
+ * bằng `display: none` — cùng lý lẽ đã ghi cho chính mặt kính: hỏng về phía im lặng.
+ *
+ * `k` viền · `s` mặt kính · `t`/`u`/`w` ba dòng chữ · `x` con trỏ · `q` vỏ máy
+ */
+const LAPTOP = [
+  'kkkkkkkkkkkk',
+  'kstttstttssk',
+  'kssssssssssk',
+  'kssuusuuuusk',
+  'kssssssssssk',
+  'ksswwwsxsssk',
+  'kssssssssssk',
+  'kkkkkkkkkkkk',
+  '..qqqqqqqq..',
+  '..kkqqqqkk..',
+  '....kkkk....',
+];
+
+/**
+ * ## Bàn ĂN — mặt TRÒN trên một chân trụ, không phải cái bàn làm việc đổi màu
+ *
+ * Người dùng xin: "khi ăn và tập thể dục thì [bàn làm việc] biến mất thay bằng bàn ăn (có đồ
+ * ăn ở trên)". Cách rẻ nhất là giữ nguyên khối `box` cũ rồi đặt bát lên — và cách ấy sai ở
+ * đúng chỗ nó rẻ: hai cái bàn cùng khối, cùng cỡ, cùng hai sắc thì đó là MỘT cái bàn có bát
+ * đặt lên, không phải một cái bàn khác. Mà câu người dùng nói là cái bàn kia *biến mất*.
+ *
+ * Nên chúng khác nhau ở ĐƯỜNG BAO, đúng cái luật đã cứu ba toà nhà ngoài phố: bàn làm việc là
+ * một khối hộp bốn chân vuông, bàn ăn là một mặt tròn trên một cái trụ.
+ *
+ * ## Đế lọt KHÍT vào nửa dưới mặt bàn, và đó là một phép đồng nhất chứ không phải một con số
+ *
+ * Một hình thoi rộng `w − 8` dời xuống 4 hàng và sang phải 4 ô thì nó trùng KHÍT nửa dưới của
+ * hình thoi rộng `w` — cùng phép đã dựng tấm thảm (`HOME_RUG`) và mặt mái lõm của tiệm trang
+ * trí. Nhờ nó cái trụ không có một ô nào thò ra ngoài mép bàn, và không phải đo tay ô nào.
+ *
+ * Cao đúng 16 hàng, BẰNG cái bàn làm việc. Không phải trùng hợp: quản gia đứng ở đỉnh sau mặt
+ * bàn, và chỗ đứng ấy suy từ chiều cao cái bàn (`SPOT.desk`). Lệch một hàng là lúc đổi cảnh
+ * anh ta nhích lên hoặc lún xuống một ô — thứ mắt bắt ngay vì hai cảnh nối nhau tức thì.
+ */
+const DINE_W = 20;
+const DINE_BASE_W = DINE_W - 8;
+const DINE_BASE_TALL = 6;
+/** Mặt bàn có một vòng khăn lót sáng ở giữa — lại là phép hình-thoi-lồng-nhau, và ở đây nó
+ *  làm một việc thứ hai: cái bát đứng trên một nền sáng thì đường bao của nó đọc được, còn
+ *  đứng thẳng trên mặt bàn tối thì viền `ink` của bát lẫn vào mặt bàn. */
+/* `rim` chạy TRƯỚC `stamp`, và thứ tự ấy không đổi được: `rim(…, 'N', 'k', 1)` tô lại mọi ô
+   `N` không có `N` ở ngay dưới, mà sau khi đắp khăn lót thì cả vành TRÊN của tấm khăn cũng
+   thoả điều kiện ấy — ra một cái cung tối ôm nửa trên tấm khăn và không có gì ôm nửa dưới.
+   Kẻ mép bàn trước rồi mới đắp khăn thì mỗi phép làm đúng việc của mình. */
+const DINE_TOP = stamp(rim(diamond(DINE_W, 'N'), 'N', 'k', 1), diamond(DINE_W - 8, 'q'), 4, 2);
+/** Bát có khói, đặt giữa khăn lót. Khói là ký tự `z` chứ không phải `s`: `s` đã là MẶT KÍNH
+ *  của cái laptop trong bảng màu căn phòng, và hai nghĩa trên một ký tự là một cái bát bốc ra
+ *  ánh sáng màn hình. */
+const DINE_BOWL = [
+  '...zz...',
+  '..zzzz..',
+  '.zzzz...',
+  'kkkkkkkk',
+  'kbbbbbbk',
+  '.kbbbbk.',
+  '..kkkk..',
+];
+const DINE_TABLE = layers(
+  blank(DINE_W, DINE_W / 2 + DINE_BASE_TALL),
+  [rim(box(DINE_BASE_W, DINE_BASE_TALL, 'N', 'M', 'O'), 'MO', 'k', 1), 4, 4],
+  [DINE_TOP, 0, 0],
+  [DINE_BOWL, (DINE_W - 8) / 2, 1],
+);
+
+/**
+ * ## Góc tập — thảm, tạ và quả bóng
+ *
+ * Thảm tập THAY CHỖ tấm thảm giữa phòng chứ không nằm chồng lên nó, và đó là chỗ duy nhất
+ * trong ba cảnh có một món của căn phòng bị dọn đi. Lý do là hình học chứ không phải câu
+ * chuyện: tấm thảm rộng 24 ô nằm đúng giữa sàn, mà chỗ duy nhất đủ dài cho một tấm thảm tập
+ * cũng là chỗ ấy — hai mảng phẳng chồng nhau trên một mặt sàn thì cái trên đọc thành một vũng
+ * loang, không đọc thành hai vật.
+ *
+ * Thảm dựng bằng `lane` chứ không bằng `diamond`: nó là hình chữ NHẬT nằm phẳng, không phải
+ * hình vuông — và một chữ nhật nằm phẳng trong phối cảnh này là một dải chạy theo một trục
+ * lưới, đúng thứ `lane` sinh ra để dựng.
+ */
+/** Thảm tập nằm CAO HƠN tấm thảm tròn bảy hàng, và con số ấy do mặt sàn quyết chứ không do
+ *  bố cục: sàn là một hình thoi nên nó THU LẠI bốn ô mỗi hàng khi đi xuống, còn tấm thảm tập
+ *  là một chữ nhật nên nó không thu. Đặt nó thấp bằng tấm thảm tròn thì hai góc trước của nó
+ *  thò hẳn ra ngoài mép sàn và đứng lơ lửng trên cỏ. Tấm thảm tròn không dính lỗi ấy vì nó
+ *  cũng là một hình thoi — nó thu đúng theo sàn. */
+const RUG_Y = HOME_FLOOR_Y + 24;
+const MAT_X = HOME_X + 28;
+const MAT_Y = HOME_FLOOR_Y + 16;
+const MAT = stamp(lane(6, 18, 'r'), lane(4, 14, 'q'), 4, 1);
+/** Đôi tạ và quả bóng — hai món ĐỨNG, để góc tập không phải một mảng phẳng nằm dưới chân.
+ *
+ *  Tạ mang sắc `N` (dim) chứ không `M` (broth): chúng đứng trên sàn gỗ nâu, và một khối nâu
+ *  trên nền nâu thì chỉ còn cái viền nói là có gì ở đấy — cùng ca đã ghi cho cái bàn cũ.
+ *
+ *  Chúng đứng ở mép TRƯỚC, tức DƯỚI quản gia trên màn hình. Đó là chỗ duy nhất chúng không bị
+ *  che: anh ta vẽ sau cả căn phòng, nên mọi thứ nằm cao hơn chân anh ta đều khuất — cùng cái
+ *  ràng buộc đã quyết cỡ cái bàn làm việc. */
+const WEIGHTS = [
+  '.kkk....kkk.',
+  'kNNNk..kNNNk',
+  'kNNNkkkkNNNk',
+  'kNNNkkkkNNNk',
+  'kNNNk..kNNNk',
+  '.kkk....kkk.',
+];
+const BALL = ['..kkk..', '.krrrk.', 'krrrrrk', 'krrrrrk', '.krrrk.', '..kkk..'];
+
+/* ── Ba BỐI CẢNH của cùng một căn phòng ────────────────────────────────────────
+
+   Người dùng xin: "bàn làm việc + máy tính chỉ xuất hiện khi làm việc, khi ăn và tập thể dục
+   thì biến mất thay bằng bàn ăn (có đồ ăn ở trên) … vươn vai thì là có hiện các công cụ thể
+   dục".
+
+   ## Đây là một SÂN KHẤU, và nó thừa nhận điều đó
+
+   Một cái bàn làm việc không bốc hơi khi người ta ngồi xuống ăn. Cảnh này vẫn cho nó bốc hơi,
+   và đó là một quy ước cố ý chứ không phải một chỗ quên: căn phòng rộng 208×136px, tức mọi
+   thứ đặt vào nó đều tranh chỗ với mọi thứ khác. Bày cùng lúc bàn làm việc, bàn ăn và một góc
+   tập thì ba thứ chồng lên nhau và không thứ nào đọc được — mà cái đọc được mới là toàn bộ
+   việc của bức tranh này. Nên căn phòng đổi ĐỒ ĐẠC theo việc, y như một sân khấu đổi cảnh.
+
+   ## Hai việc KHÔNG đổi cảnh, và vì sao
+
+   - **Uống nước** (`water`) giữ nguyên bàn làm việc. Nó khai là "nghỉ ngay tại bàn" (xem
+     `MOVES`), và cái bàn chính là thứ định nghĩa câu ấy — dọn bàn đi là dọn mất nghĩa của
+     động tác.
+   - **Rời mắt** (`eyes`) cũng giữ nguyên bàn, nhưng NGƯỜI thì đi khỏi phòng — xem `STROLL`.
+     Ở đây cái đổi là nhân vật chứ không phải đồ đạc, nên căn phòng đứng nguyên như anh ta vừa
+     bỏ lại: bàn còn đó, màn hình tắt.
+
+   Bốn tên trả về là bốn CẢNH, không phải bốn trạng thái mới — chúng suy hết từ `doing`, thứ
+   đã có sẵn. Thêm một trường vào máy trạng thái cho việc này là dựng bản thứ hai của một sự
+   thật. */
+
+/** Ba món đứng yên qua cả ba cảnh: hai bức vách, kệ sách và chậu cây. Chúng là CĂN PHÒNG;
+ *  mọi thứ khác là đồ đạc.
+ *
+ *  Kệ lùi bốn ô sang trái so với đời trước: bàn nở từ 12 lên 24 ô và ở cỡ mới nó trùm mất nửa
+ *  phải cái kệ. Lùi ra thì chỉ còn hai cột chồng nhau ở hai hàng cuối — đọc thành "bàn đứng
+ *  trước kệ", đúng thứ tự chúng đang đứng. */
+const HOME_ROOM = layers(
   HOME_WALLS,
+  put(SHELF, HOME_X + 14, HOME_FLOOR_Y + 8),
+  put(POT, HOME_X + 10, HOME_FLOOR_Y + 16),
+);
+
+const HOME_ART = layers(
+  HOME_ROOM,
   // Thảm ở giữa-trước: nó là cái đích của những vòng đi lại, và nó nói cho mắt biết đâu là
   // "giữa phòng" khi nhân vật đang đứng ở mép.
-  put(HOME_RUG, HOME_X + 26, HOME_FLOOR_Y + 24),
-  // Kệ sách sát vách sau-trái, chậu cây ở góc trước-trái, bàn ở nửa phải. Ba món ở ba góc
-  // khác nhau — chúng đứng thành một vòng quanh chỗ trống, không xếp thành một hàng cắt
-  // ngang nó.
-  put(SHELF, HOME_X + 18, HOME_FLOOR_Y + 8),
-  put(POT, HOME_X + 10, HOME_FLOOR_Y + 16),
-  put(TABLE, HOME_X + 36, HOME_FLOOR_Y + 14),
-  // Ngọn đèn ĐỨNG TRÊN mặt bàn, không lửng lơ cạnh nó: chân đèn đặt vào tâm mặt thoi của
-  // cái bàn, suy từ chính kích thước cái bàn chứ không gõ tay.
-  put(['.gg.', 'gggg', '.kk.', '.kk.'], HOME_X + 36, HOME_FLOOR_Y + 14 - 6),
+  put(HOME_RUG, MAT_X, RUG_Y),
+  put(TABLE, DESK_X, DESK_Y),
+  // Cái LAPTOP đứng trên bàn, đế của nó khớp vào nửa TRƯỚC mặt thoi: hàng cuối của khung rơi
+  // đúng đỉnh trước mặt bàn, nên cả vật suy từ hai hằng số của cái bàn chứ không gõ tay.
+  //
+  // Nó thay chỗ ngọn đèn của đời trước, và đó không phải chuyện đổi đồ trang trí: từ lượt 14
+  // quản gia LÀM VIỆC ở đây, mà một cái bàn có đèn thì là bàn ăn. Ngọn đèn vốn chỉ chở một
+  // điểm ấm trong phòng — mặt kính sáng chở đúng điểm ấy, và chở thêm một câu nữa.
+  put(LAPTOP, DESK_X, DESK_Y - TABLE.length + TABLE_TOP),
 );
+
+/** Cảnh ĂN: bàn tròn đứng đúng chỗ cái bàn làm việc vừa dọn đi. Cùng chỗ chứ không phải chỗ
+ *  khác — đổi cả chỗ lẫn hình thì hai cảnh không còn là một căn phòng nữa, chúng là hai bức
+ *  tranh. */
+const HOME_DINE = layers(HOME_ROOM, put(HOME_RUG, MAT_X, RUG_Y), put(DINE_TABLE, DESK_X, DESK_Y));
+
+/** Cảnh TẬP: thảm tập thế chỗ tấm thảm, tạ và bóng đứng hai bên. Không có bàn nào cả — đó là
+ *  cảnh duy nhất trong ba cảnh dọn trống hẳn nửa phải căn phòng, và nó phải trống: một động
+ *  tác vươn vai cần chỗ để vươn. */
+const HOME_GYM = layers(
+  HOME_ROOM,
+  put(MAT, MAT_X, MAT_Y),
+  // Đôi tạ ở mép TRƯỚC, quả bóng ở sườn PHẢI — hai chỗ đã đối chiếu bề rộng sàn ở đúng hàng
+  // chân chúng chạm, cùng phép đã ghi cho bốn món của cảnh bàn làm việc.
+  put(WEIGHTS, HOME_X + 26, HOME_FLOOR_Y + 22),
+  put(BALL, HOME_X + 43, HOME_FLOOR_Y + 15),
+);
+
+/**
+ * Việc đang làm thì căn phòng bày cảnh nào.
+ *
+ * `out` không phải một bộ đồ đạc — nó là câu "người không ở trong phòng". Căn phòng lúc ấy
+ * vẫn là cảnh bàn làm việc, nên chỗ gọi phải phân biệt hai câu hỏi khác nhau: *vẽ đồ đạc nào*
+ * và *quản gia đứng đâu*. Gộp chúng vào một tên là lần sau thêm một cảnh thứ tư thì phải sửa
+ * hai chỗ.
+ */
+export const homeSetOf = (doing) =>
+  doing?.kind === 'food' ? 'dine' : doing?.id === 'stretch' ? 'gym' : doing?.id === 'eyes' ? 'out' : 'desk';
 
 /* ── Quản gia trong nhà ────────────────────────────────────────────────────────
 
@@ -1130,10 +1504,17 @@ const MINI_H = BUTLER_H;
 
 // `.pet-art` là bắt buộc, không phải để cho đẹp: bảng màu `--art-*` và mọi luật `.px.plum`
 // đều treo dưới class ấy (xem `styles.css`). Thiếu nó thì quản gia là một khối ô xám.
-const mini = (pose) => html`<span class="pet-art mini pose-${pose}"
-  style="width:${MINI_W}px;height:${MINI_H}px"
-  >${pixels(butlerRows(pose), BUTLER_CHARS, false)}</span
->`;
+//
+// Có VIỀN, cùng lý do với hai con vật đi đường: anh ta đi qua lại trên sàn gỗ rồi lên tấm
+// thảm hồng, và cái áo tím thì đọc rõ trên gỗ mà chìm trên thảm. Bản popover thì không —
+// ở đấy anh ta đứng trên một nền duy nhất, do chính bức tranh ấy đặt ra.
+const mini = (pose, eyes = 'open') => {
+  const rows = butlerRows(pose, eyes);
+  return html`<span class="pet-art mini pose-${pose}"
+    style="width:${MINI_W}px;height:${MINI_H}px"
+    >${outline(rows)}${pixels(rows, BUTLER_CHARS, false)}</span
+  >`;
+};
 
 /**
  * Chỗ quản gia đứng, ở mỗi nơi anh ta có thể đang ở.
@@ -1144,15 +1525,31 @@ const mini = (pose) => html`<span class="pet-art mini pose-${pose}"
  *
  * Chân đặt vào TÂM mặt nền — tâm sàn nhà, tâm bãi cỏ — và cái sprite treo lên từ đó.
  */
-const feet = (x, w, y) => {
-  const cx = (x + w / 2) * 4;
-  const cy = (y + w / 4) * 4;
-  return `left:${cx - MINI_W / 2}px;top:${cy - MINI_H}px;width:${MINI_W}px;height:${MINI_H}px`;
-};
+const standAt = (cx, cy) =>
+  `left:${cx * 4 - MINI_W / 2}px;top:${cy * 4 - MINI_H}px;width:${MINI_W}px;height:${MINI_H}px`;
+const feet = (x, w, y) => standAt(x + w / 2, y + w / 4);
 const SPOT = {
   home: feet(HOME_X, HOME_W, HOME_FLOOR_Y),
   park: feet(PARK_X, PARK_LAWN_W, PARK_LAWN),
+  /**
+   * Chỗ đứng SAU cái bàn, không phải cạnh nó.
+   *
+   * Chân đặt vào ĐỈNH SAU của mặt bàn — `DESK_Y` là hàng cuối cả cái bàn, trừ đi chiều cao
+   * bàn rồi cộng lại một hàng là ra đỉnh ấy. Đứng thấp hơn một hàng thôi là hai cái chân đè
+   * lên mặt bàn, và lúc đó anh ta không đứng sau bàn nữa, anh ta đứng TRÊN bàn: quản gia vẽ
+   * SAU căn phòng nên anh ta che mọi thứ mình chồng lên.
+   */
+  desk: standAt(DESK_X, DESK_Y - TABLE.length + 1),
+  /** Đứng GIỮA tấm thảm tập, không đứng sau nó: đây là chỗ duy nhất trong nhà mà nền dưới
+   *  chân anh ta là một món đồ chứ không phải cái sàn, và một người tập thể dục đứng cạnh
+   *  tấm thảm thay vì trên nó thì cả cảnh nói ngược lại chính nó. */
+  mat: standAt(MAT_X, MAT_Y - 2),
+  /** Ngoài phố thì KHÔNG có toạ độ tuyệt đối: thẻ bọc (`.town-stroll`) mới là thứ mang chỗ
+   *  đứng, và nó thì đang di chuyển. Ở đây chỉ còn phép căn — chân anh ta rơi vào đúng điểm
+   *  của thẻ bọc, cùng phép mà `feet` đang dùng cho hai mặt nền. */
+  street: standAt(0, 0),
 };
+
 
 /**
  * Quản gia — và anh ta ĐỔI CHỖ theo việc đang làm, không chỉ đổi tư thế.
@@ -1181,26 +1578,84 @@ const SPOT = {
  * dashboard, và trùng tên thì luật `position: absolute` ở đây bốc thẻ ấy ra khỏi luồng.
  * Gặp thật, xem chú thích cùng tên trong `styles.css`.
  */
-export function butlerArt(doing, place, nowMs = Date.now()) {
-  if (whereOf(doing) !== place) return '';
+export function butlerArt(doing, place, nowMs = Date.now(), pet = null, cheer = false) {
+  const set = homeSetOf(doing);
+  // BỐN chỗ chứ không hai, và cái thứ tư (`street`) không đọc từ `whereOf`: rời mắt vẫn khai
+  // là việc làm tại nhà, chỉ có NGƯỜI là ra ngoài. Xem `STROLL`.
+  if ((set === 'out' ? 'street' : whereOf(doing)) !== place) return '';
   const stand = SPOT[place] ?? SPOT.home;
-  const pacing = !doing || doing.id === 'walk';
-  const pose = doing ? poseOf(doing) : null;
-  // Món đồ neo theo TƯ THẾ, không theo khung sprite. Lúc đang đi lại thì cả hai khung hình
-  // đều là tư thế không rảnh tay, nên `stand` là mốc đúng cho cả cụm.
-  const hand = butlerHand(pacing ? 'stand' : pose);
-  // Pha của vòng đi lại lấy từ đồng hồ MÁY chia dư, không lấy từ 0. Đó là thứ làm nhịp đi
-  // sống sót qua mọi lượt vẽ lại — kể cả nhịp một giây lúc đang có việc chạy.
+  // `butlerLook` là luật CHUNG với popover kể từ lượt này — xem `stateOf` bên `petmath.js`.
+  // Chỗ này chỉ giữ thêm một điều popover không có: cái vòng ĐI LẠI.
+  const look = pet ? butlerLook(pet, { cheer }) : { state: doing ? 'busy' : 'well', pose: doing ? poseOf(doing) : 'stand', eyes: 'open', mark: null };
+  // ── Anh ta đang LÀM GÌ, và ở CHỖ NÀO ───────────────────────────────────────
+  //
+  // Ba chế độ, và ranh giới giữa chúng là chỗ lượt này sửa nặng nhất.
+  //
+  // Đời trước: rảnh ở nhà thì ĐI LẠI trên sàn. Người dùng hỏi thẳng — "có thể thêm trạng
+  // thái làm việc gõ máy tính không?" — và câu hỏi ấy chỉ ra một chỗ trống có thật: cả cái
+  // đồng hồ tập trung đang đo "đã ngồi ở bàn bao lâu", mà bức tranh thì vẽ một người đi
+  // tha thẩn trong phòng. Hai thứ nói ngược nhau, và cái đo được mới là cái đúng.
+  //
+  // Nay ở nhà thì anh ta ở BÀN LÀM VIỆC, luôn luôn — kể cả lúc uống nước hay vươn vai, vì
+  // ba việc ấy vốn khai là "nghỉ ngay tại bàn". Chỉ còn công viên là chỗ có đi lại, và ở
+  // đấy đi lại là chính nội dung của việc (`walk`).
+  //
+  // GÕ MÁY khi và chỉ khi tư thế là `stand` và mắt còn mở, tức ba trạng thái `well`,
+  // `hungry`, `dip`. Hai trạng thái còn lại có hình riêng và chúng phải THẮNG: đói lả thì
+  // gục (`slump`), hết nhịp thì ngủ gật (mắt nhắm). Đấy chính là cái hậu quả mà người dùng
+  // nói là chưa thấy — màn hình tắt, tay rời bàn phím, công việc dừng.
+  //
+  // Từ lượt này căn phòng còn ĐỔI CẢNH theo việc (`homeSetOf`), và chỗ đứng phải đi theo cảnh
+  // chứ không theo cái tên "home": cảnh tập không có cái bàn nào cả, nên đứng ở "sau bàn" là
+  // đứng giữa hư không, cách tấm thảm tập bảy hàng.
+  const atHome = place === 'home';
+  const working = atHome && !doing && look.pose === 'stand' && look.eyes === 'open';
+  // ĐI: hoặc động tác `walk` ở công viên, hoặc vòng đi dạo ngoài phố. Hai cái chung một bộ
+  // khung hình (bước chân) nhưng KHÁC nhau ở phép dịch — cái ở công viên tự đi vòng quanh bãi
+  // cỏ, cái ngoài phố thì thẻ bọc chở nó đi, nên nó không được mang thêm vòng `park-pace`.
+  const street = place === 'street';
+  const pacing = doing?.id === 'walk';
+  const twin = working || pacing || street;
+  const spot = atHome ? (set === 'gym' ? SPOT.mat : SPOT.desk) : stand;
+  const pose = twin ? null : look.pose;
+  // Món đồ neo theo TƯ THẾ, không theo khung sprite. Lúc đang gõ hay đang đi lại thì cả hai
+  // khung hình đều là tư thế không rảnh tay, nên `stand` là mốc đúng cho cả cụm.
+  const hand = butlerHand(twin ? 'stand' : pose);
+  // Pha của vòng lặp lấy từ đồng hồ MÁY chia dư, không lấy từ 0. Đó là thứ làm nhịp sống
+  // sót qua mọi lượt vẽ lại — kể cả nhịp một giây lúc đang có việc chạy.
   const lag = -(nowMs % PACE_MS);
   const gait = pacing ? `;animation-delay:${lag}ms` : '';
-  return html`<span class="resident ${pacing ? 'pacing' : 'busy'} at-${place}" style="${stand}${gait}" aria-hidden="true"
-    >${pacing
-      ? html`<span class="mini-frame a" style="animation-delay:${lag}ms">${mini('stand')}</span
-          ><span class="mini-frame b" style="animation-delay:${lag}ms">${mini('walk')}</span>`
-      : mini(pose)}${doing
+  const mode = working ? 'typing' : street ? 'strolling' : pacing ? 'pacing' : 'busy';
+  // BONG BÓNG NGHĨ treo trên vai — người dùng xin, lượt 18: "cho nhân vật ở web có suy nghĩ
+  // (emoji) trạng thái", rồi lượt 19: "cho nó hiển thị như kiểu suy nghĩ trên pop-over".
+  //
+  // CHỈ khuôn mặt, không có câu chữ, và đó là chỗ nó khác popover chứ không phải một bản rút
+  // gọn cho vừa chỗ. Bản đồ này rộng 208px mỗi khu và có tới bảy chỗ có thể có nhân vật; một
+  // bong bóng chữ ở đây phải cạnh tranh với tên hàng quán, với món đồ đang cầm, với cái vòng
+  // đếm ngược. Mặt cười thì rộng 28px và không có chữ nào để đọc — nó là thứ liếc một cái là
+  // xong, đúng vai của một bản đồ. Đám mây với hai cái chấm thì do CSS vẽ, xem `.resident-mind`.
+  //
+  // Không có `pet` thì không có bong bóng nào: bản đồ vẫn vẽ được khi sổ chưa về (xem `look`
+  // ngay trên), và một khuôn mặt mặc định lúc ấy là một khuôn mặt bịa.
+  //
+  // Và lúc có bong bóng thì nét `crave` phải NHƯỜNG. `crave` cũng là một bong bóng nghĩ, chỉ
+  // khác là vẽ bằng pixel — nên để cả hai là hai bong bóng nghĩ mọc ra từ một cái đầu 64px,
+  // đúng cái va chạm mà popover đã phải xử (ở đấy là tấm bảng NÓI). Nhìn thật thì nó đọc thành
+  // nhiễu chứ không đọc thành "anh ta đang đòi ăn".
+  // Đói lả không mất kênh nào vì thế: nó vẫn giữ tư thế `slump` của riêng nó, và khuôn mặt
+  // trong bong bóng là `sad` — cũng của riêng nó. Hai kênh, đúng bằng số kênh của mọi trạng
+  // thái khác trong bảng `LOOK`.
+  const mark = pet && look.mark === 'crave' ? null : look.mark;
+  return html`<span class="resident ${mode} at-${place} pet-${look.state}" style="${spot}${gait}" aria-hidden="true"
+    >${twin
+      ? html`<span class="mini-frame a" style="animation-delay:${lag}ms">${mini(working ? 'type' : 'stand', look.eyes)}</span
+          ><span class="mini-frame b" style="animation-delay:${lag}ms">${mini(working ? 'type2' : 'walk', look.eyes)}</span>`
+      : mini(pose, look.eyes)}${doing
         ? html`<span class="resident-item" style="left:${hand.x}px;top:${hand.y}px"
             >${doingArt(doing)}</span
-          >`
+          >${doingRing(doing)}`
+        : ''}${markArt(mark, twin ? 'stand' : pose)}${pet
+        ? html`<span class="resident-mind">${faceArt(butlerFace(pet, { cheer }))}</span>`
         : ''}</span
   >`;
 }
@@ -1230,10 +1685,44 @@ const PACE_MS = 11000;
 const S = { x: 176, y: 88 };
 const at = (a, b) => ({ x: (a - b) * S.x, y: (a + b) * S.y });
 
+/** Cùng phép ấy, XUẤT RA cho bài test: hỏi "mắt lưới này nằm ở đâu" mà không phải chép lại
+ *  công thức lần thứ hai — một bản chép là một bản sẽ lệch ở lần nới lưới sau. */
+export const cellPos = at;
+
 /** Bước lưới, XUẤT RA cho bài test đo. Xuất chứ không để bài test chép lại hai con số: một
  *  bản chép thì lần nới rộng thị trấn sau là bài test đỏ vì nó đang canh một cái lưới đã
  *  chết — cùng lý lẽ đã ghi cho `sizeOf` và cho chỗ `itemArt` khai kích thước từ lưới. */
 export const STEP = S;
+
+/**
+ * Vòng đi dạo ngoài phố — tuyến, và nhịp.
+ *
+ * Người dùng xin: "rời mắt thì đi dạo vòng vòng khu phố". Chỗ đáng ghi là vì sao nó KHÔNG
+ * dựng bằng cách đổi `MOVES.eyes.where` sang `'park'`, dù đó là một dòng:
+ *
+ * `where` chở BA việc cùng lúc (xem chú thích của nó bên `petmath.js`) — ô hàng bày ở khối
+ * nào, quản gia đứng đâu, và khung cảnh popover có mọc cây không. Rời mắt vẫn là động tác
+ * làm được ngay tại bàn, nên ô hàng của nó phải ở lại khối "trong nhà". Đổi `where` là đổi cả
+ * ba, tức mua một cái đi dạo bằng một lời nói dối trong bảng động tác.
+ *
+ * Nên chỗ đứng tách khỏi `where`: `homeSetOf` trả về `out`, và `butlerArt` hiểu thêm một
+ * "chỗ" thứ ba tên `street`. Bảng động tác không phải đụng tới.
+ *
+ * Tuyến là con PHỐ NGANG đi ngang trước cửa nhà — đúng nghĩa "vòng vòng khu phố", và nó có
+ * một cái lợi mà một tuyến riêng không có: anh ta gặp người qua đường trên đó. `alternate`
+ * cho anh ta đi rồi về, nên hết một phút anh ta ở lại đúng chỗ xuất phát.
+ */
+const STROLL_MS = 26000;
+export const STROLL = { from: at(-1, 0), to: at(1, 0), ms: STROLL_MS };
+
+/** Anh ta có đang ở ngoài phố không. Một cửa, để `views/pet.js` không phải chép lại phép so
+ *  chuỗi `homeSetOf(doing) === 'out'` — cùng lý lẽ đã ghi cho `sizeOf` và `cellPos`. */
+export const strolling = (doing) => homeSetOf(doing) === 'out';
+
+/** Pha của vòng đi dạo, tính từ đồng hồ MÁY. Chu kỳ là HAI lần `STROLL_MS` vì `alternate` nối
+ *  lượt đi với lượt về thành một vòng — lấy dư theo một lần là cứ tới giữa vòng anh ta lại
+ *  giật ngược về đầu phố. */
+export const strollLag = (nowMs) => -(nowMs % (STROLL_MS * 2));
 
 export const PLACES = [
   {
@@ -1251,12 +1740,30 @@ export const PLACES = [
   {
     id: 'home',
     rows: HOME_ART,
+    /**
+     * Nhà mình là chỗ DUY NHẤT có nhiều hơn một bản vẽ, vì nó là chỗ duy nhất có người sống
+     * bên trong — xem `homeSetOf`. `rows` vẫn là bộ mặc định VÀ là một trong ba bộ, không
+     * phải một bản thứ tư đứng riêng: hai bản của cùng một cảnh là hai bản sẽ lệch.
+     *
+     * Khai ngay trong bảng này chứ không thành một hằng số riêng, và đó là chỗ đáng ghi: cả
+     * `placeArt` lẫn hai bài test canh bảng màu đều duyệt `PLACES`, nên một bộ hình sống
+     * ngoài bảng ấy là một bộ hình không ai kiểm — mà lỗi đầu tiên lượt này gặp đúng là thế:
+     * ký tự `z` (khói bát cơm) chỉ có trong cảnh bàn ăn, và bài test báo nó "không còn ký tự
+     * nào dùng" vì nó chỉ nhìn thấy cảnh bàn làm việc.
+     */
+    sets: { desk: HOME_ART, dine: HOME_DINE, gym: HOME_GYM, out: HOME_ART },
     chars: {
       // Sàn mang hai sắc GỖ RIÊNG, không mượn `broth`/`dim` như bản trước. Đó là chỗ sửa:
       // `broth` là vách trái cái bàn và `dim` là mặt bàn, nên sàn cũ và cái bàn cũ dùng
       // đúng một cặp màu — cái bàn không mờ, nó biến mất. Xem chú thích của `TABLE`.
-      F: 'wood', e: 'plank', A: 'foam', B: 'dim', S: 'ink',
+      F: 'wood', e: 'plank', A: 'foam', B: 'dim', S: 'ink', s: 'screen',
+      // Ba dòng chữ trên mặt kính mang BA class khác nhau vì chúng hiện ra ở ba thời điểm
+      // khác nhau, còn con trỏ mang class thứ tư vì nó nháy theo nhịp riêng — xem `LAPTOP`.
+      t: 'code r1', u: 'code r2', w: 'code r3', x: 'code caret',
       N: 'dim', M: 'broth', O: 'ink',
+      // `z` là KHÓI của bát cơm trên bàn ăn. Không dùng lại `s`: `s` đã là mặt kính laptop ở
+      // ngay trên, và hai nghĩa trên một ký tự là một bát cơm bốc ra ánh sáng màn hình.
+      z: 'steam',
       L: 'leaf', P: 'pine', b: 'broth', g: 'gold', v: 'leaf', r: 'rose', q: 'foam', k: 'ink',
     },
     ...at(0, 0),
@@ -1295,20 +1802,56 @@ export const LOTS = [at(1, 1)];
 
 /* ── Đường xá ──────────────────────────────────────────────────────────────────
 
-   Bốn đoạn, và chúng không phải bốn đoạn rời: hai đoạn dài đi XUYÊN qua tâm (quán ăn → nhà
-   → thư viện, và tiệm trang trí → nhà → công viên), rồi hai đoạn ngắn khép xuống ô đất
-   trước cổng. Vẽ thành đoạn dài chứ không thành bốn đoạn nối đuôi vì chúng nằm trên đúng
-   MỘT đường thẳng: cắt nó ra là mời mấy chỗ nối lệch nhau nửa pixel.
+   Sáu đoạn: hai con PHỐ đi xuyên qua tâm, rồi hai cặp NGÕ khép về hai mốc ở hai đầu bản đồ
+   — ô đất ở mép trước, cái giếng ở mép sau. Vẽ mỗi phố thành một đoạn dài chứ không thành
+   nhiều đoạn nối đuôi vì chúng nằm trên đúng MỘT đường thẳng: cắt ra là mời mấy chỗ nối
+   lệch nhau nửa pixel.
+
+   ## Đầu đường phải ĐI ĐÂU ĐÓ
+
+   Người dùng chỉ ra lỗi: "đường bị cụt, không biết đi tiếp đến đâu". Đo thì đúng, và cái
+   nguyên nhân không phải bề dài — nó là chỗ KẾT THÚC. Bản trước cả bốn đoạn đều dừng cách
+   toà nhà cuối 60px, tức dừng ngay ở mép mảnh đất của nhà ấy, GIỮA BÃI CỎ.
+
+   Một chỗ hay bị nhầm, và tôi đã nhầm đúng nó lúc đầu: không thể "giấu đầu đường xuống dưới
+   chân nhà" được. Mắt lưới `at()` là đỉnh DƯỚI của mặt nền, còn trục đường thì đi qua chính
+   mắt lưới ấy — nên nửa dưới con đường luôn nằm NGOÀI mặt nền, suốt cả quãng nó đi qua nhà.
+   Đường chạy dọc theo mép trước mảnh đất, không chui xuống dưới nó. Cộng thêm bao nhiêu
+   `pad` cũng không đổi được điều đó.
+
+   Nên luật là: **mỗi đầu đường hoặc là một NGÃ BA, hoặc là ra khỏi khung.** Có một bài test
+   canh cả hai vế.
+
+   - Hai con phố kéo dài thêm ĐÚNG MỘT BƯỚC LƯỚI ra ngoài toà nhà cuối, tức tới `(±2, 0)` và
+     `(0, ±2)`. Ở đó chúng đã ra ngoài `TOWN_BOX` và bị `.town-map` cắt — mà một con đường bị
+     KHUNG TRANH cắt thì đọc thành "còn đi tiếp", không đọc thành cụt. Khai bằng mắt lưới chứ
+     không bằng một con số dài: lần nới bước lưới sau chúng tự dài theo.
+   - Bốn cái ngõ giữ nguyên `ROAD_PAD`, và ở đó `pad` làm đúng việc của nó: hai đoạn gối lên
+     nhau nên chỗ gặp là một mảng liền, không phải hai mũi nhọn chạm nhau.
+
+   `open` đánh dấu mấy đoạn CỐ Ý ra ngoài khung, để `TOWN_BOX` đừng nở ra ôm lấy chúng — nếu
+   nó ôm thì cả bản đồ to thêm 150px mỗi bên và không đoạn nào ra được khỏi khung nữa, tức
+   phép chữa tự huỷ chính nó.
 
    Toạ độ suy từ chính `at()`, không gõ tay. `dir` là chiều dốc — hai trục của lưới, và CSS
    lệch thẻ đi đúng arctan(0,5) theo chiều ấy (xem `.town-road`). */
 
 const ROAD_W = 40;
-/** Hai đầu thò thêm ngần này để chui hẳn xuống dưới chân hai toà nhà ở hai đầu. Thiếu nó
- *  thì con đường dừng lại đúng ở mũi nhà và đọc thành một cái cầu cụt. */
-const ROAD_PAD = 60;
+/**
+ * Hai đầu thò quá mắt lưới ngần này, để chỗ hai đoạn gặp nhau là một mảng LIỀN.
+ *
+ * Phải NHỎ HƠN `ROAD_W`, và đây là hình học chứ không phải khẩu vị. Hai dải lệch `±26,57°`
+ * gặp nhau ở một mắt lưới thì ở khoảng cách `x` khỏi mắt ấy, tâm chúng cách nhau đúng `x` —
+ * nên chúng còn dính vào nhau tới `x = ROAD_W` rồi TÁCH RA. Bản trước để `60`, tức quá điểm
+ * tách 20px: cái ngã ba trước ô đất không phải một cái chữ V, nó là một cái chữ V với hai
+ * cái càng rời bay ra hai bên. Đúng thứ mà mắt đọc thành "đường cụt".
+ *
+ * Ba phần tư chứ không đúng bằng: đúng bằng thì hai dải chạm nhau ở một ĐIỂM, và một chỗ nối
+ * rộng bằng không thì nó là một chỗ nối trên giấy.
+ */
+const ROAD_PAD = ROAD_W * 0.75;
 
-function road([a1, b1], [a2, b2]) {
+function road([a1, b1], [a2, b2], open = false) {
   const p = at(a1, b1);
   const q = at(a2, b2);
   const w = Math.abs(q.x - p.x) + ROAD_PAD * 2;
@@ -1318,15 +1861,52 @@ function road([a1, b1], [a2, b2]) {
     w,
     h: ROAD_W,
     dir: (q.y - p.y) * (q.x - p.x) > 0 ? 'a' : 'b',
+    open,
+    // Hai đầu giữ lại dưới dạng MẮT LƯỚI, không phải pixel: bài test hỏi "đầu này có đè lên
+    // đoạn nào khác không", và câu ấy chỉ trả lời gọn được trên lưới. Từ toạ độ pixel thì
+    // phải giải ngược ra chỉ số lưới, tức chép lại `at()` lần thứ hai ở chỗ khác.
+    ends: [[a1, b1], [a2, b2]],
   };
 }
 
+/**
+ * Điểm `(x, y)` có nằm TRÊN mặt đường không.
+ *
+ * Xuất ra vì bài test cần nó, và nó phải sống Ở ĐÂY chứ không ở bài test: cái thẻ đường là
+ * một chữ nhật BỊ LỆCH TRỤC (`transform: skewY(±26,565°)` — xem `.town-road`), nên hộp bao
+ * của nó trong `ROADS` KHÔNG phải vùng nó thật sự phủ. Một bài test tự dựng lại phép lệch là
+ * bản chép thứ hai của một con số, và lần chỉnh độ dốc sau thì bài test canh một cái hình đã
+ * chết.
+ *
+ * `tan(26,565°) = 0,5` đúng bằng độ dốc 2:1 của cả thị trấn, nên phép lệch viết được bằng
+ * đúng một phép nhân: cách tâm thẻ `d` pixel theo trục ngang thì cả dải trượt `d/2` theo trục
+ * đứng. Dấu do `dir` quyết, cùng cặp mà CSS đang dùng.
+ */
+export function onRoad(x, y) {
+  return ROADS.some((rd) => {
+    if (x < rd.x || x > rd.x + rd.w) return false;
+    const lean = (x - (rd.x + rd.w / 2)) * 0.5 * (rd.dir === 'a' ? 1 : -1);
+    return y >= rd.y + lean && y <= rd.y + rd.h + lean;
+  });
+}
+
 export const ROADS = [
-  road([-1, 0], [1, 0]),
-  road([0, -1], [0, 1]),
+  road([-2, 0], [2, 0], true),
+  road([0, -2], [0, 2], true),
   road([0, 1], [1, 1]),
   road([1, 0], [1, 1]),
+  road([-1, 0], [-1, -1]),
+  road([0, -1], [-1, -1]),
 ];
+
+/** Kích thước sprite của một chỗ, tính bằng pixel — cho `SCENE_SPOTS`, cho hộp bao `TOWN_BOX`,
+ *  cho bài test đo "to nhất", và cho chỗ gọi khỏi phải tự nhân 4 lần nữa.
+ *
+ *  Khai TRƯỚC mọi người đọc nó, không ở cuối file: cả `SCENE_SPOTS` lẫn `TOWN_BOX` đều chạy
+ *  ngay lúc nạp module, mà một `const` chưa khởi tạo thì chưa đọc được — đặt dưới là cả trang
+ *  trắng với đúng một dòng "Cannot access sizeOf before initialization". Đã dính hai lần, ở
+ *  hai người đọc khác nhau. */
+export const sizeOf = (rows) => ({ w: Math.max(...rows.map((r) => r.length)) * 4, h: rows.length * 4 });
 
 /* ── Cây cối quanh thị trấn ────────────────────────────────────────────────────
 
@@ -1343,33 +1923,65 @@ export const ROADS = [
    cỏ là MẶT ĐẤT, còn cây là VẬT đứng trên đất — vật thì phải chung một ngôn ngữ nét với mấy
    toà nhà, nếu không nó đọc thành hình dán lên. */
 
+/* `kind` là kênh để CSS bám vào, và nó phải khai ở ĐÂY chứ không dò lại từ mảng hình: từ
+   lượt này ba loại vật ứng xử khác nhau theo giờ và theo gió — cây lay, đèn sáng lên lúc
+   chạng vạng, hoa với bụi đứng yên — mà `art: TREE` thì CSS không đọc được. Dò ngược bằng
+   phép so mảng (`s.art === TREE`) cũng chạy, nhưng nó buộc mọi cây phải dùng CHUNG một
+   hằng số mãi mãi; thêm một dáng cây thứ hai là im lặng mất chuyển động. */
 const SCENERY = [
+  // Cái giếng là NGOẠI LỆ của cả khối này: nó đứng đúng một mắt lưới, `(-1, -1)`, vì hai cái
+  // ngõ sau khép về nó — mà một mốc đường thì phải nằm trên lưới đường. Khai bằng `at()` chứ
+  // không bằng hai con số: lần nới bước lưới sau nó tự đi theo, y như mấy toà nhà.
+  { art: WELL, kind: 'well', ...at(-1, -1) },
   // Hai cây lớn ở hai rìa — chúng vẽ ra mép của bức tranh, và mọi thứ khác nằm giữa.
-  { art: TREE, x: -318, y: -40 },
-  { art: TREE, x: 322, y: -18 },
+  { art: TREE, kind: 'tree', x: -318, y: -40 },
+  { art: TREE, kind: 'tree', x: 322, y: -18 },
   // Hai góc TRÊN, chỗ hai ô đất ngoài cùng vừa dọn đi.
-  { art: TREE, x: -258, y: -186 },
-  { art: BUSH, x: -196, y: -142 },
-  { art: TREE, x: 266, y: -178 },
-  { art: LAMP, x: 206, y: -128 },
-  { art: BUSH, x: -66, y: -204 },
+  { art: TREE, kind: 'tree', x: -258, y: -186 },
+  { art: BUSH, kind: 'bush', x: -196, y: -142 },
+  { art: TREE, kind: 'tree', x: 266, y: -178 },
+  { art: LAMP, kind: 'lamp', x: 206, y: -128 },
+  // Hai bên cái giếng. Cần chúng vì cái giếng đứng thẳng phía sau nhà mình, và hai vật cùng
+  // sắc gỗ xếp chồng nhau theo trục đứng thì đọc thành MỘT vật — cái giếng biến thành một
+  // cái chái mọc trên nóc nhà. Một bụi cỏ và một khóm hoa chen vào giữa là đủ để mắt tách
+  // chúng ra, mà không tốn thêm một vật cao nào.
+  { art: BUSH, kind: 'bush', x: -120, y: -200 },
+  { art: FLOWER, kind: 'flower', x: 108, y: -204 },
   // Hai bên sườn.
-  { art: BUSH, x: -286, y: 56 },
-  { art: FLOWER, x: -158, y: 22 },
-  { art: BUSH, x: 292, y: 46 },
+  { art: BUSH, kind: 'bush', x: -286, y: 56 },
+  { art: FLOWER, kind: 'flower', x: -158, y: 22 },
+  { art: BUSH, kind: 'bush', x: 292, y: 46 },
   // Mép trước, hai bên con đường dẫn xuống ô đất.
-  { art: TREE, x: -246, y: 150 },
-  { art: LAMP, x: -96, y: 166 },
-  { art: FLOWER, x: 58, y: 196 },
-  { art: BUSH, x: 128, y: 208 },
-  { art: TREE, x: 262, y: 138 },
+  //
+  // Ba chỗ ở khối này ĐÃ DỜI, và lý do là một phép đo chứ không phải một cảm giác. Người dùng
+  // chỉ vào ảnh: "mấy vật thể đang nằm giữa đường nhìn rất là kì". Đo bằng `onRoad` thì đúng
+  // ba vật chồng lên mặt đường — một cái cây có CHÂN nằm hẳn trên phố ngang, một cái cây nữa
+  // và một cột đèn thì thân cắt ngang qua dải đường.
+  //
+  // Vì sao ba chỗ ấy lọt: toạ độ của cả khối này chọn bằng mắt trên bãi cỏ, mà mặt đường thì
+  // KHÔNG phải cái hộp bao khai trong `ROADS` — nó là hộp ấy đã bị lệch trục 26,565°, tức nó
+  // trượt lên hoặc xuống tới 190px ở hai đầu. Nhìn mã thì không thấy; nhìn màn hình thì phải
+  // để ý mới thấy. Nay có `onRoad` và một bài test đi qua từng vật, nên nó không lọt lại được.
+  { art: TREE, kind: 'tree', x: -246, y: 210 },
+  { art: LAMP, kind: 'lamp', x: -96, y: 200 },
+  { art: FLOWER, kind: 'flower', x: 58, y: 196 },
+  { art: BUSH, kind: 'bush', x: 128, y: 208 },
+  { art: TREE, kind: 'tree', x: 230, y: 200 },
 ];
 
-const SCENE_CHARS = { L: 'leaf', P: 'pine', b: 'broth', g: 'gold', k: 'ink', r: 'rose', p: 'plum', f: 'foam' };
+// `d`, `n`, `w` vào cùng lượt với cái giếng: mặt đá, vách khuất, và gỗ của cần trục. Không
+// ký tự nào trong số ấy đang có mặt ở cây, bụi, đèn hay khóm hoa — nên thêm vào là thêm, chứ
+// không đổi nghĩa cái gì đang vẽ.
+const SCENE_CHARS = { L: 'leaf', P: 'pine', b: 'broth', g: 'gold', k: 'ink', r: 'rose', p: 'plum', f: 'foam', d: 'dim', n: 'plank', w: 'wood' };
 
 /** Cây cối quanh phố, đã kèm chỗ đứng — chỗ gọi chỉ việc xếp chúng cùng mấy toà nhà theo
- *  `y` để phép sắp lớp vẫn là một phép duy nhất. */
-export const SCENE_SPOTS = SCENERY.map((s, i) => ({ i, x: s.x, y: s.y }));
+ *  `y` để phép sắp lớp vẫn là một phép duy nhất.
+ *
+ *  Kèm CỠ từ lượt này, đo bằng `sizeOf` chứ không gõ tay: bài test "không vật nào mọc giữa
+ *  lòng đường" phải đo trên cả hộp của sprite chứ không mỗi cái chân — một cột đèn chân trên
+ *  cỏ mà thân cắt ngang mặt đường thì vẫn là một cột đèn mọc giữa đường. Cho bài test tự khai
+ *  một bảng cỡ là một bảng sẽ lệch ngay lần sửa dáng cây tiếp theo. */
+export const SCENE_SPOTS = SCENERY.map((s, i) => ({ i, kind: s.kind, x: s.x, y: s.y, ...sizeOf(s.art) }));
 
 /**
  * Vẽ một chỗ.
@@ -1379,24 +1991,155 @@ export const SCENE_SPOTS = SCENERY.map((s, i) => ({ i, x: s.x, y: s.y }));
  * lên trên là hai hệ đổ sáng chồng nhau, và chỗ chúng cãi nhau đọc thành lốm đốm.
  *
  * Kích thước khai từ CHÍNH cái lưới, cùng lý do đã ghi ở `itemArt`.
+ *
+ * `edged` thêm một lớp VIỀN vẽ dưới hình — chỉ NHÂN VẬT mới bật, không phải nhà cửa: nhà
+ * đứng yên trên đúng một nền, còn nhân vật thì đi qua cỏ, qua đường, qua sàn gỗ, qua thảm
+ * hồng, và không màu thân nào đọc được trên cả bốn. Cả lý lẽ nằm ở `outlineRows`, `pixel.js`.
+ *
+ * Khung của thẻ KHÔNG nở theo cái viền: viền đối xứng nên tâm hình không đổi, mà chính cái
+ * khung này đang chở phép căn tâm của người đi đường (`--ww`/`--wh`) lẫn phép đo của bài test.
  */
-const draw = (rows, chars, cls) => {
+const draw = (rows, chars, cls, edged = false) => {
   const w = Math.max(...rows.map((r) => r.length)) * 4;
   return html`<span class="pet-art ${cls}" aria-hidden="true"
     style="width:${w}px;height:${rows.length * 4}px"
-    >${pixels(rows, chars, false)}</span
+    >${edged ? outline(rows) : ''}${pixels(rows, chars, false)}</span
   >`;
 };
 
-export function placeArt(id) {
+/**
+ * Vẽ một chỗ — và NHÀ MÌNH là chỗ duy nhất đọc thêm `doing`.
+ *
+ * Bốn chỗ kia là kiến trúc: một quán ăn không đổi hình vì chủ nhà đang uống nước. Nhà mình
+ * thì là chỗ DUY NHẤT có người sống bên trong, nên nó là chỗ duy nhất mà đồ đạc phải kể được
+ * việc đang xảy ra — xem `homeSetOf`.
+ *
+ * Tham số có mặc định `null`, và mặc định ấy phải trả về đúng cảnh bàn làm việc: bài test và
+ * mấy chỗ gọi cũ không truyền gì cả, mà một cảnh trống ở đấy là một căn phòng rỗng không ai
+ * giải thích được.
+ */
+export function placeArt(id, doing = null) {
   const p = PLACES.find((x) => x.id === id);
-  return p ? draw(p.rows, p.chars, `town-art art-place-${id}`) : '';
+  if (!p) return '';
+  // Không có ca riêng cho `home`: chỗ nào khai `sets` thì chỗ ấy đổi cảnh, chỗ nào không khai
+  // thì `?.` rơi về `p.rows`. Thêm một chỗ đổi cảnh sau này là thêm một trường, không phải
+  // thêm một nhánh `if`.
+  const set = p.sets ? homeSetOf(doing) : null;
+  return draw(p.sets?.[set] ?? p.rows, p.chars, `town-art art-place-${id}${set ? ` set-${set}` : ''}`);
 }
 
 export const lotArt = () =>
   draw(LOT, { e: 'broth', f: 'foam', d: 'dim', k: 'ink', g: 'gold', w: 'wood', p: 'plank' }, 'town-art art-lot');
 
-export const sceneArt = (i) => draw(SCENERY[i].art, SCENE_CHARS, 'town-art art-scene');
+export const sceneArt = (i) => draw(SCENERY[i].art, SCENE_CHARS, `town-art art-scene kind-${SCENERY[i].kind}`);
+
+/* ── Dân thị trấn ──────────────────────────────────────────────────────────────
+
+   Hai con, đi trên hai con đường xuyên tâm. Chúng không bấm được, không mang tin gì, và đó
+   là toàn bộ việc của chúng: một thị trấn mà vật duy nhất chuyển động là chủ nhà thì nó là
+   một mô hình có một con búp bê chạy pin, không phải một chỗ có người ở.
+
+   ## Vì sao KHÔNG còn là hình người
+
+   Đời trước là hai bóng người 6×8 ô, khác nhau đúng một màu áo. Người dùng nói thẳng: nhìn
+   không dễ thương. Đo lại thì lời ấy có cái nền kỹ thuật của nó, và cái nền ấy là chỗ đáng
+   sửa chứ không phải khẩu vị:
+
+   - **Ở 8 hàng, một hình người chỉ còn là cái đường bao của một hình người.** Không mặt,
+     không tay, hai chân hai ô. Mà đường bao người thì mắt nhận ra ngay và lập tức đi tìm
+     phần còn lại — nó tìm mặt, tìm tay, không thấy, và đọc thành hình chưa vẽ xong. Một con
+     vật tròn thì không mời ai đi tìm gì cả: tròn là đã đủ tròn.
+   - **Hai bóng người y hệt nhau khác mỗi màu áo đọc thành MỘT người và cái bóng của anh
+     ta.** Đời trước phải chữa bằng một luật CSS đổi màu áo cho con thứ hai — một phép chữa
+     ở tầng màu cho một vấn đề ở tầng HÌNH. Giờ hai con khác hẳn loài nên luật ấy bỏ được.
+   - **Nhịp đi phải kể bằng hai chân, kênh duy nhất còn chỗ.** Hai ô nhấp nháy cạnh thân ở
+     cỡ này đọc thành nhiễu render. Mochi và gà con không dùng kênh ấy: một con NHÚN cả
+     thân, một con NHẢY cả thân — cả sprite dịch, tức kênh chuyển động rộng bằng cả hình
+     thay vì bằng hai ô.
+
+   Vẫn nhỏ hơn quản gia, và lý do không đổi: chúng ở xa hơn về mặt câu chuyện, mà vẽ bằng cỡ
+   quản gia thì mắt sẽ đi tìm xem chúng có bấm được không. Nhỏ hơn một bậc thì chúng đọc
+   thành phông nền — đúng vai của chúng.
+
+   ## Vì sao chân mochi thôi không còn màu riêng
+
+   Đời trước chân mochi là `M` — một sắc mận tối, để tách hai cái chân ra khỏi cái thân
+   hồng. Từ lượt có VIỀN thì cách ấy quay ra chống lại chính nó: cái viền `--art-edge` là
+   sắc tối nhất trong bảng, và một cái chân rộng ĐÚNG MỘT Ô, tối, kẹp giữa hai ô viền, thì
+   ở 4px nó không còn là cái chân — cả hàng đáy đọc thành một vệt tối liền.
+
+   Nay chân mang đúng sắc thân, và thứ tách chúng ra là cái viền chạy LỌT vào giữa hai chân.
+   Đó là cách tranh pixel vẫn làm, và nó tốt hơn hẳn: hai cái chân hồng có viền đen thì đọc
+   được ở mọi nền, còn hai cái chân tối thì chỉ đọc được trên nền sáng.
+
+   `m` thân và chân mochi · `y` lông gà · `r` mỏ và chân gà · `k` mắt · `.` trống */
+
+/**
+ * MOCHI — đi bằng cách NHÚN: khung a bẹp và bè, khung b vươn cao, chân chụm lại.
+ *
+ * Cả hai khung cùng 7×5 ô nên hình không nhảy chỗ; cái đổi là thân chiếm mấy hàng. Hai con
+ * mắt nằm đúng hai cột 2 và 4 ở CẢ HAI khung — mắt xê dịch giữa hai khung đọc thành hình
+ * rung chứ không đọc thành nhún.
+ */
+const MOCHI = [
+  ['.......', '..mmm..', '.mkmkm.', 'mmmmmmm', '.m...m.'],
+  ['..mmm..', '.mmmmm.', 'mmkmkmm', 'mmmmmmm', '..mmm..'],
+];
+
+/**
+ * GÀ CON — đi bằng cách NHẢY: khung b là cả con nhích lên đúng một ô, chân co lại.
+ *
+ * Đây là chỗ nó hơn hẳn một cú đảo chân ở cỡ này. Một bước chân là hai ô đổi chỗ; một cú
+ * nhảy là hai mươi mấy ô cùng dịch lên 4px, tức cùng một quãng chuyển động mà biên độ gấp
+ * mười. Ở 24px thì đó là khác biệt giữa "có nhúc nhích gì đó" và "nó đang đi".
+ *
+ * Mỏ ở cột phải cùng: nó là thứ DUY NHẤT nói con này quay mặt về đâu, mà một con vật đi
+ * đường thì phải có mặt trước — xem chú thích chọn tuyến ở `WALKERS`.
+ */
+const CHICK = [
+  ['.......', '..yyy..', '.yyyyy.', '.ykyyyr', '..yyy..', '..r.r..'],
+  ['..yyy..', '.yyyyy.', '.ykyyyr', '..yyy..', '...r...', '.......'],
+];
+
+const WALKER_ART = [MOCHI, CHICK];
+const WALKER_CHARS = { m: 'rose', k: 'ink', y: 'gold', r: 'wood' };
+
+/**
+ * Hai con, mỗi con một tuyến và một nhịp.
+ *
+ * Tuyến khai bằng chính `at()` như mọi thứ khác trên bản đồ, nên chúng đi ĐÚNG trên đường
+ * chứ không đi cạnh nó — và lần nới bước lưới tiếp theo thì chúng đi theo, không phải chỉnh
+ * tay.
+ *
+ * `dur` lệch nhau và không phải bội của nhau: hai con cùng chu kỳ thì cứ mỗi vòng lại gặp
+ * nhau đúng một chỗ, và cái trùng lặp ấy đọc thành máy móc. 37 với 43 giây là hai số nguyên
+ * tố cùng nhau, nên phải hơn mười lăm phút chúng mới lặp lại một thế đứng.
+ *
+ * Gà con nhận tuyến ĐỨNG (trên xuống dưới) chứ không phải tuyến ngang, và đó không phải một
+ * lựa chọn tuỳ tiện: nó có mỏ, tức có mặt trước, mà `alternate` thì cho nó đi rồi lùi trên
+ * cùng một tuyến. Trên tuyến ngang, nửa chu kỳ nó sẽ đi giật lùi thấy rõ. Trên tuyến đứng
+ * thì hướng mỏ không nói gì về chiều đi, nên không có nửa nào sai. Mochi không có mặt trước
+ * nên nó nhận tuyến còn lại mà không mất gì.
+ */
+export const WALKERS = [
+  { i: 0, from: at(-1, 0), to: at(1, 0), dur: 37 },
+  { i: 1, from: at(0, 1), to: at(0, -1), dur: 43 },
+];
+
+/**
+ * Bề rộng và chiều cao gửi sang CSS bằng biến, vì hai con không cùng cỡ và phép căn tâm
+ * phải suy từ chính cái lưới. Đời trước viết cứng `-12px`/`-16px` — đúng cho một sprite
+ * 24×32 và sai cho mọi sprite khác, mà không có gì báo.
+ */
+const walkerFrame = (rows, cls) => html`<span class="walker-frame ${cls}"
+  style="--ww:${Math.max(...rows.map((r) => r.length)) * 4}px;--wh:${rows.length * 4}px"
+  >${draw(rows, WALKER_CHARS, 'town-art art-walker', true)}</span
+>`;
+
+export const walkerArt = (i) => {
+  const [a, b] = WALKER_ART[i] ?? WALKER_ART[0];
+  return html`${walkerFrame(a, 'a')}${walkerFrame(b, 'b')}`;
+};
 
 /* ── Khung của cả bản đồ ───────────────────────────────────────────────────────
 
@@ -1418,13 +2161,6 @@ export const sceneArt = (i) => draw(SCENERY[i].art, SCENE_CHARS, 'town-art art-s
    26,57°, và phép lệch đẩy hai đầu lên xuống thêm `w/2 × 0,5` — không cộng phần ấy vào thì
    hai đầu đường thò ra ngoài khung và bị `overflow: hidden` cắt mất. */
 
-/** Kích thước sprite của một chỗ, tính bằng pixel — cho bài test đo "to nhất", cho hộp bao
- *  ngay dưới đây, và cho chỗ gọi khỏi phải tự nhân 4 lần nữa.
- *
- *  Khai TRƯỚC `TOWN_BOX` chứ không ở cuối file như trước: `TOWN_BOX` chạy ngay lúc nạp
- *  module, mà `const` thì chưa khởi tạo là chưa đọc được — đặt dưới là cả trang trắng với
- *  đúng một dòng "Cannot access sizeOf before initialization" trong console. */
-export const sizeOf = (rows) => ({ w: Math.max(...rows.map((r) => r.length)) * 4, h: rows.length * 4 });
 
 /** Biển tên thò xuống dưới chân toà nhà ngần này. Suy được từ CSS nhưng không đo được từ
  *  đây, nên nó là con số duy nhất của khối này phải viết tay — và `.place-sign` phải khớp. */
@@ -1448,7 +2184,11 @@ export const TOWN_BOX = (() => {
   for (const p of PLACES) standing(p.rows, p.x, p.y);
   for (const g of LOTS) standing(LOT, g.x, g.y);
   for (const s of SCENERY) standing(s.art, s.x, s.y);
+  // Mấy đoạn `open` KHÔNG tính vào khung: chúng cố ý chạy ra ngoài để bị `.town-map` cắt
+  // (xem khối chú thích của `ROADS`). Ôm lấy chúng là khung nở theo, và lúc đó không đoạn nào
+  // ra được khỏi khung nữa — phép chữa tự huỷ chính nó, mà không có gì đỏ lên.
   for (const rd of ROADS) {
+    if (rd.open) continue;
     const lean = (rd.w / 2) * 0.5;
     box(rd.x, rd.y - lean, rd.x + rd.w, rd.y + rd.h + lean);
   }

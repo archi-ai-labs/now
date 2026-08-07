@@ -23,26 +23,42 @@
 export const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 /**
- * No căng → đói hẳn. **5 giờ**, neo vào KHOẢNG CÁCH GIỮA HAI BỮA của người.
+ * No căng → đói hẳn. **8 giờ**, neo vào một BUỔI LÀM VIỆC LIỀN của người.
  *
- * Lịch sử con số này là một chuỗi đi xuống, và mỗi bậc có lý do riêng. 20 giờ chọn theo
+ * Lịch sử con số này đi xuống rồi quay lại, và mỗi bậc có lý do riêng. 20 giờ chọn theo
  * "mỗi ngày chỉ phải cho ăn một lần" — tiện, nhưng 5%/giờ thì hai lần mở popover liên
  * tiếp thanh nhúc nhích 6% và không ai thấy; một cái thanh không bao giờ động là một cái
  * thanh không ai đọc. 10 giờ neo vào một ngày làm việc, đúng hơn nhưng vẫn là nhịp của
- * cái MÁY, không phải nhịp của người ngồi trước nó.
+ * cái MÁY, không phải nhịp của người ngồi trước nó. 5 giờ neo vào khoảng cách giữa hai
+ * bữa, và nó chạy đúng suốt sáu lượt.
  *
- * 5 giờ là nhịp của người: sáng — trưa — tối cách nhau 5 đến 6 tiếng, và đó là khoảng
- * mà cơn đói thật xuất hiện. Con vật đói cùng lúc với người nuôi nó, nên cái thanh này
- * kiêm luôn việc nhắc "đến giờ ăn rồi" — mục đích của cả lớp chỉ số sức khoẻ này.
+ * ## Vì sao 5 → 8, lượt 21
+ *
+ * Người dùng: *"Thời gian no có thể kéo dài lên 8 tiếng"*. Chỗ 5 giờ hụt là một chuyện đo
+ * được chứ không phải khẩu vị: cái thanh này đọc bằng ĐĨA, mỗi đĩa một giờ, và ở 5 giờ thì
+ * một buổi làm liền tay từ 9h tới 17h ăn trọn cả khay — mở popover lúc tan việc là lúc nào
+ * cũng thấy con vật đang đói lả. Một chỉ số chạm đáy MỖI NGÀY thì nó thôi không còn là chỉ
+ * số, nó thành một cái đèn đỏ luôn sáng.
+ *
+ * 8 giờ là trọn một buổi làm: cho ăn lúc bắt đầu ngồi vào bàn thì con vật vừa hết no lúc
+ * đứng dậy. Đó là một CÂU đọc được, khác hẳn "cứ 5 tiếng lại phải nhớ".
+ *
+ * Nó vẫn không phá cái trần dưới đã dựng ra bậc 5 giờ: 12,5%/giờ, tức hai lần mở popover
+ * cách nhau nửa tiếng là thanh đã tụt 6% — vẫn thấy. Bậc 20 giờ hỏng ở 5%/giờ, còn bậc này
+ * hơn gấp đôi mức ấy.
  *
  * Tiền có chịu nổi không — đây là ràng buộc thật, không phải chuyện thẩm mỹ, và bậc 5 giờ
- * này từng phá nó: bảng giá đặt hồi còn 20 giờ đứng yên trong khi đồng hồ đói nhanh lên
- * gấp bốn, nên tiền ăn một ngày ngốn trọn thu nhập của một ngày nhẹ. Chỗ sửa không nằm ở
- * đây mà ở bảng giá — xem `COIN_PER_HOUR` trong `src/pet.js`, nơi giá đồ ăn giờ SUY RA từ
- * chính con số 5 giờ này: một thanh no đầy giá 5 xu, tức **1 xu mua đúng 1 giờ no**. Đổi
- * hằng số ở đây là cả bảng giá tự đi theo, không còn hai con số phải nhớ chỉnh cùng lúc.
+ * từng phá nó: bảng giá đặt hồi còn 20 giờ đứng yên trong khi đồng hồ đói nhanh lên gấp
+ * bốn, nên tiền ăn một ngày ngốn trọn thu nhập của một ngày nhẹ. Chỗ sửa không nằm ở đây
+ * mà ở bảng giá — xem `COIN_PER_HOUR` trong `src/pet.js`, nơi giá đồ ăn SUY RA từ chính
+ * con số này: một thanh no đầy giá 8 xu, tức **1 xu vẫn mua đúng 1 giờ no**.
+ *
+ * Vì cái tỉ giá ấy là một hằng số, bậc 8 giờ KHÔNG đụng tới ví một đồng nào — và đó là
+ * điều đáng nói thẳng: tiền ăn của một ngày mười tiếng là 10 xu ở cả bậc 5 lẫn bậc 8, chỉ
+ * khác số lần phải bấm. Đổi hằng số ở đây thì bảng giá, số đĩa trên khay và cả phép kiểm
+ * ngân sách tự đi theo, không còn hai con số phải nhớ chỉnh cùng lúc.
  */
-export const FULL_MS = 5 * 3600 * 1000;
+export const FULL_MS = 8 * 3600 * 1000;
 
 /**
  * Tập trung cạn hẳn sau **90 phút NGỒI LIỀN**.
@@ -194,7 +210,7 @@ export const REST_RAMP_MS = 20 * 1000;
  *
  * `sun` thêm vào cùng lượt với mấy cái hình, và nó là động tác duy nhất được thêm vì
  * BẰNG CHỨNG ĐÒI, không phải vì bảng cần dài hơn: câu nhắc đầu giờ chiều đã đẩy người ta
- * ra chỗ có nắng từ lâu (xem `nudgeText`), mà bảng động tác lại không có ô nào để bấm cho
+ * ra chỗ có nắng từ lâu (xem `nudgeOf`), mà bảng động tác lại không có ô nào để bấm cho
  * đúng việc ấy — `walk` khi ấy phải gánh hai nghĩa "đi bộ" và "ra nắng" trong một cái tên.
  */
 export const MOVES = {
@@ -342,20 +358,62 @@ export const focusAt = (restedAt, nowMs, spanMs = FOCUS_MS, ramp = null) =>
  * Thuần và không nhớ gì: gọi hai lần liên tiếp trên cùng một bản cho cùng một kết quả, vì
  * mọi thứ nó tính đều suy từ ba mốc `fedAt` / `restedAt` / `ramp` — những thứ nó không
  * đụng vào.
+ *
+ * ## `doing` cũng phải TỤT THEO ĐỒNG HỒ — chỗ sửa của lượt 18
+ *
+ * Người dùng báo: *"khi ăn xong hay làm gì xong không tự back về trạng thái làm việc mà giữ
+ * nguyên trạng thái đó"*. Đúng, và chỗ hỏng là ngay ở đây: hàm này vặn lại độ no, nhịp tập
+ * trung và số phút đã ngồi, rồi **để nguyên `doing`**. Nên một bản sổ nhận về lúc đang ăn dở
+ * là một quản gia cầm cái bát ấy tới hết phiên — tư thế `hold`, tay giơ, việc không bao giờ
+ * xong. Cùng một lỗi ở cả hai bề mặt, vì cả hai đều đi qua hàm này.
+ *
+ * Cái làm nó thành lỗi khó thấy: `lib/petcache.js` ĐÃ tự vặn `doing` bằng đúng phép dưới
+ * đây, nên bản nhớ lúc mở lại thì đúng — chỉ bản vừa lấy từ mạng là sai. Tức lỗi chỉ hiện ra
+ * sau khi lượt hỏi thật về, đè lên một bản đang đúng. Phép ấy giờ dọn về đây, một chỗ.
+ *
+ * ## Vì sao phải có `pet.at`, và vì sao bản trả về mang `at` MỚI
+ *
+ * `petView` gửi `leftMs` — một HIỆU SỐ, không phải mốc kết thúc, và có lý do (xem chú thích
+ * của nó: một cái đếm ngược có vách thì lệch đồng hồ giữa hai máy là một cú bấm bị từ chối
+ * không giải thích được). Hiệu số thì phải trừ vào một cái gì, nên chỗ nhận phải đóng dấu
+ * mốc của CHÍNH máy mình lúc nhận — `stampPet`. Trừ hai thứ cùng một đồng hồ thì lệch giờ
+ * giữa hai máy không lọt vào được; đây đúng là lý lẽ mà `petcache.js` đã ghi từ đầu.
+ *
+ * Bản trả về mang `at: nowMs`, và dòng ấy là điều kiện để hàm này còn gọi được nhiều lần.
+ * Màn Cửa hàng chạy `pet = livePet(pet)` mỗi giây; giữ nguyên `at` cũ thì lượt sau trừ lại
+ * đúng quãng vừa trừ, và cái đếm ngược chạy nhanh gấp đôi rồi gấp ba.
  */
 export function livePet(pet, nowMs = Date.now()) {
   if (!pet) return pet;
   const full = fullnessAt(pet.fedAt, nowMs, pet.fullMs, pet.ramp);
   const focus = focusAt(pet.restedAt, nowMs, pet.focusMs, pet.ramp);
+  // Không có dấu mốc thì để nguyên `leftMs` — sổ của một bản cũ hơn phải rơi về đúng hành vi
+  // cũ, không rơi vào một nhánh mới. Bản mới thì mọi chỗ nhận đều đóng dấu, xem `stampPet`.
+  const left = pet.doing && typeof pet.at === 'number' ? pet.doing.leftMs - (nowMs - pet.at) : pet.doing?.leftMs;
   return {
     ...pet,
+    at: nowMs,
     full,
     mood: moodOf(full),
     focus,
     focusMood: focusMoodOf(focus),
     satMin: satMinAt(pet.restedAt, nowMs),
+    // Hết giờ thì bỏ, kể cả với quãng nghỉ — phía trình duyệt KHÔNG được kết luận nó đạt hay
+    // trượt (phép kiểm cần `awayMs`, thứ chỉ server có). Nó chỉ dọn cái đang chạy khỏi bức
+    // tranh và để lượt hỏi thật nói tiếp.
+    doing: pet.doing && left > 0 ? { ...pet.doing, leftMs: left } : null,
   };
 }
+
+/**
+ * Đóng dấu mốc NHẬN, bằng đồng hồ của chính máy này.
+ *
+ * Gọi ở mọi chỗ một bản sổ vừa từ server về — hai chỗ: `menubar.js` và `views/pet.js`. Một
+ * hàm một dòng chứ không phải hai lần gõ `{ ...fresh, at: Date.now() }`, vì cái quên được ở
+ * đây không kêu: bản không đóng dấu vẫn vẽ ra đúng mọi thứ, chỉ có việc đang làm là không
+ * bao giờ xong — tức đúng cái lỗi mà lượt này đang sửa, mọc lại ở một bề mặt.
+ */
+export const stampPet = (pet, nowMs = Date.now()) => (pet ? { ...pet, at: nowMs } : pet);
 
 /**
  * Việc quản gia ĐANG LÀM — ăn một món, hoặc một động tác nghỉ. Nhiều nhất một.
@@ -376,8 +434,15 @@ export function livePet(pet, nowMs = Date.now()) {
 export function doingOf(led, nowMs, eatMs = EAT_MS) {
   const bAt = Date.parse(led?.breakAt ?? '');
   const bMs = Number(led?.breakMs) || 0;
-  if (led?.breakKind && !Number.isNaN(bAt) && bMs > 0) {
-    return { kind: 'move', id: led.breakKind, ms: bMs, leftMs: Math.max(0, bAt + bMs - nowMs) };
+  // `> nowMs` chứ không `Math.max(0, …)` — chỗ sửa của lượt 18, và nó là chỗ hai nhánh của
+  // hàm này từng nói hai câu khác nhau. Nhánh ĂN tự tắt sau `eatMs`; nhánh NGHỈ thì trả về
+  // một việc "đang làm" với `leftMs: 0` cho tới khi server chốt quãng và xoá nó khỏi sổ. Tức
+  // một quãng nghỉ đã hết giờ mà chưa ai hỏi tới — máy ngủ, popover không mở — là một quản
+  // gia đứng vươn vai vô thời hạn. `resolveBreak` vẫn đọc thẳng sổ nên nó không mất gì: cái
+  // ở lại trong sổ là cái CHƯA CHỐT, còn cái hàm này trả về là cái ĐANG DIỄN RA. Hai câu hỏi
+  // khác nhau, và tới lượt này chúng mới có hai câu trả lời khác nhau.
+  if (led?.breakKind && !Number.isNaN(bAt) && bMs > 0 && bAt + bMs > nowMs) {
+    return { kind: 'move', id: led.breakKind, ms: bMs, leftMs: bAt + bMs - nowMs };
   }
   const mAt = Date.parse(led?.lastMealAt ?? '');
   if (led?.lastMeal && !Number.isNaN(mAt) && nowMs - mAt < eatMs) {
@@ -397,6 +462,24 @@ export function doingOf(led, nowMs, eatMs = EAT_MS) {
  */
 export function satMinAt(restedAt, nowMs) {
   return Math.max(0, Math.round((nowMs - Date.parse(restedAt ?? '')) / 60000)) || 0;
+}
+
+/**
+ * Bốn buổi trong ngày, lấy theo GIỜ MÁY.
+ *
+ * Ranh giới cố ý thô — không buổi nào mang tin gì, chúng chỉ để màn hình giống chỗ người
+ * dùng đang ngồi. Popover mở rồi đóng trong vài giây nên nó đọc đồng hồ đúng một lần mỗi
+ * lần mở; bản đồ thị trấn thì vẽ lại theo nhịp của nó, và cả hai đọc CHUNG hàm này.
+ *
+ * Sống ở đây chứ không ở `menubar-view.js` như trước lượt này: một hàm năm dòng về cái đồng
+ * hồ mà bắt màn Cửa hàng phải nhập trọn khung cảnh popover để lấy thì cái giá không nằm ở
+ * chỗ nó nhìn xấu, nó nằm ở chỗ hai màn hình dính vào nhau qua một thứ không liên quan.
+ */
+export function phaseOf(hour) {
+  if (hour >= 5 && hour < 9) return 'dawn';
+  if (hour >= 9 && hour < 16) return 'day';
+  if (hour >= 16 && hour < 19) return 'dusk';
+  return 'night';
 }
 
 /**
@@ -423,16 +506,6 @@ export function moodOf(full) {
 export const FOCUS_DIP = 20 / 90;
 
 /**
- * Một ô của thanh tập trung = **10 phút ngồi liền**, và đó là lý do thanh ấy có 9 ô trong
- * khi thanh đói có 10.
- *
- * Số ô không phải một quyết định thẩm mỹ: nó là ĐƠN VỊ của cái thanh, và hai cái thanh đo
- * hai đại lượng khác nhau thì không có lý gì chia cùng số ô. Mười phút vì đó là bậc thô
- * nhất mà câu nhắc còn dùng được ("đã 70 phút ngồi liền" thì ô thứ tám vừa tắt).
- */
-export const FOCUS_CELL_MS = 10 * 60 * 1000;
-
-/**
  * Ba bậc tập trung, cắt theo đúng hình dạng của BRAC chứ không chia đều.
  *
  * `sharp` là pha tỉnh (60–70 phút đầu), `dip` là pha trũng ~20 phút cuối — chỗ lời nhắc
@@ -443,4 +516,49 @@ export function focusMoodOf(focus) {
   if (focus <= 0) return 'spent';
   if (focus <= FOCUS_DIP) return 'dip';
   return 'sharp';
+}
+
+/**
+ * TRẠNG THÁI của quản gia — một cái tên, và một THỨ HẠNG viết ra.
+ *
+ * ## Vì sao phải có hàm này
+ *
+ * Ba nguồn nuôi nhân vật này — `mood` (đói), `focusMood` (tập trung), `doing` (việc đang
+ * làm) — sinh ra rời nhau và **không nguồn nào biết hai nguồn kia**. Cho tới lượt này, thứ
+ * hạng giữa chúng chỉ tồn tại ngầm trong thứ tự mấy dòng `if` của `moodOfScene` bên
+ * `menubar-view.js`, mà bản đồ thị trấn thì lại đọc ba nguồn ấy theo một cách khác. Hai bề
+ * mặt, hai luật, không ai viết ra luật nào — đúng cái hình dạng của lỗi "hai bản của một
+ * nhân vật" mà lượt trước vừa gỡ ở phần SPRITE.
+ *
+ * ## Thứ hạng, và lý do của từng bậc
+ *
+ * 1. **`busy`** — có việc đang chạy thì thắng tất. Đó là thứ NGƯỜI DÙNG vừa bấm, nó kết
+ *    thúc trong một phút, và trong một phút ấy màn hình phải kể lại đúng việc vừa nhận. Một
+ *    quản gia đang uống nước mà vẽ dáng đói lả là màn hình cãi lại chính cú bấm vừa xong.
+ * 2. **`starving`** — đói lả đứng TRÊN kiệt tập trung, và đây là bậc đáng cãi nhất. Lý do là
+ *    TẦN SUẤT: `focus` quay hết một vòng sau 90 phút nên `spent` nổ vài lần mỗi ngày, còn
+ *    `full` là chu kỳ 5 giờ nên `starving` hoạ hoằn mới tới. Xếp cái hay nổ lên trên là chôn
+ *    luôn cái hiếm — mà cái hiếm mới là cái đáng nhìn. Nó cũng là bậc duy nhất mà chính CON
+ *    VẬT đang hỏng, không phải người ngồi trước máy.
+ * 3. **`spent`** — quá một chu kỳ trọn vẹn. Vẫn giữ dáng ngủ gật như trước lượt này; cái đổi
+ *    là nó thôi phải gánh luôn phần của `starving`.
+ * 4. **`hungry`** · 5. **`dip`** — hai bậc CẢNH BÁO, cùng một luật thứ tự với hai bậc nặng
+ *    ngay trên: đói trước, hết nhịp sau.
+ * 6. **`well`** — không có gì để nói. Gộp `fine` với `stuffed` làm một: no quá không phải
+ *    một trạng thái đáng vẽ riêng, nó chỉ là "vừa ăn xong", mà việc ấy đã có `busy` kể.
+ *
+ * Trả về một CÁI TÊN chứ không trả tư thế: chỗ này không được biết sprite nào tồn tại (nó
+ * chạy cả trên server qua `src/pet.js`), và bảng tên→tư thế thì nằm cạnh chính mấy hàng
+ * pixel ở `lib/pet.js`. Tách vậy để thứ hạng kiểm được bằng test mà không phải dựng DOM.
+ */
+export const PET_STATES = ['busy', 'starving', 'spent', 'hungry', 'dip', 'well'];
+
+export function stateOf(pet) {
+  if (!pet || pet.on === false) return 'well';
+  if (pet.doing) return 'busy';
+  if (pet.mood === 'starving') return 'starving';
+  if (pet.focusMood === 'spent') return 'spent';
+  if (pet.mood === 'hungry') return 'hungry';
+  if (pet.focusMood === 'dip') return 'dip';
+  return 'well';
 }
