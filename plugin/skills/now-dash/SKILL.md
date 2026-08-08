@@ -22,7 +22,7 @@ user gỡ.
 ## 1. Tìm bản đã có — đọc, đừng đoán
 
 ```bash
-plutil -extract WorkingDirectory raw ~/Library/LaunchAgents/dev.hoanluu.now-dash.plist 2>/dev/null
+plutil -extract WorkingDirectory raw ~/Library/LaunchAgents/io.github.archi-ai-labs.now-dash.plist 2>/dev/null
 ```
 
 File này do `bin/install-app` sinh ra, và nó **giữ đường dẫn tuyệt đối của bản đang chạy**.

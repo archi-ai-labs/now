@@ -31,6 +31,16 @@ still shows sessions and spend in a repo that has never written a board. They ar
 repo because the interesting part is what the second one does with what the first one
 writes — and because two repos with near-identical names left nowhere to point at.
 
+## Built by an AI, steered by a human
+
+Every line of code here was written by Claude — each commit says so. The product
+decisions came from a human reviewer across 30+ recorded rounds: what got rejected,
+what had to be measured first, which numbers were refused because nobody could justify
+them. [design/README.md](design/README.md) is that record, with the reviewer's feedback
+quoted verbatim. It ships as-is under [MIT](LICENSE): local-only by design — the server
+binds `127.0.0.1`, everything it collects stays in `~/.now-dashboard/` — no telemetry,
+no support promise. Fork freely.
+
 ## The plugin — `/now`
 
 One command, and `/now` works in every project:
@@ -73,12 +83,29 @@ LaunchAgent into `~/Library/LaunchAgents/` with paths already matched to whereve
 cloned the repo — no manual editing — then starts both, so the icon is up before the
 command returns. Safe to rerun any number of times, including after moving the repo.
 
+**What you need.** macOS 13+ with the Xcode Command Line Tools
+(`xcode-select --install`) — the menu-bar app is compiled on your machine by `swiftc`,
+which is also why both login items say *"from an unidentified developer"*: self-built
+binaries are unsigned, and that label is the whole story. Node ≥ 18.10 on your PATH
+(nvm is fine — the service finds it by itself), and Claude Code as the data source;
+the Cursor and Antigravity columns light up only if those apps are on the machine.
+Linux and Windows have no dashboard — the collectors read macOS paths and the app half
+is AppKit; the `/now` plugin above is the cross-platform half.
+
+**Two login items, both expected.** After install, System Settings → General → Login
+Items shows two entries, and they are deliberately two — different lifecycles:
+
+| Login item | What it is | Turned off, what breaks |
+|---|---|---|
+| `now-dash-service` | collector + web server (port 4400) | history grows holes — quota cycles and the sitting clock are only observed while it runs |
+| `now-dash-menu` | the menu-bar icon + popover | nothing — the dashboard still works in any browser; bring it back with `./bin/now-menu on` |
+
 Don't want the menu-bar icon and just need the background server (fewer requirements:
 no Xcode Command Line Tools needed), install the LaunchAgent by hand instead:
 
 ```bash
 sed -e "s|__ROOT__|$(pwd)|g" -e "s|__HOME__|$HOME|g" -e "s|__PORT__|4400|g" \
-  launchd/dev.hoanluu.now-dash.plist > ~/Library/LaunchAgents/dev.hoanluu.now-dash.plist
+  launchd/io.github.archi-ai-labs.now-dash.plist > ~/Library/LaunchAgents/io.github.archi-ai-labs.now-dash.plist
 ```
 
 All three placeholders have to go — a leftover `__PORT__` reaches Node as the port
@@ -95,8 +122,8 @@ After that, all you need is:
 | Task | Command |
 |---|---|
 | **Upgrade** | `./bin/now-dash upgrade` |
-| Stop | `launchctl bootout gui/$(id -u)/dev.hoanluu.now-dash` |
-| Restart | `launchctl kickstart -k gui/$(id -u)/dev.hoanluu.now-dash` |
+| Stop | `launchctl bootout gui/$(id -u)/io.github.archi-ai-labs.now-dash` |
+| Restart | `launchctl kickstart -k gui/$(id -u)/io.github.archi-ai-labs.now-dash` |
 | Read the log | `tail -f ~/.now-dashboard/service.err.log` |
 
 `upgrade` pulls (`--ff-only`, refuses a dirty tree or a detached HEAD instead of guessing),
@@ -402,7 +429,7 @@ down for a few seconds; no data is lost, since everything is logged under
 `~/.now-dashboard/`, which reinstalling never touches.
 
 **Switching the icon on and off** has three routes, all going through the same switch —
-whether the plist `~/Library/LaunchAgents/dev.hoanluu.now-dash.menu.plist` exists:
+whether the plist `~/Library/LaunchAgents/io.github.archi-ai-labs.now-dash.menu.plist` exists:
 
 ```bash
 ./bin/now-menu on       # show it now, AND at every login from here on
@@ -418,7 +445,7 @@ has to be something you see rather than something you have to know to look for. 
 macOS it hides itself. (**Thoát** in that menu stays narrower: it closes this session
 only, and the icon returns at the next login.)
 
-Behind the switch is a second LaunchAgent (`dev.hoanluu.now-dash.menu`), not a macOS
+Behind the switch is a second LaunchAgent (`io.github.archi-ai-labs.now-dash.menu`), not a macOS
 login item. launchd keys on the label, so reinstalling replaces that one entry;
 `SMAppService` — the API Apple points you at, and the one this app used first — keys on
 the *code signature*, which `swiftc` re-rolls ad-hoc on every build. Two rebuilds, two
@@ -442,7 +469,7 @@ command to fix it. Only want the background server, no menu-bar icon → use the
 | Changed `NOW_PORT` but the service still uses the old port | The port is baked into the plist at render time, not re-read at runtime | `NOW_PORT=xxxx ./bin/install-app` — one run moves both the plist and the app, from the same variable |
 | `install-app` dies with `xcrun: error: invalid active developer path` | `swiftc` and `xcrun` under `/usr/bin` are only shims; they forward to whatever `xcode-select` points at, and that directory is gone (Command Line Tools uninstalled, or never installed) | The script now borrows Xcode.app for that one build and prints the permanent fix: `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer`. Neither one present → `xcode-select --install` |
 | App runs (`pgrep -f now-dash-menu` finds it) but no icon in the menu bar | Nothing is wrong with the app — the bar is full and macOS drops the overflow, into the notch on laptops that have one | Quit an icon or two, or reorder with ⌘-drag. To confirm the button itself still draws: `NOW_SNAP=/tmp/b.png "$HOME/Applications/NOW Dashboard.app/Contents/MacOS/now-dash-menu"` |
-| Icon doesn't come back after logging in | The switch is off — i.e. `~/Library/LaunchAgents/dev.hoanluu.now-dash.menu.plist` isn't there | `./bin/now-menu on`. Read the state with `./bin/now-menu status`. On and the icon still not coming up → System Settings → General → Login Items → **Allow in the Background**, where macOS lets you switch an agent off behind launchd's back |
+| Icon doesn't come back after logging in | The switch is off — i.e. `~/Library/LaunchAgents/io.github.archi-ai-labs.now-dash.menu.plist` isn't there | `./bin/now-menu on`. Read the state with `./bin/now-menu status`. On and the icon still not coming up → System Settings → General → Login Items → **Allow in the Background**, where macOS lets you switch an agent off behind launchd's back |
 | Turned the icon off and can't find where to turn it back on | The right-click menu disappears along with the icon, and `NOW Dashboard.app` is `LSUIElement` — double-clicking it opens no window to click in | Open the dashboard (`./bin/now-dash`) → the **▤ menu bar** button in the top bar. Or `./bin/now-menu on` |
 | No logs anywhere despite a clear error | The service's logs live under `~/.now-dashboard/`, not the terminal (launchd has no stdout) | `tail -f ~/.now-dashboard/service.err.log` |
 
@@ -452,14 +479,14 @@ command to fix it. Only want the background server, no menu-bar icon → use the
 # 1. Stop and unregister from launchd FIRST — doing this after step 3 leaves a still-
 #    running service repeatedly looking for bin/now-dash-service at a path that no
 #    longer exists, spamming service.err.log.
-launchctl bootout gui/$(id -u)/dev.hoanluu.now-dash 2>/dev/null || true
-launchctl bootout gui/$(id -u)/dev.hoanluu.now-dash.menu 2>/dev/null || true
+launchctl bootout gui/$(id -u)/io.github.archi-ai-labs.now-dash 2>/dev/null || true
+launchctl bootout gui/$(id -u)/io.github.archi-ai-labs.now-dash.menu 2>/dev/null || true
 
 # 2. Remove BOTH LaunchAgent definitions and the app (adjust the name if you ever
 #    installed with a custom APP_NAME). Leave .menu.plist behind and the next login
 #    still tries to open an app that no longer exists.
-rm -f ~/Library/LaunchAgents/dev.hoanluu.now-dash.plist
-rm -f ~/Library/LaunchAgents/dev.hoanluu.now-dash.menu.plist
+rm -f ~/Library/LaunchAgents/io.github.archi-ai-labs.now-dash.plist
+rm -f ~/Library/LaunchAgents/io.github.archi-ai-labs.now-dash.menu.plist
 rm -rf ~/Applications/"NOW Dashboard.app"
 
 # 3. (optional) Remove data/logs — quota cycle ledgers, Cursor/Antigravity caches.

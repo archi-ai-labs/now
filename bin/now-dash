@@ -4,7 +4,7 @@
 # Bản trước tự `nohup node server.js &` ở đây, và đó chính là cái bẫy của B16: tiến trình
 # sinh ra là CON của terminal (hoặc của phiên Claude đang gọi lệnh này), nên nó chết theo
 # cái cửa sổ đã đẻ ra nó. Giờ chỉ có MỘT nơi được phép dựng server: LaunchAgent
-# dev.hoanluu.now-dash — nó treo thẳng dưới launchd, không dưới ai khác.
+# io.github.archi-ai-labs.now-dash — nó treo thẳng dưới launchd, không dưới ai khác.
 #
 # `--no-open` chỉ dựng server rồi thoát, không mở gì cả. Đó là chế độ dành cho
 # `app/launcher.sh` (thân của app trên Dock): nó phải mở WEB APP chứ không phải tab
@@ -21,7 +21,7 @@ OPEN=1
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PORT="${NOW_PORT:-4400}"
 URL="http://localhost:${PORT}"
-LABEL="dev.hoanluu.now-dash"
+LABEL="io.github.archi-ai-labs.now-dash"
 PLIST="$HOME/Library/LaunchAgents/${LABEL}.plist"
 
 alive() { curl -sf -o /dev/null --max-time 1 "${URL}/api/ping"; }

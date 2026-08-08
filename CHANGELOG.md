@@ -45,6 +45,23 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **The service sheds its author's name: `dev.hoanluu.now-dash` → `io.github.archi-ai-labs.now-dash`**
+  (and `.menu`, `.launcher` along with it) — the public-release pass. Reverse-DNS that the
+  org actually controls, instead of a personal label baked into every adopter's
+  `launchctl` output. `install-app` migrates in place: it boots out both old-label jobs,
+  removes their plists, keeps the old open-at-login choice (read before the cleanup, or
+  the icon silently stops coming up after the rename), and accepts the old bundle id so
+  the don't-overwrite-someone-else's-app guard doesn't block the very upgrade that
+  renames it. Idempotent — a clean install finds nothing to migrate. One side effect,
+  once: the popover's remembered tab/theme reset, because the WKWebView store is keyed
+  by bundle id.
+- **Both READMEs now say what a stranger needs before installing**: macOS 13+, Xcode CLT
+  (with the honest explanation of the two "unidentified developer" login items — self-
+  compiled binaries are unsigned), Node ≥ 18.10, Claude Code as the data source, and a
+  table of what each login item does and what breaks if you switch it off. Plus a
+  transparency section up top: every line written by Claude, product decisions from a
+  human across 30+ recorded rounds, local-only (`127.0.0.1`, `~/.now-dashboard/`), MIT,
+  as-is.
 - **The butler only thinks when there is news.** Opening the popover used to guarantee a
   bubble: one status line plus two time-of-day filler sentences on a 42-second rotation —
   and the filler's own i18n contract admits it carries no information. Now: all quiet →

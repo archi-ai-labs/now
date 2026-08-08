@@ -30,6 +30,16 @@ Nửa nào cũng đứng được một mình. Plugin không cần gì ở dashb
 phần đáng nói là thứ cái sau làm được với thứ cái trước ghi ra — và vì hai repo tên gần
 giống nhau thì lúc giới thiệu không chỉ được vào đâu.
 
+## AI viết, người cầm lái
+
+Mọi dòng code ở đây do Claude viết — commit nào cũng ghi thẳng như vậy. Còn các quyết
+định sản phẩm đến từ một người review qua hơn 30 vòng có ghi chép: cái gì bị bác, cái gì
+phải đo xong mới được làm, con số nào bị từ chối vì không ai biện hộ nổi cho nó.
+[design/README.vi.md](design/README.vi.md) là cuốn sổ ấy, trích nguyên văn lời người
+review. Phát hành nguyên trạng theo [MIT](LICENSE): chạy hoàn toàn tại máy — server chỉ
+bind `127.0.0.1`, mọi thứ thu thập nằm trong `~/.now-dashboard/` — không telemetry,
+không hứa hẹn hỗ trợ. Fork thoải mái.
+
 ## Plugin — `/now`
 
 Một lệnh, và `/now` dùng được ở mọi dự án:
@@ -72,12 +82,28 @@ LaunchAgent vào `~/Library/LaunchAgents/`, đường dẫn đã tự khớp v�
 về — không cần sửa tay — rồi dựng cả hai lên, nên lệnh chưa trả về thì icon đã ở trên
 thanh. Chạy lại bao nhiêu lần cũng được, kể cả sau khi dời repo.
 
+**Cần những gì.** macOS 13 trở lên, có Xcode Command Line Tools
+(`xcode-select --install`) — app thanh menu được `swiftc` biên dịch ngay trên máy bạn,
+và đó cũng là lý do hai mục đăng nhập mang dòng *"from an unidentified developer"*:
+binary tự dựng thì không có chữ ký, chuyện chỉ có vậy. Node ≥ 18.10 trong PATH (nvm
+được — service tự dò ra), và Claude Code làm nguồn dữ liệu; cột Cursor và Antigravity
+chỉ sáng khi máy có hai app đó. Linux và Windows không có dashboard — collectors đọc
+đường dẫn macOS và nửa app là AppKit; phần đa nền tảng là plugin `/now` ở trên.
+
+**Hai mục đăng nhập, cả hai đều đúng.** Cài xong, System Settings → General → Login
+Items có hai dòng, và hai là chủ ý — hai vòng đời khác nhau:
+
+| Mục đăng nhập | Là gì | Tắt đi thì mất gì |
+|---|---|---|
+| `now-dash-service` | bộ thu thập + web server (cổng 4400) | lịch sử thủng lỗ — chu kỳ hạn mức và đồng hồ ngồi chỉ được quan sát khi nó chạy |
+| `now-dash-menu` | icon thanh menu + popover | không mất gì — dashboard vẫn chạy trong trình duyệt; bật lại bằng `./bin/now-menu on` |
+
 Không muốn icon trên thanh menu, chỉ cần server nền (đòi hỏi ít hơn: không cần Xcode
 Command Line Tools), thì tự cài LaunchAgent bằng tay:
 
 ```bash
 sed -e "s|__ROOT__|$(pwd)|g" -e "s|__HOME__|$HOME|g" -e "s|__PORT__|4400|g" \
-  launchd/dev.hoanluu.now-dash.plist > ~/Library/LaunchAgents/dev.hoanluu.now-dash.plist
+  launchd/io.github.archi-ai-labs.now-dash.plist > ~/Library/LaunchAgents/io.github.archi-ai-labs.now-dash.plist
 ```
 
 Phải thay đủ cả ba chỗ — sót `__PORT__` thì Node nhận đúng chữ đó làm số cổng và service
@@ -94,8 +120,8 @@ Từ đó trở đi chỉ cần:
 | Việc | Lệnh |
 |---|---|
 | **Nâng cấp** | `./bin/now-dash upgrade` |
-| Dừng | `launchctl bootout gui/$(id -u)/dev.hoanluu.now-dash` |
-| Chạy lại | `launchctl kickstart -k gui/$(id -u)/dev.hoanluu.now-dash` |
+| Dừng | `launchctl bootout gui/$(id -u)/io.github.archi-ai-labs.now-dash` |
+| Chạy lại | `launchctl kickstart -k gui/$(id -u)/io.github.archi-ai-labs.now-dash` |
 | Xem log | `tail -f ~/.now-dashboard/service.err.log` |
 
 `upgrade` pull (`--ff-only`; cây bẩn hay HEAD detached thì dừng nói rõ chứ không đoán),
@@ -385,7 +411,7 @@ xong hẳn, dựng lại qua `./bin/now-dash`, rồi thay app thanh menu và m�
 tắt vài giây; không mất dữ liệu, mọi sổ ghi ở `~/.now-dashboard/`, cài lại không đụng tới.
 
 **Bật tắt icon** có ba đường, cả ba đi qua cùng một công tắc — file plist
-`~/Library/LaunchAgents/dev.hoanluu.now-dash.menu.plist` có mặt hay không:
+`~/Library/LaunchAgents/io.github.archi-ai-labs.now-dash.menu.plist` có mặt hay không:
 
 ```bash
 ./bin/now-menu on       # hiện ngay, VÀ ở mọi lần đăng nhập sau
@@ -400,7 +426,7 @@ menu chuột phải biến mất cùng với chính cái icon, nên nó phải l
 không phải thứ phải biết mà tìm. Ngoài macOS thì nút tự ẩn. (Còn **Thoát** trong menu thì
 hẹp hơn: chỉ đóng phiên này, đăng nhập lần sau icon vẫn lên.)
 
-Đằng sau công tắc là một LaunchAgent thứ hai (`dev.hoanluu.now-dash.menu`), không phải
+Đằng sau công tắc là một LaunchAgent thứ hai (`io.github.archi-ai-labs.now-dash.menu`), không phải
 login item của macOS. launchd khoá theo label nên cài lại là thay đúng dòng ấy; còn
 `SMAppService` — API Apple khuyên dùng, và app này đã dùng trước đó — khoá theo *chữ ký*
 của bundle, mà `swiftc` thì ký ad-hoc lại sau mỗi lần dựng. Dựng lại hai lần là System
@@ -424,7 +450,7 @@ dịch → script dừng **trước** khi đụng vào app lẫn LaunchAgent, v�
 | Đổi `NOW_PORT` nhưng service vẫn dùng cổng cũ | Cổng ghim trong plist lúc render, không đọc lại lúc chạy | `NOW_PORT=xxxx ./bin/install-app` — một lần chạy đổi cả plist lẫn app, từ cùng một biến |
 | `install-app` chết với `xcrun: error: invalid active developer path` | `swiftc` và `xcrun` ở `/usr/bin` chỉ là vỏ; chúng chuyển tiếp sang thư mục mà `xcode-select` đang trỏ tới, mà thư mục đó không còn (Command Line Tools bị gỡ, hoặc chưa từng cài) | Script tự mượn Xcode.app cho lần dựng đó và in ra cách chốt hẳn: `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer`. Không có cái nào → `xcode-select --install` |
 | App đang chạy (`pgrep -f now-dash-menu` thấy) mà thanh menu không có icon | App không hỏng — thanh menu đã đầy và macOS bỏ bớt phần tràn, trên laptop có tai thỏ thì tràn vào đúng chỗ khuất | Thoát bớt một hai icon, hoặc ⌘-kéo xếp lại. Muốn chắc cái nút vẫn vẽ ra: `NOW_SNAP=/tmp/b.png "$HOME/Applications/NOW Dashboard.app/Contents/MacOS/now-dash-menu"` |
-| Đăng nhập lại thì icon không tự lên | Công tắc đang tắt, tức là không có `~/Library/LaunchAgents/dev.hoanluu.now-dash.menu.plist` | `./bin/now-menu on`. Đọc trạng thái bằng `./bin/now-menu status`. Bật rồi mà icon vẫn không lên → System Settings → General → Login Items → **Allow in the Background**, chỗ macOS cho tắt một agent sau lưng launchd |
+| Đăng nhập lại thì icon không tự lên | Công tắc đang tắt, tức là không có `~/Library/LaunchAgents/io.github.archi-ai-labs.now-dash.menu.plist` | `./bin/now-menu on`. Đọc trạng thái bằng `./bin/now-menu status`. Bật rồi mà icon vẫn không lên → System Settings → General → Login Items → **Allow in the Background**, chỗ macOS cho tắt một agent sau lưng launchd |
 | Lỡ tắt icon rồi, giờ không biết bật lại ở đâu | Menu chuột phải biến mất cùng cái icon, mà `NOW Dashboard.app` thì `LSUIElement` — double-click vào không hiện cửa sổ nào để mà bấm | Mở dashboard (`./bin/now-dash`) → nút **▤ thanh menu** ở thanh trên cùng. Hoặc `./bin/now-menu on` |
 | Không thấy log gì dù chắc chắn có lỗi | Log của service nằm ở `~/.now-dashboard/`, không phải terminal (launchd không có stdout) | `tail -f ~/.now-dashboard/service.err.log` |
 
@@ -433,13 +459,13 @@ dịch → script dừng **trước** khi đụng vào app lẫn LaunchAgent, v�
 ```bash
 # 1. Dừng và bỏ đăng ký khỏi launchd TRƯỚC — làm sau bước 3 thì service còn sống sẽ
 #    lặp lại tìm bin/now-dash-service ở đường dẫn vừa bị xoá, spam service.err.log.
-launchctl bootout gui/$(id -u)/dev.hoanluu.now-dash 2>/dev/null || true
-launchctl bootout gui/$(id -u)/dev.hoanluu.now-dash.menu 2>/dev/null || true
+launchctl bootout gui/$(id -u)/io.github.archi-ai-labs.now-dash 2>/dev/null || true
+launchctl bootout gui/$(id -u)/io.github.archi-ai-labs.now-dash.menu 2>/dev/null || true
 
 # 2. Xoá CẢ HAI định nghĩa LaunchAgent và app (đổi tên nếu bạn từng cài với APP_NAME
 #    khác). Để sót .menu.plist thì lần đăng nhập sau vẫn đi mở một app đã bị xoá.
-rm -f ~/Library/LaunchAgents/dev.hoanluu.now-dash.plist
-rm -f ~/Library/LaunchAgents/dev.hoanluu.now-dash.menu.plist
+rm -f ~/Library/LaunchAgents/io.github.archi-ai-labs.now-dash.plist
+rm -f ~/Library/LaunchAgents/io.github.archi-ai-labs.now-dash.menu.plist
 rm -rf ~/Applications/"NOW Dashboard.app"
 
 # 3. (tuỳ chọn) Xoá dữ liệu/log — sổ chu kỳ hạn mức, cache Cursor/Antigravity.

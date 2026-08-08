@@ -12,7 +12,7 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>dev.hoanluu.now-dash</string>
+  <string>io.github.archi-ai-labs.now-dash</string>
 
   <!-- Gọi qua bin/now-dash-service chứ không gọi thẳng node: đường dẫn node của nvm mang
        số phiên bản, nâng node một lần là plist trỏ vào thư mục đã biến mất. -->

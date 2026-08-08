@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Mở app thanh menu lúc đăng nhập. Anh em với dev.hoanluu.now-dash.plist bên cạnh, nhưng
+  Mở app thanh menu lúc đăng nhập. Anh em với io.github.archi-ai-labs.now-dash.plist bên cạnh, nhưng
   đây là APP chứ không phải server: __MENU_BIN__ được thay lúc dựng, bởi bin/install-app
   hoặc bởi chính app khi bấm "Hiện trên thanh menu". File này có mặt hay không CHÍNH LÀ
   trạng thái của công tắc ấy — xem bin/now-menu.
@@ -24,7 +24,7 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>dev.hoanluu.now-dash.menu</string>
+  <string>io.github.archi-ai-labs.now-dash.menu</string>
 
   <key>ProgramArguments</key>
   <array>

@@ -16,7 +16,7 @@
   <string>__APP_NAME__</string>
 
   <key>CFBundleIdentifier</key>
-  <string>dev.hoanluu.now-dash.launcher</string>
+  <string>io.github.archi-ai-labs.now-dash.launcher</string>
 
   <!-- Tên file trong Contents/MacOS/. Sai một chữ ở đây thì Finder báo "ứng dụng bị hỏng"
        và không nói thêm gì nữa. -->

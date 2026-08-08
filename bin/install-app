@@ -16,7 +16,7 @@ DEST_DIR="${APP_DEST:-$HOME/Applications}"
 DEST="$DEST_DIR/$APP_NAME.app"
 WEBAPP="${NOW_WEBAPP:-$HOME/Applications/NOW.app}"
 PORT="${NOW_PORT:-4400}"
-ID="dev.hoanluu.now-dash.launcher"
+ID="io.github.archi-ai-labs.now-dash.launcher"
 LAUNCH_AGENTS_DIR="$HOME/Library/LaunchAgents"
 
 # Chốt chặn khỏi tự bắn vào chân: DEST trùng tên với một app KHÁC (rất dễ xảy ra — web
@@ -24,7 +24,10 @@ LAUNCH_AGENTS_DIR="$HOME/Library/LaunchAgents"
 # Safari không tạo lại được bằng script, mất là phải vào Safari thêm lại tay.
 if [[ -d "$DEST" ]]; then
   have="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$DEST/Contents/Info.plist" 2>/dev/null || true)"
-  if [[ "$have" != "$ID" ]]; then
+  # Nhận cả id ĐỜI CŨ của chính app này (trước pass công-khai-hoá 8/2026 nó mang tên
+  # riêng dev.hoanluu.*): không nhận là chính lượt nâng cấp đổi tên bị chặn bởi cái
+  # chốt sinh ra để bảo vệ nó, và câu "đã có app khác" lúc ấy nói sai sự thật.
+  if [[ "$have" != "$ID" && "$have" != "dev.hoanluu.now-dash.launcher" ]]; then
     echo "Đã có app khác ở $DEST (id: ${have:-không đọc được}) — không đè." >&2
     echo "Đặt tên khác: APP_NAME=\"…\" $0" >&2
     exit 1
@@ -74,7 +77,7 @@ mkdir -p "$BUNDLE/Contents/MacOS" "$BUNDLE/Contents/Resources"
 sed "s|__APP_NAME__|$APP_NAME|g" "$ROOT/app/Info.plist" >"$BUNDLE/Contents/Info.plist"
 
 # ── Thân app ────────────────────────────────────────────────────────────────
-# Đường dẫn ghim TUYỆT ĐỐI vào lúc dựng, đúng như launchd/dev.hoanluu.now-dash.plist:
+# Đường dẫn ghim TUYỆT ĐỐI vào lúc dựng, đúng như launchd/io.github.archi-ai-labs.now-dash.plist:
 # repo dời chỗ thì dựng lại, chứ không có $HOME nào để mà giãn khi LaunchServices gọi.
 #
 # Tên `main.swift` là bắt buộc, không phải sở thích: Swift chỉ cho viết mã ở mức ngoài
@@ -110,13 +113,29 @@ fi
 
 # ── Thay chỗ cũ ─────────────────────────────────────────────────────────────
 # "Mở lúc đăng nhập" bật hay tắt = một file plist có mặt hay không (xem
-# launchd/dev.hoanluu.now-dash.menu.plist). Đọc được từ đây bằng một phép thử -f, nên
+# launchd/io.github.archi-ai-labs.now-dash.menu.plist). Đọc được từ đây bằng một phép thử -f, nên
 # cài lại giữ nguyên lựa chọn cũ mà không phải hỏi ai. NOW_LOGIN_ITEM=1 ép bật (lần cài
 # đầu, khi chưa có gì để giữ), =0 ép tắt.
 MENU_BIN="$DEST/Contents/MacOS/now-dash-menu"
-LOGIN_PLIST="$LAUNCH_AGENTS_DIR/dev.hoanluu.now-dash.menu.plist"
+LOGIN_PLIST="$LAUNCH_AGENTS_DIR/io.github.archi-ai-labs.now-dash.menu.plist"
 WANT_LOGIN="${NOW_LOGIN_ITEM:-}"
 [[ -z "$WANT_LOGIN" && -f "$LOGIN_PLIST" ]] && WANT_LOGIN=1
+# Lựa chọn của bản label ĐỜI CŨ cũng phải sống qua lượt đổi tên — file cũ sắp bị dọn ở
+# khối ngay dưới, nên phải đọc nó TRƯỚC khi dọn, không thì nâng cấp xong icon lặng lẽ
+# thôi tự lên lúc đăng nhập và chẳng ai nối được hai chuyện ấy với nhau.
+[[ -z "$WANT_LOGIN" && -f "$LAUNCH_AGENTS_DIR/dev.hoanluu.now-dash.menu.plist" ]] && WANT_LOGIN=1
+
+# ── Dọn label đời cũ ────────────────────────────────────────────────────────
+# Trước pass công-khai-hoá (8/2026), hai LaunchAgent mang tên riêng dev.hoanluu.*.
+# Đổi tên mà không tháo bản cũ thì không phải "thừa một dòng trong Login Items": plist
+# cũ vẫn RunAtLoad + KeepAlive, lần đăng nhập sau nó dựng server CŨ chiếm cổng trước,
+# còn bản mới chết-dậy mỗi 10 giây với EADDRINUSE — đúng ca hai-tiến-trình-một-cổng mà
+# skill /now-dash sinh ra để chặn. Tháo cả job đang chạy lẫn file, menu trước service
+# (menu không KeepAlive nên tháo êm); chạy lại lần nữa thì vòng này không còn gì để dọn.
+for old in dev.hoanluu.now-dash.menu dev.hoanluu.now-dash; do
+  launchctl bootout "gui/$(id -u)/$old" 2>/dev/null || true
+  rm -f "$LAUNCH_AGENTS_DIR/$old.plist"
+done
 
 # App đang chạy giữ nguyên binary CŨ trong bộ nhớ cho tới khi bị thoát — không có dòng
 # này thì dựng lại xong vẫn là bản cũ đang ngồi trên thanh menu, và sửa gì cũng "không
@@ -137,7 +156,7 @@ mv "$BUNDLE" "$DEST"
 # này khi thấy nó có mặt ở đây — nên chỉ cần đặt đúng chỗ, không cần gọi launchctl ở
 # đây. bootout bản cũ (nếu có) để lần start kế tiếp nạp lại đúng đường dẫn mới, phòng
 # khi repo vừa dời chỗ và install-app chạy lại.
-SERVICE_LABEL="dev.hoanluu.now-dash"
+SERVICE_LABEL="io.github.archi-ai-labs.now-dash"
 PLIST_DEST="$LAUNCH_AGENTS_DIR/$SERVICE_LABEL.plist"
 mkdir -p "$LAUNCH_AGENTS_DIR"
 sed -e "s|__ROOT__|$ROOT|g" -e "s|__HOME__|$HOME|g" -e "s|__PORT__|$PORT|g" \
@@ -185,7 +204,7 @@ done
 # đăng nhập vào thì không có gì lên — không log, không lỗi, không ai nói gì. Chỉ có
 # `print-disabled` biết, nên hỏi nó ngay lúc còn có người ngồi đây đọc.
 disabled="$(launchctl print-disabled "gui/$(id -u)" 2>/dev/null || true)"
-for label in "$SERVICE_LABEL" dev.hoanluu.now-dash.menu; do
+for label in "$SERVICE_LABEL" io.github.archi-ai-labs.now-dash.menu; do
   grep -q "\"$label\" => disabled" <<<"$disabled" || continue
   echo "⚠ macOS đang TẮT $label — nó sẽ không tự lên khi đăng nhập." >&2
   echo "  Bật lại: System Settings → General → Login Items → Allow in the Background," >&2

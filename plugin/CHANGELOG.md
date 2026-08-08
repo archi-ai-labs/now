@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+
+- `/now-dash` finds the installed dashboard by the LaunchAgent's new public label
+  `io.github.archi-ai-labs.now-dash` (renamed from the author-personal
+  `dev.hoanluu.now-dash`; the dashboard's `install-app` migrates old installs).
+
 ## [0.2.0] — 2026-08-05
 
 The plugin moved into the repo that holds the dashboard reading its boards, and

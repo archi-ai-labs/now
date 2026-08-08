@@ -509,7 +509,7 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
     @objc private func restartServer() {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/bin/launchctl")
-        p.arguments = ["kickstart", "-k", "gui/\(getuid())/dev.hoanluu.now-dash"]
+        p.arguments = ["kickstart", "-k", "gui/\(getuid())/io.github.archi-ai-labs.now-dash"]
         try? p.run()
         // Lượt quét đầu mất 4–6 giây, hỏi sớm hơn thì chỉ nhận lại "chưa nối được".
         DispatchQueue.main.asyncAfter(deadline: .now() + 7) { [weak self] in self?.refresh() }
@@ -570,7 +570,7 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
     // ── Mục đăng nhập ────────────────────────────────────────────────────────
     //
     // Một file plist trong ~/Library/LaunchAgents/, cùng khuôn với service — xem
-    // launchd/dev.hoanluu.now-dash.menu.plist để biết vì sao không dùng SMAppService.
+    // launchd/io.github.archi-ai-labs.now-dash.menu.plist để biết vì sao không dùng SMAppService.
     //
     // Hai hàm dưới đây CHỈ đụng tới cái file, không gọi launchctl. Đó là ranh giới có
     // chủ ý, không phải thiếu sót: `bootstrap` gọi từ trong tiến trình này sẽ dựng ngay
@@ -586,7 +586,7 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
 
     private var loginPlist: URL {
         URL(fileURLWithPath: NSHomeDirectory())
-            .appendingPathComponent("Library/LaunchAgents/dev.hoanluu.now-dash.menu.plist")
+            .appendingPathComponent("Library/LaunchAgents/io.github.archi-ai-labs.now-dash.menu.plist")
     }
 
     private var loginOn: Bool { FileManager.default.fileExists(atPath: loginPlist.path) }
@@ -596,7 +596,7 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
             try? FileManager.default.removeItem(at: loginPlist)
             return
         }
-        let tpl = try String(contentsOfFile: "\(ROOT)/launchd/dev.hoanluu.now-dash.menu.plist",
+        let tpl = try String(contentsOfFile: "\(ROOT)/launchd/io.github.archi-ai-labs.now-dash.menu.plist",
                              encoding: .utf8)
         let bin = Bundle.main.bundleURL.appendingPathComponent("Contents/MacOS/now-dash-menu").path
         try FileManager.default.createDirectory(at: loginPlist.deletingLastPathComponent(),

@@ -22,7 +22,7 @@
 # đã dùng. Cùng một việc mà có hai bản là hai bản sẽ trôi khỏi nhau.
 set -euo pipefail
 
-LABEL="dev.hoanluu.now-dash.menu"
+LABEL="io.github.archi-ai-labs.now-dash.menu"
 PLIST="$HOME/Library/LaunchAgents/${LABEL}.plist"
 DOMAIN="gui/$(id -u)"
 
@@ -59,7 +59,7 @@ on)
 
   # Bản đang chạy NGOÀI launchd phải chết trước khi bootstrap. Không có dòng này thì lên
   # hai icon giống hệt nhau trên thanh, và cái do launchd dựng không tắt được cái kia —
-  # đúng cái bẫy mà launchd/dev.hoanluu.now-dash.menu.plist đã ghi lại lý do.
+  # đúng cái bẫy mà launchd/io.github.archi-ai-labs.now-dash.menu.plist đã ghi lại lý do.
   pkill -f "$BIN" 2>/dev/null || true
 
   # bootstrap cho lần đầu (chưa đăng ký), kickstart cho lần sau (đã đăng ký, đang dừng).

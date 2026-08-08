@@ -468,7 +468,7 @@ không phải mới hỏng hôm nay.
 **Ước lượng:** nửa ngày (viết `plist`, kiểm tự khởi động lại sau khi máy khởi động lại,
 xác nhận cổng cố định sống). **Chặn bởi:** không gì.
 
-**✅ Đã làm (28/7)** — [launchd/dev.hoanluu.now-dash.plist](launchd/dev.hoanluu.now-dash.plist)
+**✅ Đã làm (28/7)** — [launchd/io.github.archi-ai-labs.now-dash.plist](launchd/io.github.archi-ai-labs.now-dash.plist)
 (bản gốc trong repo, chép sang `~/Library/LaunchAgents/`) + [bin/now-dash-service](bin/now-dash-service).
 
 Trước: `ppid` của server là helper của Claude.app — kiểm lại trước khi sửa thì đúng y
