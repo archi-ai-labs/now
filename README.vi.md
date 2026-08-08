@@ -60,8 +60,12 @@ vào settings → [plugin/README.md](plugin/README.md).**
 Cài một lần, để nó tự lên cùng máy:
 
 ```bash
-./bin/install-app
+git clone https://github.com/archi-ai-labs/now.git && cd now && ./bin/install-app
 ```
+
+Clone về đâu cũng được — installer nướng đường dẫn nó đang đứng vào mọi thứ nó ghi ra.
+(Đang ở trong phiên Claude Code có sẵn plugin? `/now-dash` dắt qua đúng bài cài này,
+kèm luôn phần kiểm macOS và bộ biên dịch.)
 
 Dựng luôn app trên thanh menu (xem [§Trên thanh menu](#trên-thanh-menu)) **và** đặt
 LaunchAgent vào `~/Library/LaunchAgents/`, đường dẫn đã tự khớp với chỗ bạn `git clone`

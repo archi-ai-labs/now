@@ -61,8 +61,12 @@ to your settings → [plugin/README.md](plugin/README.md).**
 Install once, and it comes up with the machine:
 
 ```bash
-./bin/install-app
+git clone https://github.com/archi-ai-labs/now.git && cd now && ./bin/install-app
 ```
+
+Clone it wherever you keep source — the installer bakes the path it runs from into
+everything it writes. (Already in a Claude Code session with the plugin installed?
+`/now-dash` walks the same install for you, including the macOS and compiler checks.)
 
 Builds the menu-bar app (see [§In the menu bar](#in-the-menu-bar)) **and** drops a
 LaunchAgent into `~/Library/LaunchAgents/` with paths already matched to wherever you

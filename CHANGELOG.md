@@ -9,9 +9,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-Three items off the backlog — `B13`, `B14`, `B18`. All three turned out to be specified
-against numbers that had since moved; the notes in [`BACKLOG.md`](BACKLOG.md) record what
-each one actually was once measured again.
+## [1.1.1] — 2026-08-08
+
+Three items off the backlog (`B13`, `B14`, `B18` — all three turned out to be specified
+against numbers that had since moved; [`BACKLOG.md`](BACKLOG.md) records what each one
+actually was once measured again), a ledger that was quietly minting phantom cycles, and
+a forecast that now notices when you speed up.
 
 ### Added
 
@@ -51,6 +54,9 @@ each one actually was once measured again.
   tick exists for, and exactly the case the slower scan creates. Only the dashboard holds an
   SSE connection — the menu-bar popover polls — so no-tabs-open is the ordinary state for
   anyone using only the menu bar.
+- The dashboard install block in both READMEs now opens with `git clone` — it used to
+  open on `./bin/install-app`, which assumes the repo is already on disk, a thing that is
+  only ever true for the person who wrote it.
 
 ### Fixed
 
@@ -74,7 +80,7 @@ each one actually was once measured again.
   exactly 168.0 hours apart, all three preserved. A rule that ate real cycles would have
   eaten those first.
 
-- Tests: 476 → 498.
+- Tests: 476 → 510.
 
 ## [1.1.0] — 2026-08-07
 
@@ -134,7 +140,8 @@ rounds, all recorded in [`design/README.md`](design/README.md).
 First tagged release. `bin/install-app` installs the LaunchAgent itself, and the
 README carries the install / uninstall / troubleshooting handbook.
 
-[Unreleased]: https://github.com/archi-ai-labs/now/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/archi-ai-labs/now/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/archi-ai-labs/now/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/archi-ai-labs/now/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/archi-ai-labs/now/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/archi-ai-labs/now/releases/tag/v1.0.0
