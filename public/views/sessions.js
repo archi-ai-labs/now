@@ -145,11 +145,19 @@ export function renderSessions(s, q) {
   // Phiên Claude và hội thoại Antigravity gom vào CÙNG một nhóm dự án. Tách hai khối
   // riêng thì câu "dự án này đang có gì chạy" phải ghép từ hai chỗ trên màn hình — mà
   // đó đúng là câu duy nhất màn này tồn tại để trả lời.
+  // Payload chở hội thoại đúng một lần, ở `antigravity.convos`; dự án và nhóm "chưa gán"
+  // chỉ cầm id (xem cuối `buildState`). Dựng bảng tra một lần cho cả màn — hai chỗ dưới
+  // đều tra từ nó. `filter(Boolean)` không phải phòng xa suông: `antigravity.convos` bị
+  // cắt theo `CONVO_KEEP_DAYS` còn id thì gom trước lúc cắt, nên một id trỏ hụt là ca có
+  // thật, và nó phải rơi khỏi danh sách chứ không được thành một thẻ rỗng.
+  const convoById = new Map((s.antigravity?.convos ?? []).map((c) => [c.id, c]));
+  const convosOf = (ids) => (ids ?? []).map((id) => convoById.get(id)).filter(Boolean);
+
   const groups = s.projects
-    .map((p) => ({ name: p.name, group: p.group, sessions: p.sessions, convos: p.convos ?? [] }))
+    .map((p) => ({ name: p.name, group: p.group, sessions: p.sessions, convos: convosOf(p.convoIds) }))
     .concat(
-      s.unassignedSessions.length || (s.unassignedConvos?.length ?? 0)
-        ? [{ name: t('sessions.unassigned'), sessions: s.unassignedSessions, convos: s.unassignedConvos ?? [] }]
+      s.unassignedSessions.length || (s.unassignedConvoIds?.length ?? 0)
+        ? [{ name: t('sessions.unassigned'), sessions: s.unassignedSessions, convos: convosOf(s.unassignedConvoIds) }]
         : [],
     )
     .map((g) => ({

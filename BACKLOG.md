@@ -302,6 +302,33 @@ người dùng chờ nhiều nhất ~1–2 giây.
 **Ước lượng:** 1–2 giờ. **Ưu tiên:** tuỳ khẩu vị — 1,6% không nóng máy được; chỉ đáng nếu
 dashboard chạy 24/7 quanh năm. Ghi vào đây để khỏi phải đo lại.
 
+**✅ Đã làm (8/8) — và mục này bị chặn bởi một thứ đặc tả gốc không thấy.**
+
+Hẹn giờ 30 giây làm **hai** việc, không phải một: quét state, và chạy `petLock(withPet)` —
+mốc nghỉ của lớp trò chơi. Giãn nhịp là giãn cả hai. Mà chú thích ngay trên dòng ấy đã nói
+vì sao mốc nghỉ phải chạy ở nhịp nền: *"cắm mặt làm ba tiếng không mở popover lần nào sẽ
+không sinh được lượt quan sát nào"* — tức đúng ca 0 client SSE, tức đúng ca `B18` tạo ra.
+Kiểm lại thì chỉ [public/app.js](public/app.js) mở `EventSource`; popover thanh menu dùng
+`fetch`, KHÔNG giữ kết nối. Nên "0 client" là trạng thái thường ngày của người chỉ dùng app
+thanh menu, không phải ca hiếm — làm theo đặc tả gốc là hạ độ phân giải mốc nghỉ 10 lần
+đúng lúc nó là thứ duy nhất còn chạy.
+
+**Nên tách hai hẹn giờ trước:** `PET_MS = 30_000` cố định, và `SCAN_MS = { watched: 30s,
+idle: 60s }` cho lượt quét. `setTimeout` tự hẹn lại chứ không `setInterval`, vì chu kỳ đọc
+`clients.size` ở đầu MỖI lượt. Bắt lỗi thành **bắt buộc** ở dạng này: cái hẹn kế tiếp nằm
+sau chỗ có thể ném, nên một lỗi lọt ra là tắt hẳn nhịp nền, im lặng, tới lúc khởi động lại.
+
+**Chốt 1 phút, không phải 5.** Con số 5 phút ở đặc tả trên là số tròn, không có căn cứ nào
+đứng sau — đi tìm thì `MAX_STALE_MS` trong `app.js` cũng là 5 phút nhưng trả lời câu khác
+(trần cũ cho một lượt VẼ, và nó chỉ chạy khi có payload về, tức vô nghĩa lúc 0 tab).
+
+**Đo trên stream sống** (`curl -N /api/stream`, 100 giây): sự kiện #1 lúc nối vào, #2 sau
+0,3s (`scheduleRefresh(0)` vì là tab đầu), #3 sau 24,9s — cái hẹn 60 giây đang bay dở, đúng
+một lần — rồi #4 và #5 cách nhau 30,4s và 30,7s. **Cố ý không hẹn lại khi tab đầu vào**:
+lợi là bỏ đúng một khoảng chờ, mà giá là đụng `scanTimer` trước khi dòng khai báo nó chạy
+xong — cổng mở TRƯỚC lượt quét đầu, nên request tới trong 5 giây ấy là ca có thật.
+`test/serverloop.test.js` khoá lại việc hai hẹn giờ không được nhập lại làm một.
+
 ---
 
 ## Nhóm 2 · Trang không được tự nhảy dưới tay người đang đọc
@@ -481,6 +508,35 @@ Không đổi hành vi chịu lỗi.
 
 **Ước lượng:** 1 giờ.
 
+**✅ Đã làm (8/8)** — `runDetail()` trong [src/lib/sh.js](src/lib/sh.js) trả
+`{ out, failed, reason, code }`; `run()` giữ nguyên kiểu **chuỗi** nên sáu module đang gọi
+nó không phải sửa dòng nào. Taxonomy mượn `BACKOFF_MS` của
+[src/collect/quota.js](src/collect/quota.js): `timeout` · `not-found` · `no-access` ·
+`overflow` · `exit` · `spawn`.
+
+Hai chỗ đặc tả gốc không nói, mà làm rồi mới lộ:
+
+1. **Gom vào state bằng một cuốn sổ dùng chung, không luồn qua giá trị trả về.** Đường từ
+   `run()` tới `buildState` có chỗ dài bốn tầng (`collectGit` → `worktreeDetails` →
+   `mapLimit` → `git`); luồn thêm một trường qua đó là sửa mọi chữ ký hàm trên đường chỉ
+   để chở một thứ không ai ở giữa dùng. `drainRunFailures()` vét sổ đúng một lần, cuối
+   `buildState`, nên con số là "hỏng trong lượt quét vừa rồi" chứ không phải tổng tích luỹ.
+2. **`exit` KHÔNG được tính là trục trặc.** `git rev-parse --show-toplevel` trong thư mục
+   không phải repo ra đúng kiểu đó, và nó là kết quả thường gặp nhất trong cả lượt quét —
+   đo trên máy này: 2 lượt `exit 128` mỗi lần quét. Sổ tách sẵn `broken` để chỗ hiển thị
+   khỏi phải tự nhớ luật ấy.
+
+**Nghiệm thu đầu-cuối:** chạy server với `PATH` không có `git` — đúng ca `B16` từng mất
+công dò tay. Trước: 9 dự án đều hiện "chưa phải repo git", im lặng. Sau: màn Sức khoẻ đứng
+đầu một dòng *"Lệnh git hỏng 24 lượt — không tìm thấy lệnh, chưa cài hoặc PATH của server
+không có nó"*.
+
+**Một chỗ sửa sau khi đo:** bản đầu gộp sổ theo cả **chỗ xảy ra**, và lượt thử ấy ra **24
+dòng y hệt nhau**, mỗi repo một dòng, vừa đúng trần sổ — trong khi đó là MỘT sự việc. Khoá
+gộp bỏ chỗ xảy ra đi, giữ nó lại làm `sample`. Sổ không bao giờ chở `args`/`stdout`/`stderr`:
+[src/collect/cursor.js](src/collect/cursor.js) đọc token đăng nhập qua đúng hàm này.
+`test/sh.test.js` khoá cả mười điều trên.
+
 ### `B14` — 116 KB SSE mỗi 30 giây mỗi tab
 
 **Bằng chứng:** payload chứa cả `dirtyFiles`, `driftList` và **toàn bộ** `now` board của
@@ -501,6 +557,32 @@ cùng object nằm ở `state.sessions` *và* `projects[].sessions`
 payload là hàng đúp. Phía nhận vẫn khoẻ (parse 2,4 ms) nên giữ nguyên ưu tiên thấp; nhưng
 nếu đụng tới thì bước một rẻ nhất là bỏ hàng đúp bằng tham chiếu id (ước −15% payload),
 TRƯỚC khi nghĩ tới `/api/project/<id>` như đặc tả gốc.
+
+**✅ Đã làm (8/8) — nhưng đặc tả gốc đã nhắm sai chỗ, phải đo lại mới thấy.**
+**519,3 KB.** Mổ theo khoá: `usage` **181,1** · `projects` 86,2 · `antigravity` 66,0 ·
+`unassignedConvos` 65,9 KB. Tức `projects` — thứ mà `/api/project/<id>` định gỡ — đã tụt
+xuống hạng hai và gần như đứng yên từ 28/7, còn `usage` thì **+222%**. Bổ tiếp một tầng ra
+hai chỗ rẻ hơn hẳn 2 giờ của đặc tả gốc:
+
+1. **`usage.inSig` — 118 KB, 22,7% payload, client không đọc một dòng nào.** Đây là chữ ký
+   memo của `B17`, dùng đúng một chỗ (`cache.inSig === inSig`), mà nó nằm trong chính
+   object đi thẳng ra SSE. Nó dài vì liệt kê từng transcript kèm offset, tức lớn lên theo
+   số file trên đĩa — một cuốn sổ nội bộ của server phình ra trên đường truyền của người
+   dùng. Đưa ra biến `cacheSig` ngoài object; không copy, không đổi cấu trúc cache.
+2. **`antigravity.convos` ≡ `unassignedConvos` — 65,9 KB đi đúp.** Trên máy này là 100%
+   chứ không phải ~11% như ước 28/7: cả 196 hội thoại đều chưa gán dự án nên hai mảng
+   trùng khít. Tỉ lệ đi theo dữ liệu, chuyện đi đúp thì không. `projects[].convos` và
+   `unassignedConvos` đổi thành `convoIds`/`unassignedConvoIds` — chúng là cách GOM, nguồn
+   là `antigravity.convos`. **Đổi tên luôn**, không giữ tên cũ với kiểu mới: chỗ đọc sót sẽ
+   nhận `undefined` rồi ra danh sách rỗng, thay vì nhận mảng chuỗi rồi vẽ ra một loạt thẻ
+   trống. Phía client tra một `Map` dựng một lần cho cả màn ([public/views/sessions.js](public/views/sessions.js)).
+
+**Kết quả đo: 519,3 → 344,3 KB, cắt 33,7%.** Không thêm endpoint nào, không đụng kiến trúc.
+Phần `/api/project/<id>` của đặc tả gốc **chưa làm và chưa cần** — mở lại khi `projects`
+tự nó vượt khỏi vùng chấp nhận được.
+
+Còn nguyên một hàng đúp chưa đụng: phiên nằm ở cả `state.sessions` lẫn `projects[].sessions`.
+Đo hôm nay chỉ 2,1 + 1,2 KB nên không đáng, ghi lại để khỏi tưởng là đã dọn hết.
 
 ---
 
@@ -651,6 +733,22 @@ cũ, giữ nguyên thứ tự:
    hai collector mạng cũng đã 5,4 s — thủ phạm nguội là 3,4 s parse JSONL usage + 113
    lượt `sqlite3`, không phải mạng. `B17` không đổi được phần nguội (lần đầu thì phải đọc
    thật), nên mục này vẫn chỉ mở lại nếu quét nguội vượt hẳn khỏi vùng chấp nhận được.
+
+**Cập nhật 2026-08-08** — **`B13`, `B14`, `B18` xong trong một phiên**, nghiệm thu trên app
+thật (476 → 491 test; hai bề mặt vẽ thật, 0 lỗi console). Hàng đợi còn đúng **một** mục:
+`B6`, vẫn hoãn vô thời hạn với nguyên lý do cũ.
+
+Ba điều đáng giữ lại từ lượt này, vì cả ba đều là chuyện *đặc tả cũ nói sai chỗ*:
+
+- **Số trong backlog trôi nhanh hơn ta tưởng.** `B14` viết ngày 23/7 nhắm vào `projects`;
+  tới 8/8 thủ phạm là `usage` (+222% từ 28/7) còn `projects` gần như đứng yên. Đi đo lại
+  trước khi thi công rẻ hơn nhiều so với thi công đúng đặc tả sai.
+- **Hai chỗ nặng nhất hoá ra không phải "dữ liệu"** mà là một khoá cache lọt ra ngoài
+  (118 KB) và một mảng đi đúp (65,9 KB). Cả hai sửa trong vài chục dòng, cắt 33,7% payload
+  — trong khi đặc tả gốc đề xuất một endpoint mới, 2 giờ, cho phần nhỏ hơn.
+- **Một mục có thể bị chặn bởi thứ không nằm trong mô tả của nó.** `B18` chặn ở chỗ hẹn
+  giờ dùng chung với mốc nghỉ, và không dòng nào trong mục nhắc tới điều đó. Đọc mã ở chỗ
+  sắp sửa, đừng chỉ đọc mục.
 
 ## Cố ý **không** đưa vào backlog
 

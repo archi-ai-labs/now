@@ -3,6 +3,40 @@ import { t } from '../lib/i18n.js';
 import { copyCode, empty, matches, healthLabel, ulabel, bar, integrity, hpColor } from './shared.js';
 
 /**
+ * Kiểu hỏng của một lệnh ngoài → câu người đọc cần. Xem `src/lib/sh.js`.
+ *
+ * `exit` KHÔNG có ở đây, và đó là chủ ý: lệnh chạy được rồi trả lời "không" là một câu
+ * trả lời hợp lệ. `git rev-parse --show-toplevel` trong thư mục không phải repo ra đúng
+ * kiểu ấy, và nó là kết quả thường gặp nhất trong cả lượt quét — kêu lên thì màn này
+ * đầy tiếng ồn ngay ngày đầu, và mọi thứ đáng đọc chìm theo.
+ */
+const RUN_WHY = {
+  timeout: 'health.runTimeout',
+  'not-found': 'health.runNotFound',
+  'no-access': 'health.runNoAccess',
+  overflow: 'health.runOverflow',
+  spawn: 'health.runSpawn',
+};
+
+/**
+ * Cửa sổ đếm của sổ lỗi, viết ra chữ.
+ *
+ * KHÔNG dùng `ago()` ở đây, dù nó có sẵn: dưới 45 giây `ago()` trả về "vừa xong" — một
+ * mệnh đề trọn vẹn chứ không phải một khoảng — và câu thành "Đếm trong vừa xong vừa qua".
+ * Bẫy này đã được ghi ngay tại `JUST_NOW_MS` trong `lib/dom.js`; tôi vẫn giẫm phải, và
+ * thấy nó lúc mở trang chứ không phải lúc chạy test. Mà cửa sổ ở đây thì LUÔN cỡ một
+ * nhịp quét (30–60 giây), tức luôn rơi đúng vào vùng `ago()` không nói được.
+ */
+const runWin = (ms) =>
+  ms < 120_000
+    ? // Sàn 1 giây, không phải làm tròn trơn. Hai lượt dựng có thể nối đuôi nhau trong
+      // vài trăm mili giây — lượt quét đầu lúc khởi động, rồi `scheduleRefresh(0)` ngay
+      // khi tab đầu tiên nối vào — và lượt thứ hai vét một cuốn sổ mở chưa tới một giây.
+      // Con số ấy đúng, nhưng "Đếm trong 0 giây vừa qua" thì không đọc được.
+      t('health.runWinSec', { n: Math.max(1, Math.round(ms / 1000)) })
+    : t('health.runWinMin', { n: Math.round(ms / 60_000) });
+
+/**
  * Danh sách vệ sinh: những thứ khiến dashboard nói dối nếu để lâu.
  * Sắp theo mức độ "làm sai lệch bức tranh" chứ không theo loại lỗi.
  */
@@ -19,6 +53,22 @@ function item(icon, title, desc, action) {
 
 export function renderHealth(s, q) {
   const rows = [];
+
+  // Đứng ĐẦU danh sách, trước mọi board lệch. Thứ tự của màn này là "cái gì làm bức
+  // tranh sai lệch nhiều nhất", và một lệnh ngoài hỏng làm sai lệch nhiều hơn bất kỳ
+  // board nào: `git` không chạy được thì MỌI dòng bên dưới đều đang đọc số của một
+  // lượt quét câm, mà chúng thì trông y hệt lúc bình thường.
+  for (const r of s.runFailures?.rows ?? []) {
+    const whyKey = RUN_WHY[r.reason];
+    if (!whyKey) continue; // `exit` — lệnh trả lời "không", không phải trục trặc
+    rows.push(
+      item(
+        '⌁',
+        t('health.runFail', { cmd: r.cmd, n: r.n }),
+        t('health.runFailDesc', { why: t(whyKey), where: r.sample ?? '', win: runWin(s.runFailures.sinceMs) }),
+      ),
+    );
+  }
 
   for (const p of s.projects) {
     if (p.parseError) rows.push(item('✖', t('health.parseError', { name: p.name }), p.parseError, copyCode('/now update')));

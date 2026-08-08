@@ -384,6 +384,18 @@ async function readFirstTokenDate(home = HOME) {
 let cache = null;
 
 /**
+ * Chữ ký của `cache`, giữ NGOÀI object trả về.
+ *
+ * Nó từng là một trường trong chính object ấy, và vì object ấy đi thẳng vào `state.usage`
+ * nên chữ ký đi theo luôn ra SSE: đo trên máy này **118 KB, 22,7% cả payload**, gửi cho
+ * mỗi tab mỗi lượt quét — trong khi client không có một dòng nào đọc tới nó. Chữ ký dài
+ * vì nó liệt kê từng transcript kèm offset (`inputSignature`), tức nó lớn lên theo số
+ * file trên đĩa; giữ nó trong payload là để một cuốn sổ nội bộ của server phình ra trên
+ * đường truyền của người dùng.
+ */
+let cacheSig = null;
+
+/**
  * Chữ ký của ĐẦU VÀO một lượt quét — thứ quyết định có phải cộng lại hay không.
  *
  * Trước đây chỗ này là một cái đồng hồ (`USAGE_TTL_MS = 15 s`), mà nhịp quét nền là 30
@@ -449,7 +461,7 @@ export async function collectUsage({ force = false, hosts = null, windows = [] }
     hosts?.size ?? 0,
     winSig,
   );
-  if (!force && cache && cache.inSig === inSig) return cache;
+  if (!force && cache && cacheSig === inSig) return cache;
 
   // Khử trùng lặp XUYÊN file: mỗi lần `--resume` là một bản sao đầy đủ của lịch
   // sử cũ nằm dưới một sessionId mới.
@@ -594,11 +606,13 @@ export async function collectUsage({ force = false, hosts = null, windows = [] }
   const first = await readFirstTokenDate();
   const onDisk = rows.reduce((min, r) => (r.day && (min === null || r.day < min) ? r.day : min), null);
 
+  // Đầu vào của chính lượt này — lượt sau so với nó để biết có phải cộng lại không.
+  // Để ngoài `cache`, xem chú thích ở `cacheSig`.
+  cacheSig = inSig;
+
   cache = {
     ok: true,
     scannedAt: Date.now(),
-    /** Đầu vào của chính lượt này — lượt sau so với nó để biết có phải cộng lại không. */
-    inSig,
     /** Sổ app chủ lớn lên thì bảng "nơi mở Claude" đổi theo — cache phải biết mà bỏ đi. */
     hostCount: hosts?.size ?? 0,
     winSig,

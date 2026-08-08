@@ -667,18 +667,65 @@ console.log(
     `${first.stats.hotDecisions} quyết định nóng · quét trong ${first.buildMs}ms\n`,
 );
 
-// Trạng thái git (commit mới, file bẩn) không sinh sự kiện ở thư mục ta theo dõi
-// nên vẫn cần một nhịp quét nền; danh sách watcher cũng được vá lại theo dự án mới.
-setInterval(async () => {
-  const s = await getState({ force: true });
-  await installWatchers(s);
-  broadcast(s);
-  // Mốc nghỉ phải chạy ở NHỊP NỀN, không chỉ lúc ai đó mở popover. Nếu chỉ quan sát
-  // trong `/api/pet` thì cắm mặt làm ba tiếng không mở popover lần nào sẽ không sinh
-  // được lượt quan sát nào, và tới lúc mở ra thanh tập trung vẫn đầy — tức lời nhắc câm
-  // đúng vào ca nó cần lên tiếng nhất.
-  //
-  // Nuốt lỗi: sổ hỏng hay đĩa đầy thì dashboard vẫn phải chạy. Cả lớp trò chơi này là
-  // phần thêm, không được phép kéo theo phần số liệu.
-  await petLock(() => withPet(null)).catch(() => {});
-}, 30000).unref?.();
+/* ── Hai nhịp nền, hai công việc khác nhau ────────────────────────────────────
+   Trước đây cả hai đi chung một `setInterval` 30 giây, và chuyện đó chặn `B18`: giãn
+   nhịp quét lúc vắng người xem thì kéo theo mốc nghỉ giãn y hệt — mà ca "không mở tab
+   nào" chính là ca mốc nghỉ cần chạy nhất. Xem chú thích ở `petTick`.
+
+   Chỉ có `/api/stream` (dashboard) mở SSE. Popover thanh menu gọi `fetch` tới `/api/pet`
+   và `/api/state`, KHÔNG giữ kết nối — nên "0 client" là trạng thái thường ngày của
+   người chỉ dùng app thanh menu, không phải ca hiếm. */
+
+/** Nhịp quét nền: có người xem / không có ai xem. */
+const SCAN_MS = { watched: 30_000, idle: 60_000 };
+
+/**
+ * Lượt quét nền — thứ duy nhất bắt được trạng thái git (commit mới, file bẩn), vì nó
+ * không sinh sự kiện ở thư mục nào ta theo dõi. Danh sách watcher cũng vá lại ở đây.
+ *
+ * `setTimeout` tự hẹn lại chứ không phải `setInterval`, vì chu kỳ đổi theo số tab đang
+ * mở — đọc `clients.size` ở đầu MỖI lượt.
+ *
+ * Bắt lỗi là bắt buộc chứ không phải cho gọn: bản `setInterval` cũ để một lượt hỏng
+ * thành unhandled rejection rồi lượt sau vẫn chạy, còn ở đây cái hẹn kế tiếp nằm SAU
+ * chỗ ném — nuốt trượt một lỗi là tắt hẳn nhịp nền, im lặng, tới lúc khởi động lại.
+ *
+ * KHÔNG hẹn lại khi tab đầu tiên vào, dù cái hẹn đang chờ lúc đó còn tới 60 giây nữa
+ * mới nổ. Tab đầu đã có `scheduleRefresh(0)` dựng ngay một lượt tươi, nên thứ người ta
+ * nhìn không hề cũ; phần chờ chỉ là lượt quét nền KẾ TIẾP, đúng một lần. Đổi lại, hẹn
+ * lại từ trong handler là đụng `scanTimer` trước khi dòng khai báo nó chạy xong — cổng
+ * mở TRƯỚC lượt quét đầu (cố ý, xem chú thích ở `server.on('error')` phía trên), nên
+ * request tới trong 5 giây ấy là ca có thật, và nó sẽ ném ReferenceError.
+ */
+let scanTimer = null;
+function scheduleScan() {
+  scanTimer = setTimeout(async () => {
+    try {
+      const s = await getState({ force: true });
+      await installWatchers(s);
+      broadcast(s);
+    } catch (err) {
+      console.error('[now-dash] lượt quét nền lỗi:', err.message);
+    }
+    scheduleScan();
+  }, clients.size ? SCAN_MS.watched : SCAN_MS.idle);
+  scanTimer.unref?.();
+}
+scheduleScan();
+
+/**
+ * Mốc nghỉ của lớp trò chơi — giữ 30 giây, KHÔNG giãn theo số tab.
+ *
+ * Nó phải chạy ở nhịp nền chứ không chỉ lúc ai đó mở popover: cắm mặt làm ba tiếng
+ * không mở lần nào thì sẽ không sinh được lượt quan sát nào, và tới lúc mở ra thanh tập
+ * trung vẫn đầy — tức lời nhắc câm đúng vào ca nó cần lên tiếng nhất. Mà "ba tiếng không
+ * mở gì" chính là ca 0 client SSE, tức đúng ca `SCAN_MS.idle`. Buộc hai nhịp vào nhau là
+ * hạ độ phân giải của mốc nghỉ xuống 1 phút đúng lúc nó là thứ duy nhất còn chạy.
+ *
+ * Nuốt lỗi: sổ hỏng hay đĩa đầy thì dashboard vẫn phải chạy. Cả lớp trò chơi này là
+ * phần thêm, không được phép kéo theo phần số liệu.
+ */
+const PET_MS = 30_000;
+setInterval(() => {
+  petLock(() => withPet(null)).catch(() => {});
+}, PET_MS).unref?.();

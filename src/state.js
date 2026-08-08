@@ -18,7 +18,7 @@ import { collectPlans } from './collect/plans.js';
 import { collectEditors } from './collect/editors.js';
 import { syncHosts } from './collect/hosts.js';
 import { appRunning } from './collect/procs.js';
-import { mapLimit, git } from './lib/sh.js';
+import { mapLimit, git, drainRunFailures } from './lib/sh.js';
 
 const HEAT_RANK = { now: 0, soon: 1, later: 2 };
 
@@ -523,6 +523,26 @@ export async function buildState({ watched = true, badge = false } = {}) {
     p.openIn.sort();
   }
 
+  // Hội thoại Antigravity chỉ được serialize MỘT lần.
+  //
+  // Mỗi hội thoại vốn nằm hai chỗ trong cùng một payload: `antigravity.convos` — danh
+  // sách đầy đủ mà màn Công cụ đọc — và `projects[].convos` / `unassignedConvos`, tức
+  // CHÍNH những object ấy gom lại theo dự án. Đo trên máy này: 65,9 KB đi đúp, 12,7%
+  // payload. Tỉ lệ ấy đi theo dữ liệu (ở đây chưa hội thoại nào gán được dự án nên hai
+  // danh sách trùng khít), nhưng chuyện đi đúp thì không — nó là hình dạng của state.
+  //
+  // Hai chỗ sau đổi thành danh sách id, vì chúng là cách GOM chứ không phải nguồn.
+  // Đổi TÊN trường luôn, không giữ `convos` với kiểu mới: một chỗ đọc sót sẽ nhận
+  // `undefined` rồi ra danh sách rỗng, thay vì nhận mảng chuỗi rồi vẽ ra một hàng loạt
+  // thẻ trống — hỏng im lặng khó tìm hơn hỏng thấy được.
+  //
+  // Chuyển ở ĐÂY, không sớm hơn: cả khối `counts` lẫn `openIn` phía trên đang đọc
+  // trường thật của từng object.
+  for (const p of live) {
+    p.convoIds = p.convos.map((c) => c.id);
+    delete p.convos;
+  }
+
   return {
     generatedAt: Date.now(),
     buildMs: Date.now() - t0,
@@ -548,7 +568,14 @@ export async function buildState({ watched = true, badge = false } = {}) {
     agTurns,
     agQuota,
     plans,
-    unassignedConvos,
+    unassignedConvoIds: unassignedConvos.map((c) => c.id),
+    /**
+     * Các lượt gọi tiến trình ngoài đã hỏng trong cửa sổ vừa rồi — xem `lib/sh.js`.
+     *
+     * Vét sổ ở ĐÂY, cuối lượt dựng, là chỗ duy nhất gọi `drainRunFailures`. Gọi thêm
+     * chỗ nào nữa là hai người đọc cùng vét một cuốn sổ và mỗi người mất một nửa.
+     */
+    runFailures: drainRunFailures(),
     stats: {
       projects: live.length,
       sessions: sessions.length,

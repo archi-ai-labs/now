@@ -33,6 +33,7 @@
  *   đủ dữ liệu để tin              | đáng tin                            | trustworthy
  *   sổ mở sau cùng (đặt nhịp cổng) | sổ mở muộn nhất                     | youngest ledger
  *   tiêu hết hạn mức               | tiêu hết là mục tiêu                | the GOAL, not an alarm
+ *   spawn git/ps/sqlite3 ra ngoài  | lệnh ngoài                          | external command
  *
  * "túi", "hồ", "song sinh", "cận dưới" vẫn còn trong code/docs/tên nội bộ (tableTwin,
  * bucketId) — đó là chữ cho dev, không lên màn. Luật văn phong đầy đủ: khối
@@ -929,6 +930,15 @@ const DICT = {
     'health.statScan': 'Quét',
     'health.clean': 'Không có gì cần dọn',
     'health.cleanHint': 'Board tươi, worktree sạch, không repo nào bị bỏ quên.',
+    'health.runFail': (o) => `Lệnh ${o.cmd} hỏng ${o.n} lượt`,
+    'health.runFailDesc': (o) => `${o.why}${o.where ? `, ví dụ ở ${o.where}` : ''}. Đếm trong ${o.win} vừa qua.`,
+    'health.runTimeout': 'Chạy quá lâu nên bị cắt ngang',
+    'health.runNotFound': 'Không tìm thấy lệnh — chưa cài, hoặc PATH của server không có nó',
+    'health.runNoAccess': 'Không đủ quyền chạy',
+    'health.runOverflow': 'In ra nhiều hơn mức server chịu nhận',
+    'health.runSpawn': 'Không khởi động được tiến trình',
+    'health.runWinSec': (o) => `${o.n} giây`,
+    'health.runWinMin': (o) => `${o.n} phút`,
     'health.orphans': (o) => `${o.n} repo còn hoạt động, chưa có NOW board`,
     'health.orphanTitle': (o) => `Commit cuối trên nhánh ${o.branch} — chép lệnh mở Claude ở đây`,
     'health.orphanAria': (o) => `Chép lệnh mở Claude ở ${o.name} — commit cuối ${o.ago} trước, nhánh ${o.branch}`,
@@ -2607,6 +2617,15 @@ const DICT = {
     'health.statScan': 'Scan',
     'health.clean': 'Nothing to tidy',
     'health.cleanHint': 'Boards fresh, worktrees clean, no repo forgotten.',
+    'health.runFail': (o) => `${o.cmd} failed ${o.n}×`,
+    'health.runFailDesc': (o) => `${o.why}${o.where ? `, e.g. at ${o.where}` : ''}. Counted over the last ${o.win}.`,
+    'health.runTimeout': 'Ran too long and was cut off',
+    'health.runNotFound': 'Command not found — not installed, or missing from the server PATH',
+    'health.runNoAccess': 'Not allowed to run it',
+    'health.runOverflow': 'Printed more than the server accepts',
+    'health.runSpawn': 'Could not start the process',
+    'health.runWinSec': (o) => `${o.n}s`,
+    'health.runWinMin': (o) => `${o.n} min`,
     'health.orphans': (o) => `${o.n} active repos with no NOW board`,
     'health.orphanTitle': (o) => `Last commit on branch ${o.branch} — copy the command to open Claude here`,
     'health.orphanAria': (o) => `Copy the command to open Claude in ${o.name} — last commit ${o.ago} ago, branch ${o.branch}`,

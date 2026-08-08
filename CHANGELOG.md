@@ -9,6 +9,39 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+Three items off the backlog — `B13`, `B14`, `B18`. All three turned out to be specified
+against numbers that had since moved; the notes in [`BACKLOG.md`](BACKLOG.md) record what
+each one actually was once measured again.
+
+### Added
+
+- **Failed external commands now say why.** `run()` collapsed every failure into an empty
+  string, so "not a git repo" and "git is not installed" reached the screen as the same
+  sentence. `src/lib/sh.js` now classifies — timeout, not-found, no-access, overflow, exit,
+  spawn — and the Health view leads with anything that is not a plain non-zero exit. A
+  non-zero exit is a valid answer, not a malfunction: it is what `git rev-parse` returns in
+  a directory that is not a repo, the most common outcome of any scan.
+
+### Changed
+
+- **The SSE payload is a third smaller: 519.3 → 344.3 KB.** Neither of the two heavy parts
+  was data. One was a memo cache key (118 KB, 22.7%) that lived inside the object shipped to
+  every tab and that no client ever read; it grew with the number of transcripts on disk.
+  The other was one list of conversations serialized twice (65.9 KB) — `projects[].convos`
+  and `unassignedConvos` now carry ids, because they are groupings and `antigravity.convos`
+  is the source. The `/api/project/<id>` endpoint the original entry proposed was not built
+  and is not needed yet.
+- **The background scan drops to one minute when no tab is open**, and the game layer's
+  break tick keeps its own 30-second timer. They shared one interval, which is what had
+  blocked this: "head down for three hours with nothing open" is exactly the case the break
+  tick exists for, and exactly the case the slower scan creates. Only the dashboard holds an
+  SSE connection — the menu-bar popover polls — so no-tabs-open is the ordinary state for
+  anyone using only the menu bar.
+
+### Fixed
+
+- Tests: 476 → 491.
+
 ## [1.1.0] — 2026-08-07
 
 The menu-bar app gets a switch, the plugin moves in next door, and the butler
