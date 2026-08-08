@@ -157,6 +157,37 @@ async function loadPet() {
 }
 
 /**
+ * Khai một động tác nghỉ từ hàng nút trong popover — cùng cửa POST mà màn Cửa hàng dùng.
+ *
+ * Server trả sổ mới NGAY trong hồi đáp (kể cả khi từ chối), nên không có lượt hỏi lại nào:
+ * nhận, đóng dấu, vẽ. Bị từ chối thì cũng không cần một dòng lỗi riêng — hai lý do từ chối
+ * duy nhất là "đang nghỉ rồi" và "đang ăn dở", mà cả hai đều tự hiện ra bằng chính bức
+ * tranh sau lượt vẽ: quản gia đang cầm cái bát hay đang đứng ngoài công viên. Riêng ca
+ * quãng-nghỉ-cũ-chưa-chốt thì không tồn tại ở cửa này: withPet chốt mọi quãng đã hết giờ
+ * TRƯỚC khi làm việc mới, nên cú bấm luôn gặp một cuốn sổ sạch.
+ *
+ * Mạng hỏng thì im lặng giữ nguyên màn hình — cùng luật với loadPet ngay trên: bản đang
+ * bày vẫn đúng hơn một khối báo lỗi thế chỗ nó.
+ */
+async function startMove(kind) {
+  try {
+    const res = await fetch('/api/pet', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'break', kind }),
+    });
+    if (!res.ok) return;
+    const fresh = (await res.json()).pet ?? null;
+    if (!fresh) return;
+    pet = stampPet(fresh);
+    savePet(pet);
+    render();
+  } catch {
+    /* không gửi được thì thôi — popover đang bày bản đúng gần nhất */
+  }
+}
+
+/**
  * Khai kích thước cho app Swift — trang ĐẨY, app không hỏi.
  *
  * App từng hỏi trong `didFinish` và luôn nhận về đúng một con số. `didFinish` báo
@@ -187,6 +218,13 @@ new ResizeObserver(reportSize).observe(root);
 // mất ngay sau đó.
 root.addEventListener('click', (e) => {
   if (!state) return;
+  // Nút nghỉ đứng trước các nút vỏ: nó là nút duy nhất trong cửa sổ này ĐỔI SỔ chứ không
+  // đổi cách nhìn, và nó phải bắt được cả cú bấm trúng chữ con bên trong.
+  const mv = e.target.closest('[data-mb-move]');
+  if (mv) {
+    startMove(mv.dataset.mbMove);
+    return;
+  }
   // Ngôn ngữ trước tab: `setLang` tự ghi `localStorage` và tự đặt `lang` trên <html>, nên ở
   // đây chỉ còn đúng một việc là vẽ lại. Không cần `onLangChange` — chỗ duy nhất đổi ngôn
   // ngữ trong cửa sổ này là chính cú bấm vừa rồi.

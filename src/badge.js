@@ -8,6 +8,7 @@
 //
 // Server import một module của TRÌNH DUYỆT, cố ý — xem đầu `server.js`.
 import { bindingOf, degradedKey, wasteOf, usedText } from '../public/lib/quota.js';
+import { restStageOf } from '../public/lib/petmath.js';
 import { t } from '../public/lib/i18n.js';
 
 // Ký hiệu dẫn đứng trước số, và nó KHÔNG trang trí: theme của máy này là daltonized,
@@ -22,7 +23,7 @@ const BADGE_MARK = { cold: '▽', slack: '◇', full: '●', over: '▲', unknow
  * của cửa sổ ràng buộc. Đúng luật 1 và luật 2 của `public/lib/quota.js` — số dẫn là đã
  * tiêu, màu đo bỏ phí.
  */
-export function badgeOf(s, now = Date.now()) {
+export function badgeOf(s, now = Date.now(), pet = null) {
   const q = s?.quota;
   const bind = q?.ok ? bindingOf(q) : null;
   const verdict = bind?.verdict ?? 'unknown';
@@ -60,5 +61,22 @@ export function badgeOf(s, now = Date.now()) {
     // popover thì chỉ là hai cái nút giống hệt nhau). Hai con số này vẫn đi kèm để
     // tooltip và popover khỏi phải hỏi thêm một lượt /api/state.
     work: { awake, hot },
+    // ── Ngồi lâu — kênh duy nhất của lời nhắc nghỉ đi được RA NGOÀI popover ──
+    //
+    // Trước trường này, toàn bộ hệ nhắc nghỉ (thanh tập trung, câu nhắc, năm động tác có
+    // kiểm) nằm SAU cú bấm mở popover — tức nó chỉ nhắc được người đã chủ động hỏi, mà
+    // người cắm mặt ba tiếng không mở gì mới là người nó sinh ra để nhắc. Đây đúng là ca
+    // "câm đúng lúc cần lên tiếng nhất" đã ghi ở chú thích PET_MS bên server.js: mốc nghỉ
+    // được ĐO đều đặn rồi, nhưng chưa có đường BÁO nào.
+    //
+    // `stage` là quyết định đã tính xong (thang ở restStageOf — ba bậc suy từ chu kỳ 90
+    // phút), app Swift chỉ in lại — cùng ranh giới "app không biết luật nào" đã khai ở đầu
+    // NowMenuBar.swift. Đang giữa một động tác nghỉ thì bậc về null: người vừa bấm "đi bộ"
+    // mà icon vẫn giục là cái huy hiệu cãi lại chính cú bấm nó vừa xin. Trò chơi tắt
+    // (`on: false`) thì cả trường về null — tắt trò chơi là tắt mọi bề mặt của nó, không
+    // riêng gì popover.
+    rest: pet?.on
+      ? { satMin: pet.satMin, stage: pet.doing?.kind === 'move' ? null : restStageOf(pet.satMin) }
+      : null,
   };
 }

@@ -11,6 +11,26 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **The sit-too-long ladder now reaches the menu-bar icon.** Until now every part of the
+  break system — the focus bar, the nudge line, the five verified moves — lived *behind*
+  the click that opens the popover, which means it only ever reminded people who had
+  already asked. Three stages, every threshold derived from the 90-minute cycle rather
+  than invented: minute 70 (alert phase over — the same boundary the focus bar draws) puts
+  an amber dot on the icon, minute 90 (a full cycle) turns it into a red disc with an
+  exclamation mark, minute 180 (two cycles without one counted break) tints the whole
+  badge red. The stage is decided server-side (`rest` on `/api/badge`); the Swift app
+  keeps its no-rules boundary and just paints. Clears the moment a verified break lands,
+  ten silent minutes pass, or the game is off; while a move is running the icon stays
+  quiet instead of nagging the person who just obeyed it. Colored stages leave template
+  mode — a first for this icon — and the snapshot harness caught the one real trap: colors
+  must stay *dynamic* and resolve inside the button's own draw pass, not be resolved at
+  paint time against the app's appearance (a bare binary resolves to Aqua and the text
+  vanishes on a dark bar; measured, reverted, documented in place).
+- **The five free moves are now one click from the icon.** The row appears in the popover
+  under the nudge line, exactly when the nudge points at the park and nothing is already
+  running — previously the walk the reminder recommended was three surfaces away (popover
+  → shop → dashboard tab → park block).
+
 - **`./bin/now-dash upgrade`** — one command for existing installs, closing the gap where
   upgrading required knowing whether a given pull needs the compiler (`app/`, `launchd/`,
   `bin/`, the icon — measured: v1.0.1 → v1.1.1 changes all three, v1.1.0 → v1.1.1 none)
@@ -22,6 +42,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the port from the plist rather than assuming 4400, and notices the
   pulled-yesterday-but-never-restarted service by comparing its start time against the
   newest server-side commit.
+
+### Changed
+
+- **The butler only thinks when there is news.** Opening the popover used to guarantee a
+  bubble: one status line plus two time-of-day filler sentences on a 42-second rotation —
+  and the filler's own i18n contract admits it carries no information. Now: all quiet →
+  no bubble at all; hungry or past the alert phase → exactly one status sentence, standing
+  still (a lone sentence on a rotation is 36 seconds of blank where the one thing worth
+  reading should be); eating or resting → the full three-sentence rotation stays, because
+  it narrates an action the user just clicked and lives for one minute. The eight
+  time-of-day sentences are gone from both languages.
+- Tests: 510 → 513.
 
 ## [1.1.1] — 2026-08-08
 

@@ -319,10 +319,16 @@ const DICT = {
     // người nói, và hai câu cùng nói một điều trong một bộ ba xoay vòng thì bộ ba ấy chỉ
     // còn hai câu.
     //
+    // CHỈ CÒN BỐI CẢNH VIỆC. Tám câu theo buổi (dawn/day/dusk/night) từng đứng ngay dưới
+    // đây và đã GỠ ở lượt "chỉ nói khi có tin": chúng tự khai trong luật cũ của nhóm rằng
+    // mình không chở tin nào, mà một bong bóng nổi lên ở MỌI lần mở popover thì chính tần
+    // suất là thứ người dùng gọi tên. Sáu bối cảnh còn lại đều là một VIỆC người dùng vừa
+    // bấm — sống đúng một phút, và trong phút ấy có chuyện thật để kể.
+    //
     // Luật của cả nhóm: **không câu nào được chở tin mà bức tranh không vẽ ra.** Một câu
     // nghĩ nhắc tới cơn mưa là dựng ra một hệ thời tiết không tồn tại; nhắc tới người qua
-    // đường là mượn thứ chỉ có trên bản đồ thị trấn. Chúng chỉ được nói về đúng thứ đang ở
-    // trong khung: mặt trời, đám mây, ngôi sao, buổi trong ngày, và chính việc anh ta đang làm.
+    // đường là mượn thứ chỉ có trên bản đồ thị trấn. Chúng chỉ được nói về đúng việc anh
+    // ta đang làm.
     //
     // TRẦN ĐỘ DÀI: **46 ký tự**, và nó là một phép đo hình học chứ không phải khẩu vị. Bong
     // bóng rộng 150px ở cỡ chữ 11px, tức ~26 ký tự một dòng; câu dài nhất hiện có (bản EN của
@@ -340,14 +346,6 @@ const DICT = {
     'pet.think.walk.2': 'Nghĩ ngợi lúc đi bộ dễ hơn lúc ngồi.',
     'pet.think.sun.1': 'Nắng ấm phết. Đứng đây thêm chút nữa.',
     'pet.think.sun.2': 'Ánh sáng thật thì không màn hình nào giả được.',
-    'pet.think.dawn.1': 'Sáng sớm yên thật. Chưa ai gọi gì.',
-    'pet.think.dawn.2': 'Giờ này đầu còn sạch — để dành cho việc khó.',
-    'pet.think.day.1': 'Nắng lên tới nóc rồi đấy.',
-    'pet.think.day.2': 'Giữa trưa là lúc dễ ngồi quên giờ nhất.',
-    'pet.think.dusk.1': 'Trời xuống màu rồi.',
-    'pet.think.dusk.2': 'Sắp hết một ngày. Còn gì dở thì chốt nốt đi.',
-    'pet.think.night.1': 'Khuya rồi. Sao lên gần kín trời.',
-    'pet.think.night.2': 'Đêm yên thì gõ nhanh, nhưng mai trả nợ.',
     // ── Quản gia MÁCH MẸO ────────────────────────────────────────────────────────
     //
     // Tám câu, và chúng khác cả hai nhóm trên ở đúng một chỗ: **chúng nói với người đọc, không
@@ -409,6 +407,13 @@ const DICT = {
     'pet.move.sun': 'Ra chỗ có nắng',
     'pet.move.sun.why':
       'Ánh sáng mạnh là thứ có bằng chứng chống lại cú trũng đầu chiều, và với cú trũng ấy nó ăn đứt thêm một ly cà phê.',
+    // Tên NGẮN cho hàng nút nghỉ trong popover — năm nút chia nhau 340px nên mỗi tên phải
+    // đứng được trong một ô ~60px. Tên dài đầy đủ vẫn là pet.move.* (nằm ở title của nút).
+    'pet.moveShort.water': 'Nước',
+    'pet.moveShort.eyes': 'Mắt',
+    'pet.moveShort.stretch': 'Vươn vai',
+    'pet.moveShort.walk': 'Đi bộ',
+    'pet.moveShort.sun': 'Ra nắng',
     'pet.moveMin': (o) => `${o.n} phút`,
     'pet.moveBest': 'hợp lúc này',
     'pet.breakWatch': 'Rời máy đi. Hết giờ máy mới tính — bạn gõ cho Claude Code trong quãng này thì không tính. Claude tự chạy thì không sao.',
@@ -2060,14 +2065,6 @@ const DICT = {
     'pet.think.walk.2': 'Thinking comes easier walking than sitting.',
     'pet.think.sun.1': 'Warmer than it looks. A minute more here.',
     'pet.think.sun.2': 'Real light. No screen fakes that.',
-    'pet.think.dawn.1': 'Quiet this early. Nobody has asked yet.',
-    'pet.think.dawn.2': 'Head still clean. Save it for the hard bit.',
-    'pet.think.day.1': 'Sun is right overhead now.',
-    'pet.think.day.2': 'Midday is the easiest time to lose track.',
-    'pet.think.dusk.1': 'The sky is turning.',
-    'pet.think.dusk.2': 'Nearly done. Close what is half-open.',
-    'pet.think.night.1': 'Late. The stars are almost all out.',
-    'pet.think.night.2': 'Quiet nights type fast. Tomorrow pays for it.',
     // Mẹo — xem khối chú thích cùng tên ở bảng tiếng Việt.
     'pet.tip.claudeMd': 'Repeating a rule? Put it in CLAUDE.md instead.',
     'pet.tip.compact': 'Context getting long? /compact, then carry on.',
@@ -2110,6 +2107,11 @@ const DICT = {
     'pet.move.sun': 'Get into daylight',
     'pet.move.sun.why':
       'Bright light is what the evidence supports against the early-afternoon dip, and for that dip it beats another coffee.',
+    'pet.moveShort.water': 'Water',
+    'pet.moveShort.eyes': 'Eyes',
+    'pet.moveShort.stretch': 'Stretch',
+    'pet.moveShort.walk': 'Walk',
+    'pet.moveShort.sun': 'Daylight',
     'pet.moveMin': (o) => `${o.n} min`,
     'pet.moveBest': 'fits right now',
     'pet.breakWatch': 'Leave the machine. It only counts at the end — type anything to Claude Code during the window and it does not. Claude working on its own is fine.',

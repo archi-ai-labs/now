@@ -2489,6 +2489,13 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
 .mb-bubble.think { --think-cycle: 42s; }
 .mb-thought.t2 { animation-delay: -28s; }
 .mb-thought.t3 { animation-delay: -14s; }
+/* MỘT câu thì ĐỨNG YÊN. Từ lượt "chỉ nói khi có tin", bộ ba xoay vòng chỉ còn lúc đang
+   ăn/nghỉ; lúc chỉ có đúng một câu trạng thái (đói, hết nhịp) mà vẫn chạy vòng 42 giây
+   thì 36 giây trong đó là khoảng trống cho chính câu đang cần đọc. only-child là đúng
+   điều kiện ấy, tự suy từ DOM — chỗ dựng không phải gửi thêm cờ nào. Tắt animation thì
+   thẻ về style gốc: không khai opacity, tức 1, tức hiện — cùng cơ chế đã ghi ở nhánh
+   prefers-reduced-motion cuối file. */
+.mb-thought:only-child { animation: none; }
 @keyframes mb-think {
   0%, 14% { opacity: 1; translate: 0 0; }
   17%, 97% { opacity: 0; translate: 0 3px; }
@@ -3768,6 +3775,23 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
   border-top: 1px solid color-mix(in srgb, var(--skin) 20%, transparent);
 }
 .mb-nudge.focus-spent { color: var(--text); }
+/* HÀNG NÚT NGHỈ — đứng ngay dưới câu nhắc, cùng nền, để hai thứ đọc thành MỘT khối "đến
+   giờ rồi, đây là các cửa". Năm nút chia đều bề ngang: flex 1 chứ không cỡ cứng, vì bề
+   rộng popover là quyết định của CSS và đã có lần đổi. Nhãn trên là việc, dòng nghiêng
+   dưới là số phút gỡ được — đọc thẳng từ MOVES, xem chỗ dựng bên menubar-view.js. */
+.mb-moves {
+  display: flex; gap: 5px; margin: 0; padding: 2px 11px 10px;
+  background: var(--surface-2);
+}
+.mb-move {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 6px 2px 5px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); cursor: pointer;
+}
+.mb-move > b { font: 700 10.5px/1.15 var(--sans); color: var(--text-2); }
+.mb-move > i { font: italic 600 10px/1 var(--sans); color: var(--text-3); }
+.mb-move:hover { background: var(--accent-weak); }
+.mb-move:hover > b { color: var(--text); }
 
 /* ── Màn Cửa hàng ─────────────────────────────────────────────────────────── */
 /* `container-type` để dải thông số bên dưới hỏi được BỀ RỘNG CỘT, không phải bề rộng cửa

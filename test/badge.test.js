@@ -75,3 +75,23 @@ test('không có hạn mức nào trong trạng thái: vẫn trả huy hiệu, k
   assert.equal(b.quota.stale, true, 'không biết gì thì phải coi là số cũ, không phải số tươi');
   assert.deepEqual(b.work, { awake: 0, hot: 0 });
 });
+
+/**
+ * Trường `rest` — thang ngồi-lâu đi RA icon. Ba cửa phải đóng đúng:
+ * không sổ / trò chơi tắt → null (bản Swift cũ đọc badge mới cũng chỉ thấy thiếu một
+ * trường), đang giữa một động tác nghỉ → bậc null (icon không được giục người vừa nghe
+ * lời nó), còn lại → bậc do restStageOf quyết, đúng một nguồn.
+ */
+test('rest: không sổ hay trò chơi tắt thì null, không bịa số', () => {
+  assert.equal(badgeOf(healthy(), NOW).rest, null, 'không truyền sổ thì không có phần nghỉ');
+  assert.equal(badgeOf(healthy(), NOW, { on: false, satMin: 200 }).rest, null, 'tắt trò chơi là tắt cả icon');
+});
+
+test('rest: bậc theo số phút ngồi, và đang nghỉ dở thì icon phải im', () => {
+  const at = (satMin, doing = null) => badgeOf(healthy(), NOW, { on: true, satMin, doing }).rest;
+  assert.deepEqual(at(40), { satMin: 40, stage: null }, 'dưới mốc đầu là im lặng');
+  assert.deepEqual(at(95), { satMin: 95, stage: 'spent' });
+  assert.equal(at(95, { kind: 'move', id: 'walk', ms: 6e4, leftMs: 3e4 }).stage, null, 'vừa bấm đi bộ mà icon vẫn đỏ là huy hiệu cãi cú bấm');
+  // Đang ĂN thì khác đang nghỉ: cái bát không cắt mạch ngồi, bậc phải giữ nguyên.
+  assert.equal(at(95, { kind: 'food', id: 'pho', ms: 6e4, leftMs: 3e4 }).stage, 'spent');
+});

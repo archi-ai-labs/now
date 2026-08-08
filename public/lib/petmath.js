@@ -519,6 +519,39 @@ export function focusMoodOf(focus) {
 }
 
 /**
+ * Thang BÁO NGỒI LÂU cho icon thanh menu — ba bậc, cả ba SUY từ chu kỳ chứ không đặt tay:
+ *
+ * - `dip`   — phút 70: hết pha tỉnh, đúng cái vạch `FOCUS_DIP` đang kẻ trên thanh.
+ * - `spent` — phút 90: trọn một chu kỳ.
+ * - `over`  — phút 180: HAI chu kỳ liền không một quãng nghỉ nào được tính.
+ *
+ * Yêu cầu gốc là "tầm 60 phút thì bắt đầu nhắc". Phút 70 là mốc gần nhất CÓ NỀN (xem
+ * `FOCUS_MS`), và thêm một hằng 60 đứng cạnh nó là hai con số phải giải thích cho cùng một
+ * lời nhắc — vạch trên thanh ở chỗ này mà huy hiệu ngoài icon nổ ở chỗ kia thì người đọc
+ * tin cái vạch, đúng lý lẽ đã ghi ở `FOCUS_DIP`.
+ *
+ * Tính trên `satMin` chứ không trên `focus`, cố ý: hai thứ cùng suy từ `restedAt` nên
+ * thường trùng nhau, nhưng `focus` còn bị đoạn hồi (`ramp`) trộn trong 20 giây và bị cà
+ * phê kéo — còn số PHÚT NGỒI thì không có đoạn hồi nào. Một huy hiệu đỏ nhấp nháy theo một
+ * hoạt hình là một huy hiệu không ai tin. (Cà phê vẫn kéo lùi được cả `satMin` — nó dời
+ * chính `restedAt` — và thế là đúng: hoãn, không xoá, xem `wake` trong `src/pet.js`.)
+ */
+export const REST_STAGE_MIN = {
+  dip: Math.round(((1 - FOCUS_DIP) * FOCUS_MS) / 60000),
+  spent: Math.round(FOCUS_MS / 60000),
+  over: Math.round((2 * FOCUS_MS) / 60000),
+};
+
+/** Bậc hiện tại từ số phút ngồi liền — `null` là chưa tới mốc nào, im lặng. */
+export function restStageOf(satMin) {
+  const n = Number(satMin) || 0;
+  if (n >= REST_STAGE_MIN.over) return 'over';
+  if (n >= REST_STAGE_MIN.spent) return 'spent';
+  if (n >= REST_STAGE_MIN.dip) return 'dip';
+  return null;
+}
+
+/**
  * TRẠNG THÁI của quản gia — một cái tên, và một THỨ HẠNG viết ra.
  *
  * ## Vì sao phải có hàm này

@@ -18,7 +18,7 @@
 import { html } from './dom.js';
 import { pixels } from './pixel.js';
 import { t } from './i18n.js';
-import { FULL_MS, MOVES, phaseOf, rampAt, stateOf } from './petmath.js';
+import { FULL_MS, MOVES, rampAt, stateOf } from './petmath.js';
 
 /* ── Quản gia ─────────────────────────────────────────────────────────────────
 
@@ -502,8 +502,9 @@ const FACE_OF_STATE = {
   well: 'glad', busy: 'flat', hungry: 'crave', dip: 'wry', spent: 'doze', starving: 'sad', cheer: 'glad', off: 'doze',
 };
 const FACE_OF_CTX = {
+  // Chỉ còn bối cảnh VIỆC. Bốn buổi trời từng đứng đây đã đi cùng mấy câu nghĩ theo buổi
+  // — xem luật "chỉ nghĩ khi có tin" ở butlerThinks.
   eat: 'yum', water: 'calm', eyes: 'calm', stretch: 'glad', walk: 'glad', sun: 'calm',
-  dawn: 'glad', day: 'flat', dusk: 'flat', night: 'doze',
 };
 
 /** Vẻ mặt hiện giờ — một cửa cho cả bong bóng thoại lẫn bản đồ thị trấn. */
@@ -2573,31 +2574,40 @@ const THINK_MS = 20000;
 export const speaking = (pet) => Boolean(pet?.on) && URGENT.has(stateOf(pet));
 
 /**
- * Ba câu nghĩ, đã xoay sẵn — chỗ gọi chỉ việc rải ra và cho chúng thay phiên bằng CSS.
+ * Câu nghĩ — và từ lượt này, luật một dòng: **chỉ nghĩ khi có tin.**
+ *
+ * Bản trước lúc nào cũng trả bộ ba: câu trạng thái cộng hai câu theo BUỔI ("Sáng sớm yên
+ * thật…"), tức mở popover ra là chắc chắn có một bong bóng nổi lên. Người dùng gọi đúng
+ * tên: "không nhất thiết phát nào mở ra cũng nói một câu". Mà hai câu theo buổi thì tự
+ * khai trong luật của chính chúng ở i18n.js rằng chúng KHÔNG chở tin nào — một dòng chữ
+ * thường trực không chở tin là đúng thứ mà lý lẽ của cửa `sharp` bên `nudgeOf` đã cấm,
+ * chỉ là lần này nó lách qua bằng lối bong bóng thay vì lối câu nhắc.
+ *
+ * Ba ca, cắt theo "có gì để nói không":
+ *
+ * - **Đang yên (`well`, không việc)** → KHÔNG CÓ GÌ. Trả mảng rỗng, bầu trời sạch.
+ * - **Có chuyện chưa gấp (`hungry`/`dip`)** → đúng MỘT câu trạng thái, đứng yên chứ không
+ *   xoay: một câu đơn độc chạy vòng 42 giây là 36 giây trống cho đúng cái câu đang cần
+ *   đọc (CSS bắt ca này bằng only-child, không cần cờ nào từ đây).
+ * - **Đang làm (ăn / một động tác nghỉ)** → giữ nguyên bộ ba xoay vòng như cũ. Nó là lời
+ *   kể của chính hành động người dùng vừa bấm, sống đúng một phút, và hai câu bối cảnh
+ *   ở ca này nói về VIỆC chứ không về buổi trời.
+ *
+ * (Gấp thật — đói lả, kiệt nhịp — thì đã có bong bóng NÓI của `speaking`, không qua đây.)
  *
  * Trả `{ say, face }` chứ không trả chuỗi trần, từ lượt 18: mỗi câu mang theo vẻ mặt của
- * chính nó (xem `FACES`). Ghép ở đây chứ không để chỗ vẽ tự tra bảng, vì có HAI chỗ vẽ —
- * popover và bản đồ thị trấn — và hai bản tra bảng là hai bản sẽ lệch.
+ * chính nó (xem `FACES`). Câu trạng thái lấy mặt của TRẠNG THÁI, hai câu bối cảnh lấy mặt
+ * của BỐI CẢNH — một người vừa kiệt nhịp vừa đang ăn thì hai câu ấy mang hai vẻ mặt khác
+ * nhau, đúng như thật.
  *
- * Câu ĐẦU luôn là `butlerSays` — chính cái câu ngôi thứ nhất về trạng thái vốn đã có. Nó
- * làm xương sống của bộ ba: hai câu sau là bối cảnh (đang làm gì, hay đang là buổi nào),
- * mà bối cảnh không nói được "tôi đang thế nào". Đó cũng là lý do bảng `pet.says.*` không
- * bị thay: nó đổi CHỖ ĐỨNG, không đổi việc.
- *
- * Vẻ mặt đi theo cùng phép chia ấy: câu trạng thái lấy mặt của TRẠNG THÁI, hai câu bối cảnh
- * lấy mặt của BỐI CẢNH. Một người vừa kiệt nhịp vừa đang ăn thì hai câu ấy mang hai vẻ mặt
- * khác nhau — đúng như thật, và đó là chỗ cái bảng thứ hai kiếm được chỗ đứng của nó.
- *
- * Khoá bối cảnh lấy từ việc đang làm nếu có, không thì lấy buổi. Mã lạ trong sổ (sổ chép
- * tay, hay sổ của một bản cũ hơn) rơi về buổi chứ không rơi ra một chuỗi `pet.think.…`
- * hiện nguyên khoá trên màn hình — `t()` im lặng trả lại khoá khi thiếu, nên chỗ duy nhất
- * chặn được là ở đây.
+ * Mã lạ trong sổ (sổ chép tay, sổ của bản cũ hơn) rơi về câu trạng thái đơn — `t()` im
+ * lặng trả lại khoá khi thiếu, nên chỗ duy nhất chặn được là ở đây.
  */
 export function butlerThinks(pet, nowMs = Date.now()) {
   if (!pet?.on || speaking(pet)) return [];
   const d = pet.doing;
-  const key =
-    d?.kind === 'food' ? 'eat' : d?.kind === 'move' && Object.hasOwn(MOVES, d.id) ? d.id : phaseOf(new Date(nowMs).getHours());
+  const key = d?.kind === 'food' ? 'eat' : d?.kind === 'move' && Object.hasOwn(MOVES, d.id) ? d.id : null;
+  if (!key) return stateOf(pet) === 'well' ? [] : [{ say: butlerSays(pet), face: butlerFace(pet) }];
   const ctx = FACE_OF_CTX[key] ?? 'flat';
   const pool = [
     { say: butlerSays(pet), face: butlerFace(pet) },

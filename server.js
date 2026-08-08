@@ -525,7 +525,19 @@ async function handle(req, res) {
   // thì nới `QUOTA_TTL_MS` — không phải đóng cửa này, vì đóng lại là quay về số chết.
   if (url.pathname === '/api/badge') {
     try {
-      return json(res, 200, badgeOf(await getState({ watched: false, badge: true })));
+      const state = await getState({ watched: false, badge: true });
+      // Sổ quản gia đi kèm huy hiệu: thang ngồi-lâu trên icon đọc từ đây (xem `rest` trong
+      // src/badge.js). Qua petLock như mọi cửa khác của sổ; đi cả đường withPet chứ không
+      // chỉ đọc file, để chính lượt hỏi của icon cũng chốt được quãng nghỉ vừa hết giờ —
+      // app Swift hỏi mỗi 30 giây, tức huy hiệu tự tắt chậm nhất nửa phút sau khi nghỉ đủ.
+      // Sổ hỏng thì huy hiệu chỉ thiếu phần nghỉ, không được kéo đổ phần hạn mức.
+      let pv = null;
+      try {
+        ({ view: pv } = await petLock(() => withPet(null)));
+      } catch {
+        /* phần nghỉ để trống — phần số liệu vẫn phải ra */
+      }
+      return json(res, 200, badgeOf(state, Date.now(), pv));
     } catch (err) {
       return json(res, 500, { ok: false, error: err.message });
     }

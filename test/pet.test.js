@@ -11,7 +11,7 @@ import {
 } from '../src/pet.js';
 import { ART, DISHES, FACE_NAMES, MOVE_ART, TIP_KEYS, TIP_KINDS, butlerFace, butlerLook, butlerRows, butlerSays, butlerTalk, butlerThinks, coinNum, dialRows, doingRing, faceRows, focusDial, hungerTray, markArt, nudgeOf, speaking, statCells, statWords, tipArt, trayRows } from '../public/lib/pet.js';
 import { rawText } from '../public/lib/dom.js';
-import { FOCUS_DIP, MOVE_HOME, MOVE_IDS, MOVE_PARK, livePet, moveForHour, stateOf, wakeOf, whereOf } from '../public/lib/petmath.js';
+import { FOCUS_DIP, MOVE_HOME, MOVE_IDS, MOVE_PARK, REST_STAGE_MIN, livePet, moveForHour, restStageOf, stateOf, wakeOf, whereOf } from '../public/lib/petmath.js';
 import { LOTS, PLACE_IDS, PLACES, ROADS, SCENE_SPOTS, STEP, TOWN_BOX, WALKERS, WELL, butlerArt, cellPos, onRoad, sizeOf } from '../public/lib/town.js';
 import { outlineRows } from '../public/lib/pixel.js';
 import { lastHumanIn } from '../src/collect/sessions.js';
@@ -2095,6 +2095,31 @@ test('đói lả có nét riêng và có bậc báo động riêng', () => {
 });
 
 /**
+ * Thang ngồi-lâu của icon — ba mốc phải SUY từ chu kỳ, và ranh giới phải khớp cái vạch
+ * trên thanh tập trung: huy hiệu nổ ở phút 70 mà vạch dip kẻ ở chỗ khác thì người đọc
+ * tin cái vạch (lý lẽ ở REST_STAGE_MIN bên petmath.js).
+ */
+test('thang ngồi-lâu: mốc suy từ chu kỳ, biên đúng từng phút, rác thì im', () => {
+  // Ba mốc là 70/90/180 — nhưng kiểm bằng phép SUY chứ không bằng ba số chép lại:
+  // đổi FOCUS_MS hay FOCUS_DIP thì thang phải tự đi theo, và bài test này không được vỡ.
+  assert.equal(REST_STAGE_MIN.dip, Math.round((1 - FOCUS_DIP) * 90), 'mốc đầu là hết pha tỉnh');
+  assert.equal(REST_STAGE_MIN.spent, 90, 'mốc hai là trọn chu kỳ');
+  assert.equal(REST_STAGE_MIN.over, 180, 'mốc ba là hai chu kỳ liền');
+
+  assert.equal(restStageOf(REST_STAGE_MIN.dip - 1), null, 'dưới mốc đầu một phút vẫn phải im');
+  assert.equal(restStageOf(REST_STAGE_MIN.dip), 'dip');
+  assert.equal(restStageOf(REST_STAGE_MIN.spent - 1), 'dip');
+  assert.equal(restStageOf(REST_STAGE_MIN.spent), 'spent');
+  assert.equal(restStageOf(REST_STAGE_MIN.over - 1), 'spent');
+  assert.equal(restStageOf(REST_STAGE_MIN.over), 'over');
+  assert.equal(restStageOf(REST_STAGE_MIN.over * 3), 'over', 'không có bậc thứ tư — quá hai chu kỳ là đã kịch thang');
+  // Sổ đời cũ hay sổ chép tay: satMin có thể thiếu hoặc là rác. Im lặng, không đoán.
+  for (const junk of [undefined, null, NaN, 'abc', -5]) {
+    assert.equal(restStageOf(junk), null, `rác ${String(junk)} phải ra im lặng`);
+  }
+});
+
+/**
  * Quản gia nói được về MỌI trạng thái mình có thể ở trong.
  *
  * Bong bóng thoại đọc `butlerLook(...).state`, mà bảng `LOOK` thì còn thêm món; thiếu một
@@ -2142,48 +2167,52 @@ test('sổ trạng thái trên popover chỉ có no và nhịp, không có ví',
  * lúc ấy popover có hai bong bóng chồng nhau ở cùng nửa phải bầu trời, và không ai thấy
  * cho tới khi đúng cái trạng thái ấy xảy ra thật — tức là lúc người dùng đang đói.
  *
- * Nên phép kiểm là một phép LOẠI TRỪ, không phải hai phép kiểm rời.
+ * Nên phép kiểm là một phép LOẠI TRỪ, không phải hai phép kiểm rời. Và từ lượt "chỉ nói
+ * khi có tin", NGHĨ có thêm ba mức của riêng nó: đang yên thì im hẳn (0), có chuyện chưa
+ * gấp thì đúng một câu trạng thái (1), đang làm một việc thì trọn bộ ba (3).
  */
-test('nói và nghĩ loại trừ nhau, và chỉ hai trạng thái gấp mới được nói', () => {
+test('nói và nghĩ loại trừ nhau, và nghĩ chỉ khi có tin', () => {
   const cases = [
-    [{ mood: 'fine', focusMood: 'sharp' }, false],
-    [{ mood: 'hungry', focusMood: 'sharp' }, false],
-    [{ mood: 'fine', focusMood: 'dip' }, false],
-    [{ mood: 'starving', focusMood: 'sharp' }, true],
-    [{ mood: 'fine', focusMood: 'spent' }, true],
+    // [sổ, có NÓI không, số câu NGHĨ]
+    [{ mood: 'fine', focusMood: 'sharp' }, false, 0],
+    [{ mood: 'hungry', focusMood: 'sharp' }, false, 1],
+    [{ mood: 'fine', focusMood: 'dip' }, false, 1],
+    [{ mood: 'starving', focusMood: 'sharp' }, true, 0],
+    [{ mood: 'fine', focusMood: 'spent' }, true, 0],
     // Đang dở việc thì `stateOf` trả `busy` và nó THẮNG cả đói lả — nên kể cả lúc gần kiệt
     // anh ta vẫn chỉ nghĩ. Đúng: một người vừa bấm ăn thì việc cần nói đã đang được làm.
-    [{ mood: 'starving', focusMood: 'spent', doing: { kind: 'food', id: 'pho', ms: 6e4, leftMs: 3e4 } }, false],
+    [{ mood: 'starving', focusMood: 'spent', doing: { kind: 'food', id: 'pho', ms: 6e4, leftMs: 3e4 } }, false, 3],
   ];
-  for (const [p, loud] of cases) {
+  for (const [p, loud, thinks] of cases) {
     const pet = { on: true, ...p };
     assert.equal(speaking(pet), loud, `sai bậc giọng cho ${JSON.stringify(p)}`);
-    assert.equal(butlerThinks(pet).length, loud ? 0 : 3, 'đang nói thì không được nghĩ, và ngược lại');
+    assert.equal(butlerThinks(pet).length, thinks, `sai số câu nghĩ cho ${JSON.stringify(p)}`);
   }
   assert.equal(speaking({ on: false }), false, 'trò chơi tắt thì không có giọng nào');
   assert.deepEqual(butlerThinks({ on: false }), [], 'trò chơi tắt thì không nghĩ');
 });
 
 /**
- * Bộ ba câu nghĩ phải ĐỦ CHỮ ở mọi bối cảnh, và phải XOAY theo đồng hồ.
+ * Câu nghĩ theo luật "chỉ nói khi có tin" — ba mức, và mức nào cũng phải ĐỦ CHỮ.
  *
- * Hai lỗi khác nhau cùng bị chặn ở đây:
+ * Ba lỗi khác nhau cùng bị chặn ở đây:
  *
  * 1. `t()` im lặng trả lại chính cái khoá khi thiếu chuỗi, nên một mã động tác chưa có câu
  *    sẽ hiện nguyên văn "pet.think.sun.1" trong bong bóng — không lỗi, không log.
- * 2. Sổ chép tay có thể mang một mã lạ. Nó phải rơi về buổi trong ngày, không rơi ra một
- *    khoá trần.
+ * 2. Đang yên mà vẫn nghĩ là tái phạm đúng cái vừa gỡ: tám câu theo buổi đã xoá khỏi
+ *    i18n, một nhánh code còn trỏ tới chúng sẽ bày khoá trần ra màn hình.
+ * 3. Sổ chép tay có thể mang một mã lạ. Nó phải rơi về một câu trạng thái đơn, không rơi
+ *    ra một khoá trần.
  */
-test('mỗi bối cảnh có đủ ba câu nghĩ, và mã lạ rơi về buổi trong ngày', () => {
+test('bối cảnh việc đủ ba câu, đang yên thì im, có chuyện thì một câu đứng', () => {
   const base = { on: true, mood: 'fine', focusMood: 'sharp' };
   const at = (h) => new Date(2026, 7, 6, h, 0, 0).getTime();
   const ctx = [
     { ...base, doing: { kind: 'food', id: 'pho', ms: 6e4, leftMs: 3e4 } },
     ...MOVE_IDS.map((id) => ({ ...base, doing: { kind: 'move', id, ms: 6e4, leftMs: 3e4 } })),
-    ...[7, 12, 17, 23].map((h) => ({ ...base, _h: h })),
   ];
   for (const p of ctx) {
-    const said = butlerThinks(p, at(p._h ?? 12));
+    const said = butlerThinks(p, at(12));
     assert.equal(said.length, 3);
     for (const s of said) {
       assert.ok(s.say && !s.say.startsWith('pet.'), `thiếu chuỗi: ${s.say}`);
@@ -2193,15 +2222,24 @@ test('mỗi bối cảnh có đủ ba câu nghĩ, và mã lạ rơi về buổi 
     }
     assert.equal(new Set(said.map((s) => s.say)).size, 3, 'ba câu phải khác nhau — trùng thì vòng xoay chỉ còn hai');
   }
-  // Mã lạ: hai câu bối cảnh phải rơi về BUỔI, không rơi ra khoá trần. Câu thứ ba thì khác —
-  // nó là `butlerSays`, và ở đây nó đúng là "đang dở việc" vì sổ vẫn khai có việc đang chạy.
-  const vi = tableOf('vi');
-  const odd = butlerThinks({ ...base, doing: { kind: 'move', id: 'constructor', ms: 6e4, leftMs: 3e4 } }, at(12)).map((s) => s.say);
-  assert.ok(odd.includes(vi['pet.think.day.1']) && odd.includes(vi['pet.think.day.2']), `mã lạ không rơi về buổi: ${odd}`);
+  // Đang yên → im tuyệt đối, ở MỌI buổi. Bốn giờ này từng là bốn bối cảnh nói chuyện trời.
+  for (const h of [7, 12, 17, 23]) {
+    assert.deepEqual(butlerThinks(base, at(h)), [], `đang yên lúc ${h}h mà vẫn nghĩ`);
+  }
+  // Có chuyện chưa gấp → đúng MỘT câu, là câu trạng thái, mang mặt thật.
+  const warn = butlerThinks({ ...base, mood: 'hungry' }, at(12));
+  assert.equal(warn.length, 1, 'đói vừa phải ra đúng một câu');
+  assert.ok(!warn[0].say.startsWith('pet.') && FACE_NAMES.includes(warn[0].face));
+  // Mã lạ trong sổ: rơi về câu trạng thái đơn (ở đây là "đang dở việc" — sổ vẫn khai có
+  // việc đang chạy), không dựng bộ ba từ những khoá không tồn tại.
+  const odd = butlerThinks({ ...base, doing: { kind: 'move', id: 'constructor', ms: 6e4, leftMs: 3e4 } }, at(12));
+  assert.equal(odd.length, 1, `mã lạ phải về một câu, ra ${odd.length}`);
+  assert.ok(!odd[0].say.startsWith('pet.'), `khoá trần lọt ra màn hình: ${odd[0].say}`);
 });
 
 test('mở popover ở hai lúc khác nhau thì câu nghĩ đầu tiên khác nhau', () => {
-  const pet = { on: true, mood: 'fine', focusMood: 'sharp' };
+  // Vòng xoay giờ chỉ còn ở bối cảnh VIỆC — người đang yên thì không có gì để xoay.
+  const pet = { on: true, mood: 'fine', focusMood: 'sharp', doing: { kind: 'food', id: 'pho', ms: 6e4, leftMs: 3e4 } };
   const t0 = new Date(2026, 7, 6, 12, 0, 0).getTime();
   // Cùng một ô 20 giây thì phải RA CÙNG MỘT BỘ: popover vẽ hai lượt (bản nhớ rồi bản mạng)
   // cách nhau vài trăm mili giây, và đổi câu giữa hai lượt là đổi ngay trước mắt người đọc.

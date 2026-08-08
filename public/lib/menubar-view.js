@@ -33,7 +33,7 @@ import {
   talkArt,
   wallet,
 } from './pet.js';
-import { phaseOf, whereOf } from './petmath.js';
+import { MOVES, MOVE_IDS, phaseOf, whereOf } from './petmath.js';
 import { nextTheme, themeMode } from './mbtheme.js';
 import { briefing, toolWindows } from './butler.js';
 import {
@@ -580,6 +580,24 @@ function scene(b, phase, pet, bump = 0, skyEcho = false) {
            thì cái đang cạnh tranh không còn là sự chú ý của người đọc mà là chỗ nhìn. Bậc ấy
            vẫn sống nguyên ở màn Cửa hàng, nơi nó có một cái nút để dẫn đi (xem town-alert). -->
       ${on && nudge ? html`<p class="mb-nudge focus-${pet.focusMood}">${nudge.say}</p>` : ''}
+      <!-- HÀNG NÚT NGHỈ - năm động tác có kiểm, ngay dưới câu nhắc vừa mời chúng.
+           Trước hàng này, con đường từ lời nhắc tới cái nút là ba bước qua hai bề mặt:
+           popover, bấm Cửa hàng, dashboard mở tab mới, cuộn tới công viên. Lời nhắc mời
+           một việc mà nút làm việc ấy ở tận bề mặt thứ ba thì lời mời không có tay nắm.
+           Mọc CÙNG câu nhắc và chỉ khi câu nhắc trỏ về công viên: đói lả thì việc cần làm
+           là ăn (nudge go=food) chứ không phải đứng dậy, còn đang dở một việc thì server
+           kiểu gì cũng từ chối (một lúc một việc, xem startBreak) - bày nút chỉ để bấm
+           vào một lời từ chối là dạy người ta thôi bấm. Cộng phút lấy từ chính MOVES,
+           không chép: bảng đổi thì nhãn theo. -->
+      ${on && nudge && nudge.go === 'park' && !pet.doing
+        ? html`<div class="mb-moves">
+            ${MOVE_IDS.map(
+              (id) => html`<button type="button" class="mb-move" data-mb-move="${id}" title="${t(`pet.move.${id}`)}">
+                <b>${t(`pet.moveShort.${id}`)}</b><i>+${Math.round(MOVES[id].back / 60000)}′</i>
+              </button>`,
+            )}
+          </div>`
+        : ''}
     </div>
   </div>`;
 }
