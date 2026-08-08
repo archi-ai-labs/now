@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseApiQuota, parseQuota, retryAfterMs } from '../src/collect/quota.js';
+import { forecastOf, forecastWith, parseApiQuota, parseQuota, retryAfterMs } from '../src/collect/quota.js';
 
 /**
  * Dữ liệu hạn mức khác mọi thứ khác trong dashboard: nó là ẢNH CHỤP, không phải sự
@@ -307,4 +307,102 @@ test('phần đã trôi bị kẹp trong 0–1 — vạch không được rơi r
   assert.equal(five(50, 5.5).elapsedFrac, 1, 'cửa sổ đã lăn');
   assert.equal(five(10, -1).elapsedFrac, 0, 'mốc reset xa hơn cả độ dài cửa sổ');
   assert.equal(parseQuota({ at: NOW, five_hour: { used_percentage: 4 } }, NOW).fiveHour.elapsedFrac, null);
+});
+
+/* ── Dự phóng theo nhịp: max(24h, 48h, tốc độ cũ) ───────────────────────────── */
+
+/**
+ * `forecastWith` chỉ khác `forecastOf` ở MỘT chỗ: vận tốc được phép lấy từ 24/48 giờ gần
+ * nhất khi chúng NHANH hơn trung bình từ đầu cửa sổ. Mọi ca không đo được — thiếu vệt, vệt
+ * chưa phủ, cửa sổ ngắn hơn quãng nhìn lại, nhịp gần chậm hơn — đều phải rơi về ĐÚNG kết
+ * quả cũ, không xấp xỉ: khác đường cũ mà không có phép đo nào đứng sau là bịa.
+ */
+
+const WK = 7 * D;
+
+/** Cửa sổ tuần đã trôi 5 ngày, còn 2 ngày — ca "nghỉ đầu tuần rồi cắm mặt cuối tuần". */
+const wkNow = NOW;
+const wkReset = wkNow + 2 * D;
+
+test('nghỉ 5 ngày rồi bùng 24 giờ: nhịp 24h thắng, dự phóng đi theo nó', () => {
+  const trail = [
+    { at: wkNow - 5 * D, used: 0 },
+    { at: wkNow - 2 * D, used: 2 },
+    { at: wkNow - 1 * D, used: 2 },
+    { at: wkNow - 12 * H, used: 6 },
+  ];
+  const f = forecastWith(10, wkReset, WK, wkNow, trail);
+  // tốc độ cũ 10%/5 ngày = 2%/ngày · nhịp 24h = (10−2)/1 ngày = 8%/ngày → thắng
+  assert.equal(f.known, true);
+  assert.equal(f.paceMs, 24 * H, 'quãng thắng phải được khai ra');
+  assert.ok(Math.abs(f.perHour - 8 / 24) < 1e-9);
+  assert.ok(Math.abs(f.projected - 26) < 1e-9, `10 + 8%/ngày × 2 ngày = 26, nhận ${f.projected}`);
+  assert.equal(f.willExhaust, false);
+});
+
+test('24 giờ im ắng nhưng 48 giờ có việc: nhịp 48h thắng', () => {
+  const trail = [
+    { at: wkNow - 5 * D, used: 0 },
+    { at: wkNow - 2 * D, used: 4 },
+    { at: wkNow - 1 * D, used: 20 },
+  ];
+  const f = forecastWith(20, wkReset, WK, wkNow, trail);
+  // 24h: (20−20)/1d = 0 · 48h: (20−4)/2d = 8%/ngày · cũ: 4%/ngày → 48h thắng
+  assert.equal(f.paceMs, 48 * H);
+  assert.ok(Math.abs(f.projected - (20 + (16 / (2 * D)) * 2 * D)) < 1e-9);
+});
+
+test('nhịp gần CHẬM hơn trung bình thì giữ nguyên đường cũ — max không có chiều xuống', () => {
+  // Cắm mặt đầu tuần rồi nghỉ: 50% trong 3 ngày đầu, hai ngày nay đứng im.
+  const trail = [
+    { at: wkNow - 5 * D, used: 0 },
+    { at: wkNow - 2 * D, used: 49 },
+    { at: wkNow - 1 * D, used: 50 },
+  ];
+  const f = forecastWith(50, wkReset, WK, wkNow, trail);
+  assert.deepEqual(f, forecastOf(50, wkReset, WK, wkNow), 'phải là CHÍNH kết quả cũ, không xấp xỉ');
+});
+
+test('không có vệt, hoặc vệt chưa phủ tới 24 giờ, đều rơi về đúng đường cũ', () => {
+  const base = forecastOf(30, wkReset, WK, wkNow);
+  assert.deepEqual(forecastWith(30, wkReset, WK, wkNow, null), base);
+  assert.deepEqual(forecastWith(30, wkReset, WK, wkNow, []), base);
+  // Vệt mới mở 6 tiếng — chưa với tới mốc 24h nào.
+  assert.deepEqual(forecastWith(30, wkReset, WK, wkNow, [{ at: wkNow - 6 * H, used: 28 }]), base);
+});
+
+test('khung 5 giờ tự rút về đường cũ — cả hai quãng nhìn lại đều dài hơn cửa sổ', () => {
+  const reset5 = wkNow + 2 * H; // đã trôi 3 giờ
+  const trail = [
+    { at: wkNow - 3 * H, used: 0 },
+    { at: wkNow - 1 * H, used: 40 },
+  ];
+  assert.deepEqual(forecastWith(50, reset5, 5 * H, wkNow, trail), forecastOf(50, reset5, 5 * H, wkNow));
+});
+
+test('lượt đọc lẻ trả số thấp hơn mốc so: vận tốc kẹp 0, không thành dự phóng âm', () => {
+  const trail = [
+    { at: wkNow - 5 * D, used: 0 },
+    { at: wkNow - 1 * D, used: 15 },
+  ];
+  assert.deepEqual(forecastWith(10, wkReset, WK, wkNow, trail), forecastOf(10, wkReset, WK, wkNow));
+});
+
+test('nhịp 24h đâm trần: willExhaust bật và mốc cạn tính theo nhịp MỚI', () => {
+  const trail = [
+    { at: wkNow - 5 * D, used: 0 },
+    { at: wkNow - 1 * D, used: 20 },
+  ];
+  const f = forecastWith(60, wkReset, WK, wkNow, trail);
+  // nhịp 24h = 40%/ngày → cạn 40% còn lại sau đúng 1 ngày, trước mốc reset 2 ngày
+  assert.equal(f.willExhaust, true);
+  assert.ok(Math.abs(f.exhaustInMs - D) < 1e-6);
+  assert.equal(f.exhaustAt, wkNow + f.exhaustInMs);
+});
+
+test('forecast chưa đoán được (early/rolled/unknown) thì vệt không cứu — giữ nguyên known:false', () => {
+  const trail = [{ at: wkNow - 1 * D, used: 5 }];
+  // Cửa sổ lăn kiểu AG: mốc reset luôn cách đủ một cửa sổ → phần đã trôi ≈ 0.
+  const f = forecastWith(38, wkNow + WK, WK, wkNow, trail);
+  assert.equal(f.known, false);
 });

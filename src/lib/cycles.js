@@ -60,7 +60,10 @@ export function foldCycles(map, kinds, now = Date.now()) {
     // Cùng phép suy với `cyclesOf`: độ phủ đo từ MỐC THỜI GIAN, không tin `elapsedFrac`
     // của lượt đọc — chu kỳ chỉ được nhìn mười phút đầu vẫn phải khai là theo hụt.
     const watchedTo = c.windowMs ? clamp01((c.windowMs - (c.resetsAt - c.lastAt)) / c.windowMs) : null;
-    rows.push({ ...c, watchedTo, partial: watchedTo == null || watchedTo < WATCHED_ENOUGH });
+    // Vệt mẫu ở lại sổ — nó là đầu vào của dự phóng, không phải dữ liệu của màn Nhìn lại,
+    // và mấy hàng này đi thẳng vào payload SSE (bài học `usage.inSig`, 118 KB).
+    const { trail, ...bare } = c;
+    rows.push({ ...bare, watchedTo, partial: watchedTo == null || watchedTo < WATCHED_ENOUGH });
   }
   return rows.sort((a, b) => a.resetsAt - b.resetsAt);
 }

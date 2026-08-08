@@ -127,6 +127,46 @@ export function rollsWith(prev, at, resetsAt, windowMs) {
   return Math.abs(drift - elapsed) <= ROLL_TOL_MS;
 }
 
+/**
+ * ## Vệt mẫu (`trail`) — lịch sử `(at, used)` trên bản ghi ĐANG CHẠY
+ *
+ * `forecastWith` (collect/quota.js) cần trả lời "24 giờ trước đã tiêu bao nhiêu" — câu hỏi
+ * về LỊCH SỬ các lượt đọc, thứ không ảnh chụp nào giữ. Sổ chu kỳ là chỗ duy nhất đứng nhìn
+ * mọi lượt đọc đi qua, nên vệt sống ở đây: mỗi lượt đọc mới gắn thêm một mẫu vào bản ghi
+ * của chu kỳ đang chạy.
+ *
+ * Một mẫu mỗi 15 phút là đủ mịn cho phép đo vận tốc 24/48 giờ, và giữ 49 giờ là đủ chở
+ * quãng nhìn lại dài nhất cộng một ô dư. Giá đo được: ≤196 mẫu × ~30 byte ≈ 6 KB cho một
+ * bản ghi đang chạy — sổ trên đĩa vẫn là vài KB, không phải cái 180 KB vừa dọn hôm nay.
+ *
+ * Khi thưa mẫu (đêm không ai xem, `watched` tắt) thì mốc so gần nhất TRƯỚC quãng được lấy,
+ * tức vận tốc trải trên quãng dài hơn — loãng đi chứ không bịa thêm. Đó là chiều sai chấp
+ * nhận được.
+ */
+const TRAIL_GRAIN_MS = 15 * 60_000;
+const TRAIL_KEEP_MS = 49 * 3600_000;
+
+/** Gắn một mẫu vào vệt: cắt mẫu quá 49 giờ, mỗi ô 15 phút giữ mẫu ĐẦU — mẫu cũ là mốc so. */
+export function pushTrail(prev, at, used) {
+  const out = [];
+  let bucket = null;
+  for (const s of prev ?? []) {
+    if (s.at < at - TRAIL_KEEP_MS) continue;
+    const b = Math.floor(s.at / TRAIL_GRAIN_MS);
+    if (b === bucket) continue;
+    bucket = b;
+    out.push(s);
+  }
+  if (Math.floor(at / TRAIL_GRAIN_MS) !== bucket) out.push({ at, used });
+  return out;
+}
+
+/** Vệt của bản ghi MỚI nhất một loại cửa sổ — đầu vào cho `forecastWith`. */
+export function trailOf(cycles, kind) {
+  if (!cycles?.size) return null;
+  return latestOf(cycles, kind)?.rec.trail ?? null;
+}
+
 /** Bản ghi mới nhất của một loại cửa sổ — mốc so cho `rollsWith`. */
 function latestOf(cycles, kind) {
   let hit = null;
@@ -265,6 +305,7 @@ export function bumpWindows(cycles, at, windows) {
       samples: (prev?.samples ?? 0) + 1,
       firstAt: prev?.firstAt ?? at,
       lastAt: at,
+      trail: pushTrail(prev?.trail, at, used),
       ...(extra ?? {}),
     });
   }
@@ -371,10 +412,20 @@ export function trimCycles(cycles, keep = QUOTA_CYCLES_KEEP, now = Date.now()) {
   return out;
 }
 
+/**
+ * Bản ghi ĐÃ CHỐT thì thôi chở vệt: dự phóng chỉ có nghĩa khi cửa sổ còn chạy, mà vệt chỉ
+ * để dự phóng. Cửa sổ lăn không bao giờ chốt nên giữ vệt — nó đã tự cắt theo 49 giờ.
+ */
+export function packCycles(cycles, now) {
+  return Object.fromEntries(
+    [...cycles].map(([k, c]) => (c.trail && c.resetsAt <= now && !c.rolling ? [k, { ...c, trail: undefined }] : [k, c])),
+  );
+}
+
 /** Ghi tạm rồi đổi tên — cùng khuôn với `writeRollup`, cùng lý do. */
 export async function writeCycles(cycles, file = QUOTA_LOG, now = Date.now()) {
   const trimmed = trimCycles(cycles, QUOTA_CYCLES_KEEP, now);
-  const body = { version: LOG_VERSION, updatedAt: now, cycles: Object.fromEntries(trimmed) };
+  const body = { version: LOG_VERSION, updatedAt: now, cycles: packCycles(trimmed, now) };
   await fs.mkdir(path.dirname(file), { recursive: true });
   const tmp = `${file}.tmp`;
   await fs.writeFile(tmp, JSON.stringify(body, null, 1));

@@ -155,6 +155,76 @@ export function forecastOf(used, resetsAt, windowMs, now) {
   };
 }
 
+/** Hai quãng nhìn lại của dự phóng theo nhịp. Xuất cho test. */
+export const PACE_LOOKBACKS_MS = [24 * 3600_000, 48 * 3600_000];
+
+/**
+ * Dự phóng theo nhịp NHANH NHẤT trong ba: từ đầu cửa sổ · 24 giờ qua · 48 giờ qua.
+ *
+ * Đường thẳng từ đầu cửa sổ (`forecastOf`) trả lời sai đúng một ca, và là ca thường gặp
+ * nhất trên máy này: nghỉ năm ngày đầu tuần rồi cắm mặt hai ngày cuối. Nhịp trung bình bị
+ * năm ngày nghỉ kéo bẹp, dự phóng nói "bỏ phí 90%" đúng lúc đang tiêu nhanh nhất — con số
+ * mất lòng tin ngay lượt đầu tiên nó sai kiểu đó.
+ *
+ * Lấy MAX chứ không phải trung bình có trọng số: mọi trọng số đều là một con số bịa phải
+ * giải thích, còn "nhịp nhanh nhất đo được gần đây" là một phép đo. Nó thiên về CAO — với
+ * hạn mức trả trước thì đó là chiều an toàn: "sẽ dùng hết" mà hụt còn đỡ hơn "sẽ bỏ phí"
+ * mà hụt, vì tiêu hết là đích chứ không phải nạn.
+ *
+ * Vận tốc một quãng = (đã tiêu bây giờ − đã tiêu ở mốc quãng trước) / thời gian thật giữa
+ * hai mẫu. Mốc so lấy từ VỆT mẫu (`trail`) mà sổ chu kỳ giữ trên bản ghi đang chạy — xem
+ * `pushTrail` trong `quotalog.js`. Không có vệt (sổ mới mở, server vừa cài) thì rơi êm về
+ * đúng đường cũ, không bịa.
+ *
+ * Quãng nhìn lại DÀI HƠN phần cửa sổ đã trôi thì bỏ: vận tốc của nó chính là tốc độ cũ.
+ * Nhờ vậy khung 5 giờ tự thoát — 24h lẫn 48h đều dài hơn cả cửa sổ, công thức tự rút về
+ * đường thẳng cũ, không cần nhánh riêng. Mọi ca `known: false` (early/rolled/unknown)
+ * cũng giữ nguyên — vệt không cứu được thứ chưa đủ điều kiện đoán. Riêng bucket cửa sổ
+ * lăn của AG thì KHÔNG được suy từ tên: `*-5h` mang mốc reset cách đủ một cửa sổ nên rơi
+ * vào `early`, còn `3p-weekly` mang mốc giữa cửa sổ và xưa nay vẫn `known:true` — với nó
+ * nhịp 24/48h chỉ kéo dự phóng LÊN, và cú kẹp 0 ở dưới chặn chuyện `used` tụt sinh số âm.
+ */
+export function forecastWith(used, resetsAt, windowMs, now, trail) {
+  const base = forecastOf(used, resetsAt, windowMs, now);
+  if (!base.known || !trail?.length) return base;
+
+  let perMs = used / base.elapsedMs; // tốc độ cũ — đường thẳng từ đầu cửa sổ
+  let paceMs = null;
+  for (const look of PACE_LOOKBACKS_MS) {
+    if (look >= base.elapsedMs) continue;
+    const target = now - look;
+    let mark = null;
+    for (const s of trail) {
+      if (s.at <= target) mark = s;
+      else break; // vệt xếp theo thời gian tăng — qua mốc là dừng
+    }
+    if (!mark) continue; // vệt chưa phủ tới quãng này: không đo được thì không đo
+    const dt = now - mark.at;
+    if (dt <= 0) continue;
+    // Kẹp 0: trong một cửa sổ cố định `used` chỉ tăng, nhưng một lượt đọc lẻ có thể trả
+    // thấp hơn — vận tốc âm là rác đo, không phải thông tin.
+    const v = Math.max(0, used - mark.used) / dt;
+    if (v > perMs) {
+      perMs = v;
+      paceMs = look;
+    }
+  }
+  if (paceMs == null) return base;
+
+  const projected = used + perMs * base.leftMs;
+  const exhaustInMs = used >= 100 ? 0 : perMs > 0 ? (100 - used) / perMs : null;
+  return {
+    ...base,
+    perHour: perMs * 3600_000,
+    projected,
+    willExhaust: projected > 100,
+    exhaustInMs: exhaustInMs != null && exhaustInMs < base.leftMs ? exhaustInMs : null,
+    exhaustAt: exhaustInMs != null && exhaustInMs < base.leftMs ? now + exhaustInMs : null,
+    /** Quãng đã thắng (ms). Vắng mặt = đường cũ thắng — tooltip nói được nguồn con số. */
+    paceMs,
+  };
+}
+
 /** Một cửa sổ hạn mức, đã quy đổi sang thứ giao diện dùng được. */
 function windowOf(used, resetsRaw, now, windowMs, extra) {
   if (typeof used !== 'number' || !Number.isFinite(used)) return null;

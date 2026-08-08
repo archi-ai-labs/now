@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { bumpCycles, bumpWindows, collapseRolling, cyclesOf, trimCycles, windowsIn } from '../src/collect/quotalog.js';
+import { bumpCycles, bumpWindows, collapseRolling, cyclesOf, packCycles, trailOf, trimCycles, windowsIn } from '../src/collect/quotalog.js';
 
 /**
  * Sổ hạn mức theo chu kỳ.
@@ -317,4 +317,56 @@ test('cửa sổ lăn không bao giờ lên danh sách chu kỳ ĐÃ CHỐT', ()
   const out = cyclesOf(m, now);
   assert.equal(out.cycles.length, 1, 'chốt được thì mới có chỗ trong bảng chu kỳ đã chốt');
   assert.equal(out.cycles[0].used, 90);
+});
+
+/* ── Vệt mẫu ────────────────────────────────────────────────────────────────── */
+
+test('vệt gom theo ô 15 phút và chỉ giữ 49 giờ — sổ không phồng theo nhịp đọc 2 phút', () => {
+  let m = new Map();
+  const t0 = 1000 * H;
+  // 12 lượt đọc cách nhau 2 phút = 24 phút ⇒ rơi vào tối đa 3 ô 15 phút.
+  for (let i = 0; i < 12; i++) m = bumpWindows(m, t0 + i * 2 * 60_000, [{ kind: 'five', resetsAt: t0 + FIVE, windowMs: FIVE, used: i }]);
+  const [c] = [...m.values()];
+  assert.ok(c.trail.length <= 3, `24 phút đọc dày phải nằm gọn trong ≤3 ô, nhận ${c.trail.length}`);
+  assert.equal(c.samples, 12, 'gom vệt không được ăn vào số lượt đọc');
+  assert.equal(c.trail[0].used, 0, 'mỗi ô giữ mẫu ĐẦU — mẫu cũ là mốc so vận tốc');
+});
+
+test('mẫu quá 49 giờ rời khỏi vệt — cửa sổ lăn không được tích vệt vô hạn', () => {
+  const WEEK = 7 * 86400_000;
+  let m = new Map();
+  const t0 = 1000 * H;
+  // Cửa sổ lăn: 60 giờ đọc, mỗi giờ một lượt, mốc reset bò theo đồng hồ.
+  for (let i = 0; i <= 60; i++) m = bumpWindows(m, t0 + i * H, [{ kind: '3p-weekly', resetsAt: t0 + i * H + WEEK, windowMs: WEEK, used: i }]);
+  assert.equal(m.size, 1, 'vẫn là MỘT bản ghi lăn');
+  const [c] = [...m.values()];
+  const spanH = (c.trail[c.trail.length - 1].at - c.trail[0].at) / H;
+  assert.ok(spanH <= 49, `vệt phải tự cắt về ≤49 giờ, đang trải ${spanH} giờ`);
+});
+
+test('trailOf trả vệt của bản ghi MỚI nhất trong loại — không phải của chu kỳ đã chốt', () => {
+  let m = new Map();
+  const t0 = 1000 * H;
+  m = bumpWindows(m, t0, [{ kind: 'five', resetsAt: t0 + FIVE, windowMs: FIVE, used: 80 }]);
+  // Chu kỳ mới, 5 phút sau reset thật.
+  const t1 = t0 + FIVE + 5 * 60_000;
+  m = bumpWindows(m, t1, [{ kind: 'five', resetsAt: t1 + FIVE, windowMs: FIVE, used: 3 }]);
+  const trail = trailOf(m, 'five');
+  assert.equal(trail.length, 1);
+  assert.equal(trail[0].used, 3, 'phải là vệt của chu kỳ đang chạy');
+  assert.equal(trailOf(m, 'khong-co'), null);
+  assert.equal(trailOf(null, 'five'), null, 'sổ hỏng thì trả null, không ném');
+});
+
+test('packCycles: bản ghi đã chốt rụng vệt, bản đang chạy và bản lăn giữ vệt', () => {
+  const now = 2000 * H;
+  const m = new Map([
+    ['đã chốt', cycle({ resetsAt: now - H, peak: 90, lastAt: now - H, trail: [{ at: now - 2 * H, used: 1 }] })],
+    ['đang chạy', cycle({ resetsAt: now + H, peak: 10, lastAt: now, trail: [{ at: now - H, used: 5 }] })],
+    ['lăn', cycle({ resetsAt: now - H, peak: 0, lastAt: now, rolling: true, trail: [{ at: now - H, used: 2 }] })],
+  ]);
+  const packed = packCycles(m, now);
+  assert.equal(JSON.stringify(packed['đã chốt']).includes('trail'), false, 'chốt rồi thì vệt không còn việc');
+  assert.equal(packed['đang chạy'].trail.length, 1);
+  assert.equal(packed['lăn'].trail.length, 1, 'cửa sổ lăn không bao giờ chốt nên vệt phải ở lại');
 });

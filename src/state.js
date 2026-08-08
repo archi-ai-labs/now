@@ -5,10 +5,10 @@ import { scanRoots, readBoard, healthOf, daysSince } from './collect/now.js';
 import { collectGit } from './collect/git.js';
 import { collectSessions } from './collect/sessions.js';
 import { collectUsage } from './collect/usage.js';
-import { collectQuota } from './collect/quota.js';
+import { collectQuota, forecastWith } from './collect/quota.js';
 import { collectCursor } from './collect/cursor.js';
 import { collectCursorEvents } from './collect/cursorevents.js';
-import { trackQuota } from './collect/quotalog.js';
+import { trackQuota, trailOf } from './collect/quotalog.js';
 import { trackAgCycles, trackCursorCycles } from './collect/cycletrack.js';
 import { collectLookback } from './collect/lookback.js';
 import { collectAntigravity } from './collect/antigravity.js';
@@ -143,6 +143,27 @@ export async function buildState({ watched = true, badge = false } = {}) {
     cycles: [],
     error: err.message,
   }));
+
+  // Dự phóng đi theo nhịp NHANH NHẤT trong ba: từ đầu cửa sổ · 24 giờ · 48 giờ qua.
+  // Phải đứng SAU trackQuota chứ không nằm được trong collectQuota: hai vận tốc sau là
+  // câu hỏi về LỊCH SỬ các lượt đọc — thứ chỉ sổ chu kỳ giữ (vệt trên bản ghi đang chạy),
+  // còn parse là hàm thuần trên một ảnh chụp. Sổ hỏng thì `trailOf` trả null và
+  // `forecastWith` tự rơi về đường thẳng cũ.
+  //
+  // Bằng BẢN SAO, đúng luật đã ghi ở `withSpend`: object của collectQuota có đường về từ
+  // memo, viết vào nó là để một trị của lượt này sống lẫn sang lượt khác.
+  const pacedQuota = (() => {
+    if (!quota?.ok) return quota;
+    const now = Date.now();
+    const pace = (w, kind) =>
+      w?.forecast ? { ...w, forecast: forecastWith(w.used, w.resetsAt, w.windowMs, now, trailOf(claudeLedger, kind)) } : w;
+    return {
+      ...quota,
+      fiveHour: pace(quota.fiveHour, 'five'),
+      sevenDay: pace(quota.sevenDay, 'seven'),
+      scoped: (quota.scoped ?? []).map((w) => pace(w, `m:${w.model ?? '?'}`)),
+    };
+  })();
   // Sổ chu kỳ Cursor cùng luật, cùng chỗ đứng — màn "Nhìn lại" đọc nó qua `cycles`.
   const cursorLedger = await trackCursorCycles(cursor).catch((err) => {
     console.error(`cycletrack cursor: ${err.message}`);
@@ -180,6 +201,23 @@ export async function buildState({ watched = true, badge = false } = {}) {
     console.error(`cycletrack ag: ${err.message}`);
     return null;
   });
+
+  // Cùng phép dự phóng theo nhịp cho các quỹ AG — vệt nằm trong sổ vừa gấp ở trên.
+  //
+  // Sửa tại chỗ được ở ĐÂY (khác Claude ở trên): cả hai đường về của `collectAgQuota` đều
+  // parse lại từ `memo.body` mỗi lượt gọi, nên bucket là object của riêng lượt này.
+  //
+  // Bucket cửa sổ lăn chia hai ca, đo trên máy này chứ không phải suy: `*-5h` mang mốc
+  // reset cách đủ MỘT cửa sổ → phần đã trôi ≈ 0 → forecast vốn `known:false`, hàm giữ
+  // nguyên. Còn `3p-weekly` mang mốc nằm GIỮA cửa sổ (lăn theo phần dùng cũ nhất, không
+  // theo mép cửa sổ) → forecast của nó xưa nay vẫn `known:true`; nhịp 24/48h chỉ được
+  // phép kéo LÊN, và `used` tụt xuống thì vận tốc kẹp 0 chứ không thành số âm.
+  if (agQuota?.ok && agLedger?.cycles) {
+    const now = Date.now();
+    for (const g of agQuota.groups ?? [])
+      for (const b of g.buckets ?? [])
+        if (b?.forecast) b.forecast = forecastWith(b.used, b.resetsAt, b.windowMs, now, trailOf(agLedger.cycles, b.key));
+  }
 
   // Màn "Nhìn lại": gấp ba sổ chu kỳ thành tiền + cổng 3 tuần. Thuần lắp ráp từ ba Map
   // đang nằm trong bộ nhớ — không I/O; hỏng thì mất mỗi màn đó, không được kéo lượt quét.
@@ -558,7 +596,7 @@ export async function buildState({ watched = true, badge = false } = {}) {
     timeline,
     orphans,
     usage,
-    quota: withSpend(quota, usage.spentIn),
+    quota: withSpend(pacedQuota, usage.spentIn),
     quotaCycles,
     lookback,
     cursor,

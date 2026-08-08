@@ -24,6 +24,20 @@ each one actually was once measured again.
 
 ### Changed
 
+- **The forecast now follows the fastest of three paces: since window open, the last 24
+  hours, the last 48 hours.** The straight line from window open answers one case wrongly,
+  and it is the most common case on this machine — idle for five days, then heads-down for
+  two. The average is flattened by the idle days, so the projection says "90% wasted" at
+  the exact moment spending is at its fastest. Max, not a weighted blend: every weight is
+  an invented number that needs explaining, while "the fastest pace actually measured
+  recently" is a measurement. Recent velocities come from a sample trail the cycle ledger
+  now keeps on the running record (one sample per 15 minutes, 49 hours deep, stripped from
+  closed records and from every payload). No trail yet — fresh install, ledger just born —
+  means the formula quietly reduces to the old line; a 5-hour window reduces to it too,
+  because both lookbacks are longer than the window itself. Applies to Claude (5h, 7d,
+  per-model) and Antigravity buckets; Cursor is left alone — its ledger counts cents while
+  its forecast speaks percent, and gluing those together needs a decision, not a formula.
+
 - **The SSE payload is a third smaller: 519.3 → 344.3 KB.** Neither of the two heavy parts
   was data. One was a memo cache key (118 KB, 22.7%) that lived inside the object shipped to
   every tab and that no client ever read; it grew with the number of transcripts on disk.
