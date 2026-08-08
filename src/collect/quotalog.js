@@ -73,6 +73,120 @@ const CYCLE_GRAIN_MS = 60_000;
 export const cycleAt = (ms) => Math.round(ms / CYCLE_GRAIN_MS) * CYCLE_GRAIN_MS;
 
 /**
+ * ## Cửa sổ LĂN — và vì sao làm tròn phút không cứu được nó
+ *
+ * Khối trên đúng cho Claude, và sai cho một nửa số bucket của Antigravity. Claude trả một
+ * mốc reset ĐỨNG YÊN, chỉ giật vài trăm mili giây; làm tròn phút là đủ.
+ *
+ * Bucket `3p-weekly` và hai bucket `*-5h` của AG thì không có mốc đứng yên nào. Chúng là
+ * cửa sổ **lăn**: `resetTime` nghĩa là "lúc phần dùng cũ nhất hết hạn", nên nó bò tới trước
+ * cùng nhịp với đồng hồ tường. Đo trên sổ máy này, 8/8:
+ *
+ * ```
+ * gemini-5h : 179 bản ghi — CẢ 179 đều peak=0, samples=1
+ *             resetsAt trôi 15,5 giờ trong đúng 15,5 giờ thực tế
+ *             mỗi lượt đọc cách nhau 5 phút → mỗi lượt đọc một "chu kỳ" mới
+ * 3p-weekly : 558 bản ghi trong 11 ngày, 555 cái samples=1
+ * ```
+ *
+ * Khoá theo mốc reset là khoá vào một giá trị đang chạy. `trimCycles` không chặn được, và
+ * nó không sai: nó **cố ý miễn cắt cho chu kỳ đang chạy**, mà mốc reset của cửa sổ lăn thì
+ * vĩnh viễn ở tương lai — 556/558 bản ghi là "đang chạy". Luật cắt đúng, dữ liệu vào sai.
+ *
+ * ## Dấu hiệu phân biệt: mốc reset bò cùng nhịp với đồng hồ
+ *
+ * Không nhận diện theo TÊN bucket — sổ AG là protobuf không tài liệu, tên đổi lúc nào không
+ * ai báo. Nhận theo hành vi, và nó tự lộ ra ở mỗi cặp lượt đọc liền nhau:
+ *
+ * - **cửa sổ lăn** — mốc reset tiến đúng bằng quãng vừa trôi (`drift ≈ elapsed`)
+ * - **reset thật** — mốc reset nhảy một phát bằng cả cửa sổ, đồng hồ mới nhích vài phút
+ *   (`drift ≈ windowMs` ≫ `elapsed`)
+ * - **cửa sổ đứng yên giữa chu kỳ** — `drift ≈ 0`, `cycleAt` đã gộp sẵn, không tới đây
+ *
+ * Kiểm ngược trên sổ thật: `gemini-weekly` là bucket AG duy nhất có mốc cố định, và luật
+ * này giữ nguyên cả 3 chu kỳ của nó, cách nhau đúng 168,0 giờ. Đó là ca đối chứng — luật
+ * mà ăn nhầm chu kỳ thật thì nó ăn ba cái này trước tiên.
+ */
+const ROLL_TOL_MS = 2 * CYCLE_GRAIN_MS;
+
+/**
+ * Lượt đọc này có phải cùng một cửa sổ lăn với `prev` không. Hàm thuần.
+ *
+ * `elapsed >= windowMs / 2` thì trả false dù `drift` khớp: máy ngủ đúng bằng độ dài cửa sổ
+ * rồi thức dậy sau một lần reset thật cũng cho `drift ≈ elapsed`. Lượt đọc của một cửa sổ
+ * lăn thì `elapsed` luôn là vài phút, bé hơn hẳn cửa sổ — nên cái chặn này không đụng ca
+ * thật, chỉ đóng đúng ca trùng hợp.
+ */
+export function rollsWith(prev, at, resetsAt, windowMs) {
+  if (!prev || !Number.isFinite(prev.resetsAt) || !Number.isFinite(prev.lastAt)) return false;
+  const drift = resetsAt - prev.resetsAt;
+  const elapsed = at - prev.lastAt;
+  if (drift <= 0 || elapsed <= 0) return false;
+  const win = windowMs ?? prev.windowMs;
+  if (win && elapsed >= win / 2) return false;
+  return Math.abs(drift - elapsed) <= ROLL_TOL_MS;
+}
+
+/** Bản ghi mới nhất của một loại cửa sổ — mốc so cho `rollsWith`. */
+function latestOf(cycles, kind) {
+  let hit = null;
+  for (const [key, c] of cycles) {
+    if (c.kind !== kind) continue;
+    if (!hit || c.lastAt > hit.rec.lastAt) hit = { key, rec: c };
+  }
+  return hit;
+}
+
+/**
+ * Gộp lại những bản ghi vốn là MỘT cửa sổ lăn bị xé nhỏ. Hàm thuần, luỹ đẳng.
+ *
+ * Chạy trong `readCycles`, tức mỗi lần tiến trình mở sổ — nên sổ tự lành, không cần công cụ
+ * riêng và KHÔNG nâng `LOG_VERSION`. Nâng phiên bản là vứt cả sổ, mà sổ Claude trong
+ * `quota-cycles.json` thì chính file này khai là thứ duy nhất không dựng lại được; đổi cách
+ * khoá của AG không phải lý do để đốt lịch sử Claude.
+ *
+ * Đi theo thứ tự mốc reset, so từng bản ghi với NHÓM đang mở, dùng `firstAt`/`lastAt` thay
+ * cho thời điểm đọc — cùng phép so của `rollsWith`, chỉ khác nguồn mốc.
+ */
+export function collapseRolling(cycles) {
+  const byKind = new Map();
+  for (const [key, c] of cycles) {
+    if (!byKind.has(c.kind)) byKind.set(c.kind, []);
+    byKind.get(c.kind).push([key, c]);
+  }
+
+  const out = new Map();
+  let merged = 0;
+  for (const list of byKind.values()) {
+    list.sort((a, b) => a[1].resetsAt - b[1].resetsAt);
+    let key = null;
+    let acc = null;
+    for (const [k, c] of list) {
+      if (acc && rollsWith(acc, c.firstAt, c.resetsAt, c.windowMs)) {
+        acc = {
+          ...acc,
+          // Chân trời MỚI NHẤT: với cửa sổ lăn thì đó mới là mốc đang đúng.
+          resetsAt: c.resetsAt,
+          windowMs: c.windowMs ?? acc.windowMs,
+          peak: Math.max(acc.peak ?? 0, c.peak ?? 0),
+          samples: (acc.samples ?? 0) + (c.samples ?? 0),
+          firstAt: Math.min(acc.firstAt ?? c.firstAt, c.firstAt ?? acc.firstAt),
+          lastAt: Math.max(acc.lastAt ?? 0, c.lastAt ?? 0),
+          rolling: true,
+        };
+        merged += 1;
+        continue;
+      }
+      if (acc) out.set(key, acc);
+      key = k;
+      acc = c;
+    }
+    if (acc) out.set(key, acc);
+  }
+  return { cycles: out, merged };
+}
+
+/**
  * Phiên bản sổ. Đổi số này là bỏ toàn bộ sổ cũ khi đọc — dùng khi cách KHOÁ đổi, vì lúc đó
  * hàng cũ không gộp được với hàng mới mà cứ nằm đó như dữ liệu thật.
  *
@@ -119,15 +233,33 @@ export function bumpWindows(cycles, at, windows) {
     if (raw == null || !Number.isFinite(used)) continue;
     const resetsAt = cycleAt(raw);
     const key = `${kind}|${resetsAt}`;
-    const prev = (out ?? cycles).get(key);
+    const src = out ?? cycles;
+    let slot = key;
+    let prev = src.get(key);
+    let rolling = false;
+
+    // Không trúng khoá nào: hoặc đây là chu kỳ mới thật, hoặc là cùng một cửa sổ LĂN mà
+    // mốc reset vừa bò đi vài phút. Hỏi bản ghi mới nhất của cùng loại — xem `rollsWith`.
+    // Không có nhánh này thì mỗi lượt đọc một khoá, và sổ phồng vô hạn vì chu kỳ "đang
+    // chạy" được miễn cắt.
+    if (!prev) {
+      const last = latestOf(src, kind);
+      if (last && rollsWith(last.rec, at, resetsAt, windowMs)) {
+        slot = last.key; // giữ NGUYÊN khoá cũ; chỉ chân trời trong bản ghi tiến lên
+        prev = last.rec;
+        rolling = true;
+      }
+    }
+
     // Cùng một ảnh chụp đã ghi rồi. Đây là chỗ `samples` giữ được nghĩa "bao nhiêu lượt
     // đọc KHÁC NHAU", chứ không thành "bao nhiêu lượt quét".
     if (prev && at <= prev.lastAt) continue;
     if (!out) out = new Map(cycles);
-    out.set(key, {
+    out.set(slot, {
       ...prev,
       kind,
       resetsAt,
+      ...(rolling || prev?.rolling ? { rolling: true } : {}),
       windowMs: windowMs ?? prev?.windowMs ?? null,
       peak: Math.max(prev?.peak ?? 0, used),
       samples: (prev?.samples ?? 0) + 1,
@@ -162,6 +294,11 @@ export function cyclesOf(cycles, now = Date.now()) {
   const rows = [];
   for (const c of cycles.values()) {
     if (c.resetsAt > now) continue;
+    // Cửa sổ lăn KHÔNG BAO GIỜ chốt, nên nó không có chỗ trong một danh sách chu kỳ đã
+    // chốt. Nó vẫn được lọc bởi dòng trên chừng nào chân trời còn ở tương lai; nhưng tắt
+    // AG một tuần là chân trời tụt lại sau `now`, và lúc ấy nó sẽ trưng ra một con số "bỏ
+    // phí" cho một chu kỳ chưa từng tồn tại.
+    if (c.rolling) continue;
     // Độ phủ suy từ MỐC THỜI GIAN, không lấy `elapsedFrac` của lượt đọc: `elapsedFrac`
     // tính theo `now`, nên một chu kỳ chỉ được nhìn mười phút đầu vẫn ra 1 sau khi nó đã
     // trôi qua — tức là tự nhận đã theo trọn, đúng ngược sự thật.
@@ -195,11 +332,15 @@ export async function readCycles(file = QUOTA_LOG) {
     // cùng một chu kỳ dưới hai cái tên, và gộp sai còn tệ hơn mất — sổ này là thứ người ta
     // sẽ đọc để kết luận về nếp làm việc.
     if (data?.version !== LOG_VERSION) return new Map();
-    const out = new Map();
+    const raw = new Map();
     for (const [key, c] of Object.entries(data.cycles ?? {})) {
-      if (typeof c?.peak === 'number' && typeof c?.resetsAt === 'number') out.set(key, c);
+      if (typeof c?.peak === 'number' && typeof c?.resetsAt === 'number') raw.set(key, c);
     }
-    return out;
+    // Sổ tự lành: bản ghi do bản cũ ghi ra — mỗi lượt đọc một "chu kỳ" — được gộp lại đúng
+    // cửa sổ lăn của chúng. Luỹ đẳng, nên chạy mỗi lần mở sổ không tốn gì sau lần đầu.
+    const { cycles, merged } = collapseRolling(raw);
+    if (merged) console.error(`quotalog: ${file} — gộp ${merged} bản ghi của cửa sổ lăn (${raw.size} → ${cycles.size})`);
+    return cycles;
   } catch {
     return new Map(); // chưa có sổ, hoặc sổ hỏng — bắt đầu lại, không có gì dựng lại được
   }

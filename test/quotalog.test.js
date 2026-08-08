@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { bumpCycles, cyclesOf, trimCycles, windowsIn } from '../src/collect/quotalog.js';
+import { bumpCycles, bumpWindows, collapseRolling, cyclesOf, trimCycles, windowsIn } from '../src/collect/quotalog.js';
 
 /**
  * Sổ hạn mức theo chu kỳ.
@@ -214,4 +214,107 @@ test('chu kỳ ĐANG CHẠY không bao giờ bị cắt — nó chưa chốt và
   const out = trimCycles(m, 1, now);
   assert.ok(out.has('five|live'), 'cắt mất chu kỳ đang chạy là mất luôn đỉnh đang gom');
   assert.equal(out.size, 2);
+});
+
+/* ── Cửa sổ lăn ─────────────────────────────────────────────────────────────── */
+
+/**
+ * Ca thật, đo ngày 8/8 trên `ag-cycles.json`: 919 bản ghi, trong đó `gemini-5h` có 179 cái
+ * mà CẢ 179 đều `peak=0, samples=1`, và mốc reset trôi 15,5 giờ trong đúng 15,5 giờ thực
+ * tế. `resetTime` của mấy bucket ấy nghĩa là "lúc phần dùng cũ nhất hết hạn" — nó bò theo
+ * đồng hồ, nên khoá sổ bằng nó là mỗi lượt đọc một chu kỳ.
+ *
+ * `trimCycles` không đỡ được vì chu kỳ đang chạy được MIỄN CẮT, mà cửa sổ lăn thì mốc reset
+ * vĩnh viễn ở tương lai — sổ phồng vô hạn.
+ */
+
+/** Một lượt đọc AG đã bóc, đúng hình dạng `agCycleWindows` trả ra. */
+const agWin = (kind, resetsAt, used, windowMs) => [{ kind, resetsAt, windowMs, used }];
+
+test('cửa sổ lăn: mốc reset bò theo đồng hồ vẫn là MỘT chu kỳ, không phải N', () => {
+  const WEEK = 7 * 86400_000;
+  let m = new Map();
+  // Mười lượt đọc cách nhau 5 phút; mỗi lượt mốc reset cũng tiến đúng 5 phút.
+  for (let i = 0; i < 10; i++) {
+    const at = 1000 * H + i * 5 * 60_000;
+    m = bumpWindows(m, at, agWin('3p-weekly', at + WEEK, 40 + i, WEEK));
+  }
+  assert.equal(m.size, 1, 'mười lượt đọc của một cửa sổ đang lăn phải nằm chung một hàng');
+  const [c] = [...m.values()];
+  assert.equal(c.samples, 10);
+  assert.equal(c.peak, 49, 'đỉnh vẫn là MAX qua cả mười lượt');
+  assert.equal(c.rolling, true, 'phải tự khai là cửa sổ lăn');
+});
+
+test('reset THẬT vẫn mở chu kỳ mới — mốc nhảy cả cửa sổ trong khi đồng hồ mới nhích', () => {
+  let m = new Map();
+  const t0 = 1000 * H;
+  m = bumpWindows(m, t0, agWin('five', t0 + FIVE, 80, FIVE));
+  // Năm phút sau, mốc reset nhảy thêm trọn 5 giờ: chu kỳ cũ vừa chốt.
+  const t1 = t0 + 5 * 60_000;
+  m = bumpWindows(m, t1, agWin('five', t1 + FIVE + FIVE - 5 * 60_000, 3, FIVE));
+  assert.equal(m.size, 2, 'gộp hai chu kỳ thật là mất một đỉnh vĩnh viễn');
+});
+
+test('mốc reset ĐỨNG YÊN đi đường cũ, không bị bắt nhầm thành cửa sổ lăn', () => {
+  let m = new Map();
+  const t0 = 1000 * H;
+  const reset = t0 + FIVE;
+  for (let i = 0; i < 5; i++) m = bumpWindows(m, t0 + i * 60_000, agWin('five', reset + i * 137, 10 + i, FIVE));
+  assert.equal(m.size, 1);
+  assert.equal([...m.values()][0].rolling, undefined, 'cửa sổ cố định không được mang cờ lăn');
+});
+
+test('máy ngủ đúng bằng độ dài cửa sổ không được đọc nhầm thành lăn', () => {
+  // drift ≈ elapsed ≈ windowMs — trùng hợp duy nhất qua được phép so, nên có chặn riêng.
+  let m = new Map();
+  const t0 = 1000 * H;
+  m = bumpWindows(m, t0, agWin('five', t0 + FIVE, 90, FIVE));
+  m = bumpWindows(m, t0 + FIVE, agWin('five', t0 + FIVE + FIVE, 20, FIVE));
+  assert.equal(m.size, 2, 'một lần reset thật đã xảy ra trong lúc ngủ — không được gộp');
+});
+
+test('collapseRolling gộp sổ cũ, và LUỸ ĐẲNG', () => {
+  const WEEK = 7 * 86400_000;
+  const m = new Map();
+  for (let i = 0; i < 20; i++) {
+    const at = 1000 * H + i * 5 * 60_000;
+    m.set(
+      `3p-weekly|${at + WEEK}`,
+      cycle({ resetsAt: at + WEEK, peak: i, samples: 1, firstAt: at, lastAt: at, windowMs: WEEK, kind: '3p-weekly' }),
+    );
+  }
+  const once = collapseRolling(m);
+  assert.equal(once.cycles.size, 1);
+  assert.equal(once.merged, 19);
+  assert.equal([...once.cycles.values()][0].peak, 19, 'đỉnh phải là MAX của cả nhóm');
+  assert.equal([...once.cycles.values()][0].firstAt, 1000 * H, 'firstAt giữ mốc SỚM nhất — `openedAtOf` đọc nó');
+  assert.equal([...once.cycles.values()][0].samples, 20, 'samples phải cộng dồn');
+
+  const twice = collapseRolling(once.cycles);
+  assert.equal(twice.merged, 0, 'chạy lần hai không được đổi gì — nó chạy ở MỌI lần mở sổ');
+  assert.equal(twice.cycles.size, 1);
+});
+
+test('collapseRolling KHÔNG đụng chu kỳ cố định — đây là ca đối chứng của cả luật', () => {
+  // Ứng với `gemini-weekly` trên sổ thật: 3 chu kỳ, cách nhau đúng 168 giờ, giữ nguyên 3.
+  const WEEK = 7 * 86400_000;
+  const m = new Map();
+  for (const i of [1, 2, 3]) {
+    const at = 1000 * H + i * WEEK;
+    m.set(`gemini-weekly|${at}`, cycle({ resetsAt: at, peak: 50 + i, firstAt: at - WEEK, lastAt: at - 60_000, windowMs: WEEK, kind: 'gemini-weekly' }));
+  }
+  const { cycles, merged } = collapseRolling(m);
+  assert.equal(merged, 0);
+  assert.equal(cycles.size, 3);
+});
+
+test('cửa sổ lăn không bao giờ lên danh sách chu kỳ ĐÃ CHỐT', () => {
+  const now = 2000 * H;
+  const m = new Map();
+  m.set('a', cycle({ resetsAt: now - H, peak: 90, lastAt: now - H, windowMs: FIVE }));
+  m.set('b', cycle({ resetsAt: now - H, peak: 0, lastAt: now - H, windowMs: FIVE, rolling: true }));
+  const out = cyclesOf(m, now);
+  assert.equal(out.cycles.length, 1, 'chốt được thì mới có chỗ trong bảng chu kỳ đã chốt');
+  assert.equal(out.cycles[0].used, 90);
 });

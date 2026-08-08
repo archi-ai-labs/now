@@ -54,6 +54,9 @@ export function foldCycles(map, kinds, now = Date.now()) {
   const rows = [];
   for (const c of map?.values?.() ?? []) {
     if (!want.has(c.kind) || c.resetsAt > now) continue;
+    // Cùng luật với `cyclesOf`: cửa sổ lăn không bao giờ chốt nên không có chu kỳ để kể.
+    // Xem khối "Cửa sổ LĂN" trong `collect/quotalog.js`.
+    if (c.rolling) continue;
     // Cùng phép suy với `cyclesOf`: độ phủ đo từ MỐC THỜI GIAN, không tin `elapsedFrac`
     // của lượt đọc — chu kỳ chỉ được nhìn mười phút đầu vẫn phải khai là theo hụt.
     const watchedTo = c.windowMs ? clamp01((c.windowMs - (c.resetsAt - c.lastAt)) / c.windowMs) : null;

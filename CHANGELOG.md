@@ -40,7 +40,27 @@ each one actually was once measured again.
 
 ### Fixed
 
-- Tests: 476 → 491.
+- **The Antigravity cycle ledger was minting a new "cycle" on every read.** Three of its
+  four buckets are *rolling* windows: `resetTime` means "when the oldest usage expires", so
+  it crawls forward in step with the wall clock. Keying a cycle on it meant every reading
+  became its own cycle — `gemini-5h` held 179 records, all `peak: 0, samples: 1`, with the
+  reset mark drifting 15.5 hours across exactly 15.5 hours of real time. `trimCycles` could
+  not stop it, and was not wrong to: it deliberately exempts *running* cycles from trimming,
+  and a rolling window's reset mark is permanently in the future. 556 of 558 `3p-weekly`
+  records were exempt on those grounds.
+
+  Rolling windows are now recognised by behaviour, not by bucket name — the reset mark
+  advancing in step with elapsed time — and folded into one record per window. Existing
+  ledgers repair themselves on open, so no version bump was needed and Claude's history,
+  the one thing this project cannot rebuild, is untouched (52 records in, 52 out). A
+  rolling window also never appears in a list of *closed* cycles, because it never closes.
+  `ag-cycles.json`: 919 records / 180.6 KB → 11 / 2.4 KB, flat over 8 minutes of live scans.
+
+  The control case is `gemini-weekly`, Antigravity's only fixed-boundary bucket: 3 cycles
+  exactly 168.0 hours apart, all three preserved. A rule that ate real cycles would have
+  eaten those first.
+
+- Tests: 476 → 498.
 
 ## [1.1.0] — 2026-08-07
 
