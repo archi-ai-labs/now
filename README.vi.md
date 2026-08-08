@@ -105,6 +105,8 @@ rồi tự biết lượt pull này đòi gì: đổi `app/`, `launchd/`, `bin/`
 service, F5 một lần ở tab đang mở. Nó thao tác trên bản mà LaunchAgent đang trỏ — gọi từ
 một clone khác thì nó nâng bản đã cài, và nói ra điều đó. Đã mới nhất nhưng service dựng
 trước lượt pull tay gần đây? Nó nhận ra, và chỉ restart.
+(Lệnh có từ sau v1.1.1 — bản cũ hơn thì `git pull` tay một lần trước đã; script cũ bỏ
+qua đối số lạ và chỉ mở tab, trông y như không có gì xảy ra.)
 
 Server treo dưới **launchd**, không dưới terminal hay phiên Claude đã gọi nó — đóng cửa
 sổ nào cũng không giết nó, và đăng nhập lại là nó tự lên. (Bản trước `nohup` từ chính

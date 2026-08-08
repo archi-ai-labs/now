@@ -107,6 +107,9 @@ touch of the file that happens to contain them; anything else is a service resta
 one F5 in any open tab. It operates on the copy the LaunchAgent actually points at — run
 it from a second clone and it upgrades the installed one, and says so. Already up to date
 but the service predates your last manual pull? It notices, and restarts just that.
+(The subcommand ships after v1.1.1 — on an older checkout, run `git pull` once by hand;
+the old script ignores unknown arguments and just opens a tab, which looks like nothing
+happened.)
 
 The server hangs off **launchd**, not off the terminal or the Claude session that started
 it — closing any window will not kill it, and logging back in brings it up. (The previous
