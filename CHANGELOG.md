@@ -9,6 +9,20 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- **`./bin/now-dash upgrade`** — one command for existing installs, closing the gap where
+  upgrading required knowing whether a given pull needs the compiler (`app/`, `launchd/`,
+  `bin/`, the icon — measured: v1.0.1 → v1.1.1 changes all three, v1.1.0 → v1.1.1 none)
+  or just a service restart. Menu-bar tones are compared by *generating* them from both
+  versions of `styles.css`, not by watching the file — `styles.css` changes on every UI
+  round, the tones almost never. It refuses a dirty tree and a detached HEAD outright
+  (the six commits this week that sat on an unpushed side branch made the case), operates
+  on the copy the LaunchAgent points at rather than the clone it was called from, reads
+  the port from the plist rather than assuming 4400, and notices the
+  pulled-yesterday-but-never-restarted service by comparing its start time against the
+  newest server-side commit.
+
 ## [1.1.1] — 2026-08-08
 
 Three items off the backlog (`B13`, `B14`, `B18` — all three turned out to be specified

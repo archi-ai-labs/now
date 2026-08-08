@@ -10,6 +10,9 @@
 # `app/launcher.sh` (thân của app trên Dock): nó phải mở WEB APP chứ không phải tab
 # trình duyệt mặc định, nhưng phần dựng server thì phải dùng lại đúng bản này — hai
 # bản của cùng một logic là hai bản sẽ trôi khỏi nhau.
+#
+# `upgrade` nâng bản ĐÃ CÀI lên bản mới nhất: pull rồi tự biết lượt pull này đòi gì —
+# dựng lại app (swiftc) hay chỉ restart service. Xem khối của nó ở dưới.
 set -euo pipefail
 
 OPEN=1
@@ -22,6 +25,113 @@ LABEL="dev.hoanluu.now-dash"
 PLIST="$HOME/Library/LaunchAgents/${LABEL}.plist"
 
 alive() { curl -sf -o /dev/null --max-time 1 "${URL}/api/ping"; }
+
+# Lượt quét đầu mất 4–6 giây; cổng mở trước khi quét xong nên ping ăn sớm hơn thế.
+wait_alive() {
+  for _ in $(seq 1 60); do
+    alive && return 0
+    sleep 0.25
+  done
+  return 1
+}
+
+# Tiếng của app thanh menu sinh từ styles.css (app/make-tones.py) — mà styles.css đổi ở
+# MỌI vòng chỉnh giao diện, còn mấy nốt nhạc thì hiếm khi. Bắt cả file là lượt nâng cấp
+# nào cũng phải dựng lại app; so đúng PHẦN SINH RA giữa hai bản thì chỉ dựng khi tiếng
+# thật sự đổi. Script hỏng kiểu gì (thiếu python3, format đổi) cũng trả "khác" — dựng
+# lại thừa rẻ hơn tiếng cũ nằm lì trong app.
+tones_same() {
+  local a b
+  a="$(git -C "$ROOT" show "$1:public/styles.css" 2>/dev/null | python3 "$ROOT/app/make-tones.py" /dev/stdin 2>/dev/null)" || return 1
+  b="$(python3 "$ROOT/app/make-tones.py" "$ROOT/public/styles.css" 2>/dev/null)" || return 1
+  [[ "$a" == "$b" ]]
+}
+
+# ── Nâng cấp bản đã cài ───────────────────────────────────────────────────────
+if [[ "${1:-}" == "upgrade" ]]; then
+  # ROOT của BẢN CÀI, không phải của clone đang đứng — plist là nguồn sự thật duy nhất,
+  # cùng luật với skill /now-dash: đoán theo thư mục là có ngày nâng một bản không ai
+  # chạy rồi tưởng xong, trong khi service vẫn trỏ bản cũ.
+  if installed="$(plutil -extract WorkingDirectory raw "$PLIST" 2>/dev/null)"; then
+    if [[ ! -d "$installed" ]]; then
+      echo "LaunchAgent trỏ ${installed} nhưng thư mục không còn — repo đã dời? Chạy ./bin/install-app từ chỗ mới." >&2
+      exit 78 # EX_CONFIG
+    fi
+    [[ "$installed" != "$ROOT" ]] && echo "Bản cài nằm ở ${installed} (đang gọi từ ${ROOT}) — nâng cấp bản cài."
+    ROOT="$installed"
+    # Cổng lấy từ plist, không từ mặc định: cài bằng NOW_PORT=5000 thì ping 4400 sẽ
+    # trượt mãi và upgrade báo hỏng sai — đúng ca đã ghi ở bảng sự cố trong README.
+    if p="$(plutil -extract EnvironmentVariables.NOW_PORT raw "$PLIST" 2>/dev/null)"; then
+      PORT="$p"
+      URL="http://localhost:${PORT}"
+    fi
+  else
+    echo "Chưa có LaunchAgent — kéo code mới cho clone này thôi; cài service thì chạy ./bin/install-app."
+  fi
+
+  # Hai chốt chặn trước khi đụng git. Cây bẩn: upgrade dành cho bản cài, không phải bản
+  # đang dev dở. Detached/nhánh không upstream: chính cái bẫy vừa cắn hôm nay — sáu
+  # commit nằm trên một nhánh phụ mà ba lượt push "up to date" một cách trung thực.
+  if [[ -n "$(git -C "$ROOT" status --porcelain)" ]]; then
+    echo "Cây làm việc ở ${ROOT} có thay đổi chưa commit — cất (git stash) hoặc commit trước đã." >&2
+    exit 1
+  fi
+  if ! git -C "$ROOT" symbolic-ref --short -q HEAD >/dev/null; then
+    echo "HEAD đang detached ở ${ROOT} — vào repo xử lý nhánh trước đã (git status)." >&2
+    exit 1
+  fi
+
+  old="$(git -C "$ROOT" rev-parse HEAD)"
+  if ! git -C "$ROOT" pull --ff-only; then
+    echo "Không fast-forward được — nhánh đã rẽ khỏi upstream, hoặc chưa có upstream. Xem: git -C ${ROOT} status" >&2
+    exit 1
+  fi
+  new="$(git -C "$ROOT" rev-parse HEAD)"
+
+  if [[ "$old" == "$new" ]]; then
+    echo "Đã ở bản mới nhất: $(git -C "$ROOT" log -1 --format='%h %s')"
+    [[ -f "$PLIST" ]] || exit 0
+    pid="$(launchctl print "gui/$(id -u)/${LABEL}" 2>/dev/null | awk '/^[[:space:]]*pid = /{print $3}')"
+    if [[ -n "$pid" ]]; then
+      # Ca hay bị quên: pull tay hôm trước mà chưa restart — service sống, nhưng bằng
+      # code cũ. So mốc dựng service với commit server mới nhất; đọc không ra mốc thì
+      # cứ restart: thừa một cú kickstart rẻ hơn thiếu.
+      started_raw="$(ps -o lstart= -p "$pid" 2>/dev/null | sed 's/^[[:space:]]*//')"
+      started="$(date -j -f '%a %b %e %T %Y' "$started_raw" +%s 2>/dev/null || echo 0)"
+      coded="$(git -C "$ROOT" log -1 --format=%ct HEAD -- server.js src/)"
+      if (( started > coded )); then
+        echo "Service đang chạy đúng bản này rồi (pid ${pid})."
+        exit 0
+      fi
+      echo "Service dựng TRƯỚC commit server mới nhất — restart cho khớp."
+    else
+      echo "Service chưa chạy — dựng lên."
+    fi
+  else
+    echo "Đã kéo $(git -C "$ROOT" rev-list --count "${old}..${new}") commit → $(git -C "$ROOT" log -1 --format='%h %s')"
+    # Lượt pull này đòi gì? app/, launchd/, bin/ và icon là những thứ NƯỚNG vào bundle
+    # lúc cài — đổi chúng mà chỉ restart là server mới chạy cạnh app cũ, plist cũ, kiểu
+    # lệch âm thầm khó lần nhất (đo thật: v1.0.1 → v1.1.1 đổi cả ba, v1.1.0 → v1.1.1
+    # không đổi gì trong nhóm đó).
+    rebuild=""
+    if [[ -n "$(git -C "$ROOT" diff --name-only "$old" "$new" -- app/ launchd/ bin/ public/icon-1024.png)" ]]; then
+      rebuild="app/, launchd/, bin/ hoặc icon đổi"
+    elif ! tones_same "$old"; then
+      rebuild="tiếng của thanh menu đổi"
+    fi
+    if [[ -n "$rebuild" ]]; then
+      echo "→ ${rebuild} — chạy trọn bộ cài (cần swiftc):"
+      exec "$ROOT/bin/install-app"
+    fi
+    [[ -f "$PLIST" ]] || { echo "Code đã mới. Cài service: ./bin/install-app"; exit 0; }
+  fi
+
+  launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null || true
+  launchctl kickstart -k "gui/$(id -u)/${LABEL}" 2>/dev/null || true
+  wait_alive || { echo "Không lên được. Log: ~/.now-dashboard/service.err.log" >&2; exit 1; }
+  echo "Xong — ${URL} · tab nào đang mở thì F5 một lần cho client mới."
+  exit 0
+fi
 
 if alive; then
   echo "Dashboard đã chạy sẵn ở ${URL}"
@@ -43,12 +153,7 @@ else
     exit 78 # EX_CONFIG
   fi
 
-  # Lượt quét đầu mất 4–6 giây; cổng mở trước khi quét xong nên ping ăn sớm hơn thế.
-  for _ in $(seq 1 60); do
-    alive && break
-    sleep 0.25
-  done
-  alive || { echo "Không lên được. Log: ~/.now-dashboard/service.err.log" >&2; exit 1; }
+  wait_alive || { echo "Không lên được. Log: ~/.now-dashboard/service.err.log" >&2; exit 1; }
 fi
 
 (( OPEN )) || exit 0

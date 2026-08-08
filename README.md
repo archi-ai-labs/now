@@ -94,9 +94,19 @@ After that, all you need is:
 
 | Task | Command |
 |---|---|
+| **Upgrade** | `./bin/now-dash upgrade` |
 | Stop | `launchctl bootout gui/$(id -u)/dev.hoanluu.now-dash` |
 | Restart | `launchctl kickstart -k gui/$(id -u)/dev.hoanluu.now-dash` |
 | Read the log | `tail -f ~/.now-dashboard/service.err.log` |
+
+`upgrade` pulls (`--ff-only`, refuses a dirty tree or a detached HEAD instead of guessing),
+then decides what the pull actually requires: changes under `app/`, `launchd/`, `bin/` or
+to the icon rerun `./bin/install-app` in full; a change to the menu-bar tones is detected
+by *generating* them from both versions of `styles.css` rather than rebuilding on every
+touch of the file that happens to contain them; anything else is a service restart plus
+one F5 in any open tab. It operates on the copy the LaunchAgent actually points at — run
+it from a second clone and it upgrades the installed one, and says so. Already up to date
+but the service predates your last manual pull? It notices, and restarts just that.
 
 The server hangs off **launchd**, not off the terminal or the Claude session that started
 it — closing any window will not kill it, and logging back in brings it up. (The previous
