@@ -126,17 +126,12 @@ After that, all you need is:
 | Restart | `launchctl kickstart -k gui/$(id -u)/io.github.archi-ai-labs.now-dash` |
 | Read the log | `tail -f ~/.now-dashboard/service.err.log` |
 
-`upgrade` pulls (`--ff-only`, refuses a dirty tree or a detached HEAD instead of guessing),
-then decides what the pull actually requires: changes under `app/`, `launchd/`, `bin/` or
-to the icon rerun `./bin/install-app` in full; a change to the menu-bar tones is detected
-by *generating* them from both versions of `styles.css` rather than rebuilding on every
-touch of the file that happens to contain them; anything else is a service restart plus
-one F5 in any open tab. It operates on the copy the LaunchAgent actually points at — run
-it from a second clone and it upgrades the installed one, and says so. Already up to date
-but the service predates your last manual pull? It notices, and restarts just that.
-(The subcommand ships after v1.1.1 — on an older checkout, run `git pull` once by hand;
-the old script ignores unknown arguments and just opens a tab, which looks like nothing
-happened.)
+`upgrade` pulls (`--ff-only`; refuses a dirty tree or a detached HEAD), works out whether
+the pull needs the compiler (`app/`, `launchd/`, `bin/`, the icon, a real menu-bar tone
+change) or just a service restart, and operates on the copy the LaunchAgent actually
+points at — run it from a second clone and it upgrades the installed one, and says so.
+(Ships after v1.1.1 — on an older checkout, run `git pull` once by hand; the old script
+ignores unknown arguments, which looks like nothing happened.)
 
 The server hangs off **launchd**, not off the terminal or the Claude session that started
 it — closing any window will not kill it, and logging back in brings it up. (The previous
@@ -155,14 +150,14 @@ Runs on the built-in `node:test`, no extra packages pulled in — see [test/](te
 ### Running as its own Dock app
 
 Open `http://localhost:4400` in **Safari** → menu **File → Add to Dock…** → **Add**.
+You get a dedicated WebKit app: own Dock icon, ⌘Tab-able, no address bar — and far
+cheaper than Chrome's "Install as app", which drags a browser process plus a GPU
+process along for something meant to stay open all day.
 
-You get a dedicated WebKit app: its own Dock icon, ⌘Tab-able, no address bar, no tabs,
-and **no need to open Safari**. Safari is chosen on purpose over Chrome's "Install as
-app" — the same page in Chrome drags along a browser process plus a GPU process, far
-pricier for something meant to stay open all day.
+<details>
+<summary>What makes it read as an app, and one prerequisite</summary>
 
-Three things make it read as an app instead of a web page in a frame, all living in
-the `<head>` of [`public/index.html`](public/index.html):
+Three things, all living in the `<head>` of [`public/index.html`](public/index.html):
 
 | | |
 |---|---|
@@ -173,6 +168,8 @@ the `<head>` of [`public/index.html`](public/index.html):
 The server has to actually be running, otherwise the app opens to a "cannot reach the
 server" screen — the LaunchAgent under [The dashboard](#the-dashboard) handles exactly
 that, including after a reboot.
+
+</details>
 
 ### In the menu bar
 
@@ -200,40 +197,35 @@ CLAUDE
 
 <img src="docs/assets/screenshot-menubar-work.png" alt="Menu bar popover, Work tab" width="360"> <img src="docs/assets/screenshot-menubar-tokens.png" alt="Menu bar popover, Tokens tab" width="360">
 
-The popover follows the butler's two fixed slots — work first, quota second — because
-those two do not compare. It does **not restate the bar in prose**: where the bar has
-labels, the sentence under it may only say what the labels cannot draw (`cardText`, not
-`forecastText` — the rule lives in `lib/quota.js`). The previous version broke exactly
-that and spent a quarter of its height on three sentences reprinting the numbers from
-the bar directly above them; a window that had just rolled over said the same sentence
-three times.
+The popover follows the butler's two fixed slots — work first, quota second — and it
+does **not restate the bar in prose**: where the bar has labels, the sentence under it
+may only say what the labels cannot draw (`cardText`, not `forecastText` — the rule
+lives in `lib/quota.js`).
 
 Stacked because the menu bar charges by **width**; two lines reuse height that was
-already spent. Sessions awake and hot decisions live in the popover, not on the bar — an
-earlier version gave them a second item, but two items opening the same popover are just
-two identical buttons taking two slots.
+already spent. The waste band **stays off the bar** — one colored label in a row of
+gray ones reads as a rendering bug, not as a warning — it lives in the tooltip and the
+popover instead.
 
-The waste band **stays off the bar**: four-band marks and then a tinted label were both
-tried and both dropped — one colored label in a row of gray ones reads as a rendering
-bug, not as a warning. It lives in the tooltip and the popover.
+<details>
+<summary>Menu-bar internals — the hand-drawn label, <code>NOW_SNAP</code>, <code>NOW_PROBE</code></summary>
 
 The bar text is a **hand-drawn image**, not an `attributedTitle`. With `attributedTitle`
-NSStatusBarButton shoves the block against the top edge — measured on a snapshot of the
-button itself: 1px of space above, 6px below. Neither `baselineOffset` nor
-`paragraphSpacingBefore` moves it (lines are pinned by `min/maxLineHeight`, and AppKit
-ignores the spacing on the first paragraph). Drawing the image puts the coordinates back
-in our hands: currently 3px above, 3px below.
+NSStatusBarButton shoves the block against the top edge (measured: 1px above, 6px
+below), and neither `baselineOffset` nor `paragraphSpacingBefore` moves it. Drawing the
+image puts the coordinates back in our hands — the full measurement story lives beside
+`paint()` in [`app/NowMenuBar.swift`](app/NowMenuBar.swift).
 
-To re-tune by eye without rebuilding, the app snapshots its own button to PNG:
+To re-tune by eye without rebuilding, the app snapshots its own button to PNG — this
+exists because the menu bar **cannot be captured from a terminal** (no Screen Recording
+permission), which makes tuning here blind work:
 
 ```bash
 NOW_LABEL_Y=13 NOW_SNAP=/tmp/btn.png "$HOME/Applications/NOW Dashboard.app/Contents/MacOS/now-dash-menu"
 ```
 
 `NOW_LABEL_SIZE` · `NOW_VALUE_SIZE` · `NOW_LABEL_Y` · `NOW_VALUE_Y` · `NOW_BTN_H` —
-defaults at the top of [`app/NowMenuBar.swift`](app/NowMenuBar.swift). This mode exists
-because the menu bar **cannot be captured from a terminal** (no Screen Recording
-permission), which makes tuning here blind work.
+defaults at the top of the Swift file.
 
 Same for the popover — `NOW_PROBE=1` opens it, measures it, prints the real size, quits:
 
@@ -242,14 +234,11 @@ NOW_PROBE=1 "$HOME/Applications/NOW Dashboard.app/Contents/MacOS/now-dash-menu"
 ```
 
 → `popover: 360×477pt · trang: 477pt · vừa khít`. Two different numbers mean it is being
-clipped. This mode came out of a bug that had been live since day one: the app asked for
-the height in `didFinish`, but at that point `menubar.js` is still `await`-ing its fetch,
-so `.mb-wrap` does not exist yet — the query fell through to the `?? 320` default and the
-popover was **exactly 320pt tall no matter what was inside it**. Everything below that
-mark was cut off, including the button row at the bottom — so "is there no button to jump
-to the app?" was a fair question: that row had never once appeared. The page now pushes
-the number to the app over `webkit.messageHandlers.size`, and pushes again through a
-`ResizeObserver` whenever the content changes.
+clipped — the mode came out of a day-one bug where the popover was exactly 320pt tall no
+matter what was inside it. The page now pushes its size to the app over
+`webkit.messageHandlers.size`, again on every `ResizeObserver` change.
+
+</details>
 
 Click → a popover with two tabs: **Work** (things worth doing + Claude's quota) and
 **Tokens** (all three tools, one block each). The open tab is remembered — WKWebView's
@@ -257,20 +246,23 @@ separate store works in our favour here. Right-click → open the dashboard, res
 server, toggle open-at-login. Clicking the icon in Spotlight/Finder while it runs opens
 the full dashboard.
 
-The way out to the dashboard is the **`◈ NOW`** button in the top-left corner, not a
-button row at the bottom: the old row spent 48px saying something the name already says.
-It carries its fill and border up front rather than waiting for a hover — this window
-opens and closes in seconds, and a button that only appears on hover is a button that
-does not exist. The mark-and-name pair is lifted straight from `.brand-mark` in the
-dashboard's rail: same door, same face. Its target follows the open tab — on the Tokens
-tab it opens the Tokens screen directly, and the tooltip names the destination because
-the "NOW" label does not announce where it goes.
+The way out to the dashboard is the **`◈ NOW`** button in the top-left corner — visible
+up front rather than on hover (this window opens and closes in seconds; a button that
+only appears on hover is a button that does not exist), and its target follows the open
+tab: on the Tokens tab it opens the Tokens screen directly.
 
 Cursor and Antigravity still leave a **prose line** on the Work tab when they have
 something to say: a warning you can only read after switching tabs is a warning that is
 not on the page.
 
 ### The pixel butler
+
+A pixel character sits at the top of the popover, and it earns its ~93px by **carrying
+information**: eyes shut and a floating "z" when the money sits idle, open with a
+catchlight when the pace is on target. Not to your taste? `hero: false` in `DEFAULTS`.
+
+<details>
+<summary>Design details — the mark, the light source, four times of day, how the popover's bars differ from the web</summary>
 
 The character's head at the top of the popover **is the `◈` mark** — a diamond, and where
 the app icon puts a smaller diamond inside it, this one has two eyes. It is not a mascot
@@ -284,8 +276,6 @@ target or better (`ok`, `cheer`, `over`) → eyes open, with a catchlight. When 
 sits idle, the butler dozes — rule 1, taken literally. Open eyes are two cells tall, shut
 eyes a one-cell dash: shape is the second channel next to hue, because a daltonized theme
 must never rely on colour alone.
-
-Not to your taste? `hero: false` in `DEFAULTS` drops the popover from 598 to 505pt.
 
 #### One light source for the whole popover
 
@@ -348,6 +338,8 @@ Three things deliberately **not** borrowed from similar apps:
 
 The gradient is scoped to `.mb-wrap`, so the 15 bars on the web Token screen stay flat.
 
+</details>
+
 ### The popover tuning bench
 
 **Last screen on the rail — key `9`.** Also opens standalone, with nothing else in sight:
@@ -355,6 +347,9 @@ The gradient is scoped to `.mb-wrap`, so the 15 bars on the web Token screen sta
 ```
 http://localhost:4400/menubar-demo.html
 ```
+
+<details>
+<summary>What the bench is for, and which switch lands in which file</summary>
 
 Two ways in, **one implementation** ([`public/views/bench.js`](public/views/bench.js)) — no
 second copy to drift. It moved into the nav because until 3 Aug it only had that URL and
@@ -395,6 +390,8 @@ different screens.
 
 Settling the layout needs no app rebuild, not even for the width: the page declares both
 dimensions to Swift.
+
+</details>
 
 | | |
 |---|---|
@@ -461,6 +458,9 @@ script stops **before** touching the app or the LaunchAgent, and prints the exac
 command to fix it. Only want the background server, no menu-bar icon → use the manual
 `sed` command in [§The dashboard](#the-dashboard) instead, which needs no `swiftc`.
 
+<details>
+<summary>Common problems — symptom → cause → fix</summary>
+
 | Symptom | Cause | Fix |
 |---|---|---|
 | App/web app opens to just "can't reach the server" | LaunchAgent not installed, or the service is down | `./bin/now-dash` — self-`bootstrap`s/`kickstart`s if it finds the plist. No plist yet → run `./bin/install-app` first |
@@ -473,7 +473,10 @@ command to fix it. Only want the background server, no menu-bar icon → use the
 | Turned the icon off and can't find where to turn it back on | The right-click menu disappears along with the icon, and `NOW Dashboard.app` is `LSUIElement` — double-clicking it opens no window to click in | Open the dashboard (`./bin/now-dash`) → the **▤ menu bar** button in the top bar. Or `./bin/now-menu on` |
 | No logs anywhere despite a clear error | The service's logs live under `~/.now-dashboard/`, not the terminal (launchd has no stdout) | `tail -f ~/.now-dashboard/service.err.log` |
 
-**Uninstall — in this exact order:**
+</details>
+
+<details>
+<summary>Uninstall — three steps, in this exact order</summary>
 
 ```bash
 # 1. Stop and unregister from launchd FIRST — doing this after step 3 leaves a still-
@@ -499,6 +502,8 @@ after step 1, for the same reason given there. The web app added via Safari
 (§[Running as its own Dock app](#running-as-its-own-dock-app), usually named `NOW.app`)
 is a different bundle — the three steps above don't touch it; remove it by dragging it
 off the Dock and deleting it from `~/Applications` by hand.
+
+</details>
 
 ## Seven screens
 

@@ -125,14 +125,11 @@ Từ đó trở đi chỉ cần:
 | Xem log | `tail -f ~/.now-dashboard/service.err.log` |
 
 `upgrade` pull (`--ff-only`; cây bẩn hay HEAD detached thì dừng nói rõ chứ không đoán),
-rồi tự biết lượt pull này đòi gì: đổi `app/`, `launchd/`, `bin/` hay icon → chạy trọn
-`./bin/install-app`; tiếng của thanh menu thì được so bằng cách *sinh ra* từ cả hai bản
-`styles.css` thay vì dựng lại mỗi lần chạm vào cái file tình cờ chứa nó; còn lại → restart
-service, F5 một lần ở tab đang mở. Nó thao tác trên bản mà LaunchAgent đang trỏ — gọi từ
-một clone khác thì nó nâng bản đã cài, và nói ra điều đó. Đã mới nhất nhưng service dựng
-trước lượt pull tay gần đây? Nó nhận ra, và chỉ restart.
-(Lệnh có từ sau v1.1.1 — bản cũ hơn thì `git pull` tay một lần trước đã; script cũ bỏ
-qua đối số lạ và chỉ mở tab, trông y như không có gì xảy ra.)
+tự biết lượt pull này cần bộ biên dịch (`app/`, `launchd/`, `bin/`, icon, hay tiếng của
+thanh menu đổi thật) hay chỉ cần restart service, và thao tác trên bản mà LaunchAgent
+đang trỏ — gọi từ một clone khác thì nó nâng bản đã cài, và nói ra điều đó. (Lệnh có từ
+sau v1.1.1 — bản cũ hơn thì `git pull` tay một lần; script cũ bỏ qua đối số lạ, trông y
+như không có gì xảy ra.)
 
 Server treo dưới **launchd**, không dưới terminal hay phiên Claude đã gọi nó — đóng cửa
 sổ nào cũng không giết nó, và đăng nhập lại là nó tự lên. (Bản trước `nohup` từ chính
@@ -150,14 +147,14 @@ Bộ test chạy bằng `node:test` có sẵn, không kéo thêm gói nào — x
 ### Chạy như app riêng trên Dock
 
 Mở `http://localhost:4400` bằng **Safari** → menu **File → Add to Dock…** → **Add**.
-
 Được một app riêng chạy trên WebKit: icon riêng trên Dock, ⌘Tab được, không thanh địa
-chỉ, không tab, và **không cần mở Safari**. Cố tình là Safari chứ không phải "Install as
-app" của Chrome — cùng một trang mà Chrome kéo theo browser process + GPU process, đắt
-hơn hẳn cho một thứ định để mở suốt ngày.
+chỉ — và rẻ hơn hẳn "Install as app" của Chrome, thứ kéo theo browser process + GPU
+process cho một trang định để mở suốt ngày.
 
-Ba thứ khiến nó trông ra app thay vì trông ra một trang web bị đóng khung, đều nằm
-trong `<head>` của [`public/index.html`](public/index.html):
+<details>
+<summary>Vì sao nó trông ra app, và một điều kiện tiên quyết</summary>
+
+Ba thứ, đều nằm trong `<head>` của [`public/index.html`](public/index.html):
 
 | | |
 |---|---|
@@ -167,6 +164,8 @@ trong `<head>` của [`public/index.html`](public/index.html):
 
 Server phải đang chạy, nếu không app mở ra chỉ thấy dòng "chưa nối được tới server" —
 LaunchAgent ở phần [Dashboard](#dashboard) lo đúng việc đó, kể cả sau khi khởi động lại máy.
+
+</details>
 
 ### Trên thanh menu
 
@@ -193,38 +192,32 @@ CLAUDE
 
 <img src="docs/assets/screenshot-menubar-work.png" alt="Popover thanh menu, tab Việc" width="360"> <img src="docs/assets/screenshot-menubar-tokens.png" alt="Popover thanh menu, tab Token" width="360">
 
-Popover xếp theo đúng hai ô của quản gia — việc đáng làm trước, hạn mức sau — vì hai
-loại đó không so được với nhau. Nó **không lặp lại thanh bằng chữ**: thanh đã có nhãn
-thì câu dưới nó chỉ được nói phần nhãn không vẽ nổi (`cardText`, không phải
-`forecastText` — luật nằm ngay trong `lib/quota.js`). Bản trước phạm đúng chỗ này và
-mất một phần tư chiều cao cho ba câu in lại số của chính cái thanh ngay trên chúng;
-cửa sổ vừa sang chu kỳ mới còn nói ba lần cùng một câu.
+Popover xếp theo đúng hai ô của quản gia — việc đáng làm trước, hạn mức sau — và nó
+**không lặp lại thanh bằng chữ**: thanh đã có nhãn thì câu dưới nó chỉ được nói phần
+nhãn không vẽ nổi (`cardText`, không phải `forecastText` — luật nằm ngay trong
+`lib/quota.js`).
 
 Xếp dọc vì thanh menu tính tiền bằng **chiều ngang**; hai dòng dùng lại khoảng cao vốn
-đã bỏ ra. Phiên đang thức và quyết định nóng nằm trong popover, không lên thanh — bản
-trước có mục thứ hai cho chúng, nhưng hai mục cùng mở một popover thì chỉ là hai cái
-nút giống hệt nhau chiếm hai chỗ.
+đã bỏ ra. Bậc bỏ phí **không lên thanh** — một nhãn tô màu giữa một hàng nhãn xám đọc
+thành lỗi giao diện chứ không thành cảnh báo — nó ở lại tooltip và popover.
 
-Bậc bỏ phí **không lên thanh**: ký hiệu bốn bậc rồi màu nhãn đều đã thử và đều bỏ —
-một nhãn tô màu giữa một hàng nhãn xám đọc thành lỗi giao diện chứ không thành cảnh
-báo. Nó ở lại tooltip và popover.
+<details>
+<summary>Ruột thanh menu — chữ vẽ tay, <code>NOW_SNAP</code>, <code>NOW_PROBE</code></summary>
 
-Chữ trên thanh là **ảnh vẽ tay**, không phải `attributedTitle`. Với `attributedTitle`
-thì NSStatusBarButton dồn khối chữ lên sát mép trên — đo trên ảnh chụp chính cái nút:
-trống 1px ở trên, 6px ở dưới. Cả `baselineOffset` lẫn `paragraphSpacingBefore` đều
-không dịch được nó (dòng bị `min/maxLineHeight` ghim, còn spacing thì AppKit bỏ qua ở
-đoạn đầu). Vẽ ảnh thì toạ độ là của mình: hiện tại 3px trên, 3px dưới.
+Chữ trên thanh là **ảnh vẽ tay**, không phải `attributedTitle` — thứ dồn khối chữ lên
+sát mép trên (đo được: trống 1px trên, 6px dưới) mà cả `baselineOffset` lẫn
+`paragraphSpacingBefore` đều không dịch nổi. Vẽ ảnh thì toạ độ là của mình; chuyện đo
+đầy đủ nằm cạnh `paint()` trong [`app/NowMenuBar.swift`](app/NowMenuBar.swift).
 
-Canh lại bằng mắt mà không phải dựng lại app — app tự chụp nút của nó ra PNG:
+Canh lại bằng mắt mà không phải dựng lại app — app tự chụp nút của nó ra PNG (có chế độ
+này vì thanh menu **không chụp được từ terminal**, thiếu quyền Screen Recording):
 
 ```bash
 NOW_LABEL_Y=13 NOW_SNAP=/tmp/btn.png "$HOME/Applications/NOW Dashboard.app/Contents/MacOS/now-dash-menu"
 ```
 
 `NOW_LABEL_SIZE` · `NOW_VALUE_SIZE` · `NOW_LABEL_Y` · `NOW_VALUE_Y` · `NOW_BTN_H` —
-mặc định nằm ở đầu [`app/NowMenuBar.swift`](app/NowMenuBar.swift). Có chế độ này vì
-thanh menu **không chụp được từ terminal** (thiếu quyền Screen Recording), nên canh chữ
-ở đây là canh mù.
+mặc định nằm ở đầu file Swift.
 
 Popover cũng vậy — `NOW_PROBE=1` mở nó ra, đo, in cỡ thật rồi thoát:
 
@@ -232,32 +225,33 @@ Popover cũng vậy — `NOW_PROBE=1` mở nó ra, đo, in cỡ thật rồi tho
 NOW_PROBE=1 "$HOME/Applications/NOW Dashboard.app/Contents/MacOS/now-dash-menu"
 ```
 
-→ `popover: 360×477pt · trang: 477pt · vừa khít`. Hai số lệch nhau nghĩa là bị cắt.
-Chế độ này ra đời sau một lỗi sống suốt từ ngày đầu: app hỏi chiều cao trong
-`didFinish`, mà lúc ấy `menubar.js` còn đang `await fetch` nên `.mb-wrap` chưa tồn tại
-— câu truy vấn rơi vào nhánh mặc định `?? 320` và popover **cao đúng 320pt bất kể
-trong nó có gì**. Mọi thứ dưới mốc đó bị cắt cụt, kể cả hàng nút ở đáy — nên câu hỏi
-"không có nút bấm nhảy ra app được à" là đúng: hàng nút ấy chưa bao giờ hiện ra. Giờ
-trang tự đẩy số sang app qua `webkit.messageHandlers.size`, và đẩy lại qua
+→ `popover: 360×477pt · trang: 477pt · vừa khít`. Hai số lệch nhau nghĩa là bị cắt —
+chế độ này ra đời sau một lỗi sống từ ngày đầu: popover cao đúng 320pt bất kể trong nó
+có gì. Giờ trang tự đẩy cỡ sang app qua `webkit.messageHandlers.size`, và đẩy lại qua
 `ResizeObserver` mỗi khi nội dung đổi.
+
+</details>
 
 Bấm → popover, hai tab: **Việc** (việc đáng làm + hạn mức Claude) và **Token** (cả ba
 công cụ, mỗi cái một khối). Tab đang mở được nhớ lại — kho riêng của WKWebView ở đây là
 thứ có lợi. Chuột phải → mở dashboard, dựng lại server, bật mở-lúc-đăng-nhập. Bấm icon
 trong Spotlight/Finder lúc app đã chạy → mở thẳng dashboard đầy đủ.
 
-Cửa ra dashboard là cái nút **`◈ NOW`** ở góc trái, không phải một hàng nút ở đáy: hàng
-nút cũ tốn 48px để nói một việc mà cái tên đã nói được. Nó mang nền và viền sẵn, không
-đợi rê chuột mới hiện — popover mở rồi đóng trong vài giây, một cái nút chỉ lộ diện lúc
-rê là một cái nút không tồn tại. Cặp mark-và-tên lấy nguyên của `.brand-mark` ở thanh
-rail dashboard: hai chỗ này là cùng một cửa nên mang cùng một mặt. Đích đi theo tab đang
-mở — đang xem Token thì nó mở thẳng màn Token, và tooltip gọi tên đích vì nhãn "NOW"
-không tự nói mình đi đâu.
+Cửa ra dashboard là cái nút **`◈ NOW`** ở góc trái — mang nền và viền sẵn chứ không đợi
+rê chuột (popover mở rồi đóng trong vài giây, một cái nút chỉ lộ diện lúc rê là một cái
+nút không tồn tại), và đích đi theo tab đang mở: đang xem Token thì nó mở thẳng màn Token.
 
 Cursor và Antigravity vẫn để lại **câu văn xuôi** ở tab Việc khi chúng có chuyện: một
 cảnh báo chỉ đọc được sau khi đổi tab là một cảnh báo không có trên trang.
 
 ### Quản gia pixel
+
+Một nhân vật pixel đứng đầu popover, và nó trả tiền cho ~93px của mình bằng việc **chở
+tin**: tiền nằm không thì ngủ gật với chữ "z" bay lên, nhịp bám đích thì mắt mở có đốm
+nắng. Không thích thì tắt: `hero: false` trong `DEFAULTS`.
+
+<details>
+<summary>Chi tiết thiết kế — cái mark, nguồn sáng, bốn buổi, và thanh trong popover khác web chỗ nào</summary>
 
 Đầu nhân vật ở đầu popover **chính là cái mark `◈`** — một viên kim cương, và chỗ icon
 app đặt một viên nhỏ bên trong thì ở đây là hai con mắt. Nó không phải linh vật dán thêm
@@ -269,8 +263,6 @@ bỏ phí lớn (`crit`, `warn`) → mắt nhắm, có chữ "z" bay lên. Nhị
 (`ok`, `cheer`, `over`) → mắt mở, có đốm nắng trong mắt. Tiền nằm không thì quản gia ngủ
 gật — đúng nghĩa đen của mục 1. Mắt mở cao HAI ô, mắt nhắm là gạch cao MỘT ô: hình dáng
 là kênh thứ hai bên cạnh sắc, vì theme daltonized không được dựa vào mỗi khác biệt màu.
-
-Không thích thì tắt: `hero: false` trong `DEFAULTS`, popover tụt từ 598 xuống 505pt.
 
 #### Một nguồn sáng cho cả popover
 
@@ -333,6 +325,8 @@ Ba thứ **không** bê từ mấy app cùng loại:
 Cả gradient lẫn vệt nắng đều khoanh trong `.mb-wrap`, nên 15 cái thanh ở màn Token trên
 web vẫn phẳng như cũ.
 
+</details>
+
 ### Bàn chỉnh popover
 
 **Màn cuối trên thanh rail — phím `9`.** Cũng mở được thành trang lẻ, không có gì khác
@@ -341,6 +335,9 @@ trong tầm mắt:
 ```
 http://localhost:4400/menubar-demo.html
 ```
+
+<details>
+<summary>Bàn chỉnh để làm gì, và công tắc nào chốt vào file nào</summary>
 
 Hai lối vào, **một ruột** ([`public/views/bench.js`](public/views/bench.js)) — không có
 bản thứ hai để lệch. Nó vào nav vì trước 3/8 nó chỉ có URL kia, và **không một đường nào
@@ -379,6 +376,8 @@ xếp dọc hết thì thứ đang vặn và thứ nó làm đổi không còn c
 
 Chốt bố cục không phải dựng lại app, kể cả khi đổi bề rộng: trang khai cả rộng lẫn cao
 cho Swift.
+
+</details>
 
 | | |
 |---|---|
@@ -442,6 +441,9 @@ dịch → script dừng **trước** khi đụng vào app lẫn LaunchAgent, v�
 để chữa. Chỉ cần server nền, không cần icon thanh menu → dùng lệnh `sed` tay ở
 [§Dashboard](#dashboard), không cần `swiftc`.
 
+<details>
+<summary>Sự cố thường gặp — triệu chứng → nguyên nhân → cách sửa</summary>
+
 | Triệu chứng | Nguyên nhân | Sửa |
 |---|---|---|
 | App/web app mở ra chỉ thấy "chưa nối được tới server" | LaunchAgent chưa cài, hoặc service đang down | `./bin/now-dash` — tự `bootstrap`/`kickstart` nếu thấy plist. Chưa có plist → `./bin/install-app` trước |
@@ -454,7 +456,10 @@ dịch → script dừng **trước** khi đụng vào app lẫn LaunchAgent, v�
 | Lỡ tắt icon rồi, giờ không biết bật lại ở đâu | Menu chuột phải biến mất cùng cái icon, mà `NOW Dashboard.app` thì `LSUIElement` — double-click vào không hiện cửa sổ nào để mà bấm | Mở dashboard (`./bin/now-dash`) → nút **▤ thanh menu** ở thanh trên cùng. Hoặc `./bin/now-menu on` |
 | Không thấy log gì dù chắc chắn có lỗi | Log của service nằm ở `~/.now-dashboard/`, không phải terminal (launchd không có stdout) | `tail -f ~/.now-dashboard/service.err.log` |
 
-**Gỡ cài đặt — theo đúng thứ tự này:**
+</details>
+
+<details>
+<summary>Gỡ cài đặt — ba bước, theo đúng thứ tự</summary>
 
 ```bash
 # 1. Dừng và bỏ đăng ký khỏi launchd TRƯỚC — làm sau bước 3 thì service còn sống sẽ
@@ -477,6 +482,8 @@ Gỡ chính repo (`rm -rf` thư mục `git clone`) thì làm **sau cùng**, sau 
 do trong bước 1. Web app thêm qua Safari (§[Chạy như app riêng trên Dock](#chạy-như-app-riêng-trên-dock),
 thường tên `NOW.app`) là bundle khác, ba bước trên không đụng tới — gỡ nó thì kéo icon
 ra khỏi Dock rồi xoá tay ở `~/Applications`.
+
+</details>
 
 ## Bảy màn
 
