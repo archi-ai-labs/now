@@ -95,3 +95,38 @@ test('rest: bậc theo số phút ngồi, và đang nghỉ dở thì icon phải
   // Đang ĂN thì khác đang nghỉ: cái bát không cắt mạch ngồi, bậc phải giữ nguyên.
   assert.equal(at(95, { kind: 'food', id: 'pho', ms: 6e4, leftMs: 3e4 }).stage, 'spent');
 });
+
+/**
+ * Trường `alert` — huy hiệu đã CHỐT HÌNH cho icon (dot/bang/flood), sinh sau `rest` một
+ * ngày: người dùng ngồi trước một icon câm với con thú đói kiệt (`full = 0`) và hỏi
+ * *"Tôi đã đói + mệt rồi mà vẫn chưa có thông báo gì"* (9/8, kèm ảnh). Luật ghép nằm ở
+ * src/badge.js; ở đây đóng đinh bốn cửa: đói lả lên đĩa đỏ kể cả khi đồng hồ ngồi chưa
+ * tới mốc nào; đói THƯỜNG không bao giờ lên icon; `over` vẫn là mức mạnh nhất; và đang
+ * làm gì đó thì im hết — `busy` đứng đầu `stateOf`, icon không được cãi bảng xếp hạng
+ * của chính mô hình nó vẽ.
+ */
+test('alert: đói lả lên đĩa đỏ dù đồng hồ ngồi mới 3 phút — đúng ca 9/8', () => {
+  const b = badgeOf(healthy(), NOW, { on: true, satMin: 3, mood: 'starving', doing: null });
+  assert.equal(b.alert.level, 'bang');
+  assert.match(b.alert.say, /đói lả/i);
+});
+
+test('alert: đói THƯỜNG không lên icon — nổ mỗi ngày thì huy hiệu thành đèn luôn sáng', () => {
+  assert.equal(badgeOf(healthy(), NOW, { on: true, satMin: 40, mood: 'hungry', doing: null }).alert, null);
+});
+
+test('alert: ghép bậc — đói lả kéo chấm vàng lên đĩa đỏ, over vẫn mạnh nhất, tooltip đủ hai câu', () => {
+  const mk = (satMin, mood) => badgeOf(healthy(), NOW, { on: true, satMin, mood, doing: null }).alert;
+  assert.equal(mk(75, 'fine').level, 'dot');
+  assert.equal(mk(75, 'starving').level, 'bang');
+  assert.equal(mk(200, 'starving').level, 'flood');
+  const both = mk(95, 'starving');
+  assert.match(both.say, /đói lả/i);
+  assert.match(both.say, /95 phút/);
+});
+
+test('alert: đang làm gì đó thì im hết — kể cả đang ăn khi đói lả; tắt trò chơi cũng vậy', () => {
+  const eat = { kind: 'food', id: 'pho', ms: 6e4, leftMs: 3e4 };
+  assert.equal(badgeOf(healthy(), NOW, { on: true, satMin: 95, mood: 'starving', doing: eat }).alert, null);
+  assert.equal(badgeOf(healthy(), NOW, { on: false, satMin: 300, mood: 'starving' }).alert, null);
+});

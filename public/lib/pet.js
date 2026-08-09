@@ -18,7 +18,7 @@
 import { html } from './dom.js';
 import { pixels } from './pixel.js';
 import { t } from './i18n.js';
-import { FULL_MS, MOVES, rampAt, stateOf } from './petmath.js';
+import { FULL_MS, HUNGER_MARKS, MOVES, rampAt, stateOf } from './petmath.js';
 
 /* ── Quản gia ─────────────────────────────────────────────────────────────────
 
@@ -2798,22 +2798,38 @@ export const butlerTalk = (pet, nowMs = Date.now()) =>
  *  phải chép lại câu rẽ nhánh này lần thứ hai. */
 export const talkArt = (talk) => (talk.tip ? tipArt(talk.tip) : faceArt(talk.face));
 
-/** Còn bao lâu thì đói hẳn — nói bằng giờ, vì đó là thứ quyết định "có phải cho ăn trước
- *  khi đi ngủ không". Dưới một giờ thì nói bằng phút. */
-export function hungerText(pet, short = false) {
-  const left = pet.full * pet.fullMs;
-  if (left <= 0) return t(short ? 'pet.starvedShort' : 'pet.starved');
-  const mins = Math.round(left / 60000);
-  return mins < 60
-    ? t(short ? 'pet.leftMinShort' : 'pet.leftMin', { n: mins })
-    : t(short ? 'pet.leftHourShort' : 'pet.leftHour', { n: Math.round(mins / 60) });
+/**
+ * Đồng hồ của cái bụng — đếm ngược tới MỐC KẾ TIẾP CÓ TÊN, không phải tới 0%.
+ *
+ * Bản trước đếm tới cạn sạch mà gọi mốc ấy là "đói", nên màn Cửa hàng bày ra được
+ * "Đói lả · còn 43 phút nữa thì đói" — chữ nói đã lả, đồng hồ hứa sắp đói (ảnh người
+ * dùng gửi, 9/8). Từ lượt này đích của phép đếm là đúng chỗ cái CHỮ đứng cạnh sẽ đổi:
+ *
+ *   đang ổn / no căng → "…thì đói"       (mốc `HUNGER_MARKS.hungry`)
+ *   đang đói          → "…thì đói lả"    (mốc `HUNGER_MARKS.starving`)
+ *   đói lả            → "…thì bụng rỗng" (mốc 0 — thanh chạm đáy)
+ *
+ * `Math.ceil` chứ không `round`: một cái đếm ngược làm tròn gần nhất sẽ bày "còn 0 phút"
+ * trong nửa phút cuối — đọc thành lỗi chứ không thành gấp. Trần giờ vẫn như cũ: xa thì
+ * nói bằng giờ (câu "có phải cho ăn trước khi đi ngủ không"), dưới một giờ nói bằng phút.
+ *
+ * Tham số `short` đã GỠ cùng năm khoá `*Short` bên i18n: người dùng duy nhất của bản
+ * ngắn là dải chân popover, thứ không còn từ lượt 17 — và một nhánh không ai đi qua mà
+ * mỗi mốc mới lại phải đẻ thêm một khoá ngắn nữa thì nó không phải cửa, nó là bụi.
+ */
+export function hungerText(pet) {
+  const full = clamp01(pet.full);
+  if (full <= 0) return t('pet.starved');
+  const goal = full > HUNGER_MARKS.hungry ? 'left' : full > HUNGER_MARKS.starving ? 'starve' : 'empty';
+  const mark = goal === 'left' ? HUNGER_MARKS.hungry : goal === 'starve' ? HUNGER_MARKS.starving : 0;
+  const mins = Math.max(1, Math.ceil(((full - mark) * pet.fullMs) / 60000));
+  return mins < 60 ? t(`pet.${goal}Min`, { n: mins }) : t(`pet.${goal}Hour`, { n: Math.round(mins / 60) });
 }
 
-/** Đã ngồi liền bao lâu. Cùng cặp dài/ngắn với `hungerText`, và cùng lý do. */
-export const satText = (pet, short = false) =>
-  pet.satMin > 0
-    ? t(short ? 'pet.satMinShort' : 'pet.satMin', { n: pet.satMin })
-    : t(short ? 'pet.satRestedShort' : 'pet.satRested');
+/** Đã ngồi liền bao lâu. Cùng giọng đồng hồ với `hungerText`, và bản ngắn cũng đã gỡ
+ *  cùng một đợt — xem khối trên. */
+export const satText = (pet) =>
+  pet.satMin > 0 ? t('pet.satMin', { n: pet.satMin }) : t('pet.satRested');
 
 /**
  * DẢI THÔNG SỐ — ba ô, và từ lượt này CẢ HAI bề mặt vẽ nó bằng đúng hàm này.

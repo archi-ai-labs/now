@@ -73,7 +73,7 @@ export const PET_FILE = path.join(DATA_DIR, 'pet.json');
  * ngày mở sổ. Không có gì để học thuộc.
  *
  * Giá hàng hoá vì thế phải neo theo nhịp tiêu thật, không neo theo cảm giác. Đo trên máy
- * này 5/8: $50/ngày, $963/tuần — nên một món ăn 1–4,5 xu là chuyện trong buổi, còn một
+ * này 5/8: $50/ngày, $963/tuần — nên một món ăn 0,3–1,4 xu là chuyện trong buổi, còn một
  * món trang trí 60–320 xu là chuyện vài ngày tới vài tuần. Xem `COIN_PER_HOUR` để biết
  * bên đồ ăn con số ấy suy ra từ đâu.
  */
@@ -116,35 +116,35 @@ export const floor2 = (n) => at2(n, Math.floor);
  *
  * ## Tỉ giá
  *
- * `FULL_MS` là 8 giờ và một thanh no đầy giá 8 xu, nên **1 xu mua đúng 1 giờ no**. Ghép
- * với `RATE` (1 xu = $1) thì cả trò chơi rút về một câu: *$1 token đổi được một giờ no.*
- * Không có con số thứ hai nào phải nhớ.
+ * **0,2 xu một giờ no.** Một thanh no đầy (8 giờ) giá 1,6 xu; ghép với `RATE` (1 xu = $1)
+ * thì cả cửa hàng vẫn rút về một câu: *20 cent token đổi được một giờ no.* Vẫn chỉ có một
+ * con số phải nhớ — nó chỉ không còn là 1.
  *
- * Cái tỉ giá ấy là chỗ bậc `FULL_MS` đi từ 5 lên 8 giờ ở lượt 21 mà KHÔNG đụng tới ví: giá
- * một món là số GIỜ nó mua, nên đồng hồ đói chậm lại thì mỗi món vừa đắt hơn vừa no lâu
- * hơn đúng cùng một tỉ lệ. Tiền ăn của một ngày mười tiếng là 10 xu ở cả hai bậc. Đó là
- * bằng chứng cho luật lượt 15 — không cơ chế nào được chạm vào ví — và nó đứng được vì
- * bảng giá SUY RA chứ không gõ tay.
+ * Vì giá một món là số GIỜ nó mua, đổi `FULL_MS` không đụng tới ví (món đắt hơn thì no lâu
+ * hơn đúng cùng tỉ lệ — bằng chứng cho luật lượt 15, không cơ chế nào được chạm vào ví),
+ * còn đổi HỆ SỐ này là đổi ví một cách công khai, ở đúng một chỗ.
  *
- * Tập trung tính cùng tỉ giá ấy trên `FOCUS_MS` — một chu kỳ 90 phút là 1,5 giờ, nên đầy
- * một thanh tập trung đắt bằng 1,5 xu. Nó RẺ HƠN thanh no và đúng là phải thế: thứ đắt
- * tiền là cái bụng, còn sự tỉnh táo thì có một đường miễn phí về đầy (xem `MOVES`), nên
+ * Tập trung tính cùng tỉ giá ấy trên `FOCUS_MS` — một chu kỳ 90 phút là 1,5 giờ, nên phần
+ * tỉnh táo của một món cộng thêm tối đa 0,3 xu. Nó RẺ HƠN thanh no và đúng là phải thế: thứ
+ * đắt tiền là cái bụng, còn sự tỉnh táo thì có một đường miễn phí về đầy (xem `MOVES`), nên
  * không món bán nào được định giá như thể nó là đường duy nhất.
  *
- * ## Vì sao phải hạ giá
+ * ## Sử ký: 1 → 0,2, ngày 9/8
  *
- * Bảng cũ đặt hồi `FULL_MS` còn là 20 giờ — cho ăn mỗi ngày một lần. Đồng hồ đói sau đó
- * nhanh lên gấp bốn (20 → 10 → 5 giờ) mà bảng giá đứng yên, nên tiền ăn một ngày lặng lẽ
- * tăng gấp bốn: giữ cho no suốt một ngày làm việc 10 tiếng tốn 50–60 xu, đúng bằng TRỌN
- * thu nhập của một ngày nhẹ (đo trên máy này: $50/ngày nhẹ, $120/ngày nặng). Cửa hàng
- * trang trí vì thế thành thứ không bao giờ với tới.
+ * Bảng đầu tiên đặt hồi `FULL_MS` còn 20 giờ; đồng hồ đói sau đó nhanh lên gấp bốn mà giá
+ * đứng yên, nên một ngày 10 tiếng tốn 50–60 xu — TRỌN thu nhập một ngày nhẹ (đo trên máy
+ * này: $50/ngày nhẹ, $120/ngày nặng). Bậc 1 xu/giờ sửa ca đó: còn 10 xu một ngày, 20% của
+ * ngày nhẹ.
  *
- * Ở tỉ giá mới, một ngày 10 tiếng ăn hết 10 xu — 20% của một ngày nhẹ, 8% của một ngày
- * nặng. Đồ trang trí giữ nguyên 60–320 xu và đó là chủ ý: chúng không mua thứ gì đo được
- * nên không có công thức nào để định giá chúng, và chúng là cái đích dài hạn — vài ngày
- * cho món rẻ nhất, vài tuần cho cả bộ.
+ * Người dùng vẫn thấy đắt — *"giá tiền mua thức ăn đang hơi đắt → giảm 80%"* — và họ đúng
+ * ở một chỗ đo được: cho ăn là việc BẮT BUỘC vài lần một ngày (đói lả là trạng thái chặn
+ * mọi thứ khác), mà một khoản chi bắt buộc ăn 20% ngân sách ngày thì cửa hàng trang trí —
+ * thứ tự chọn duy nhất trong tiệm — chỉ còn nhận phần thừa. Ở 0,2: một ngày 10 tiếng ăn
+ * hết 2 xu, 4% của ngày nhẹ; phần còn lại của ví dồn cho cái đích dài hạn. Đồ trang trí
+ * giữ nguyên giá và đó là chủ ý — chúng không mua thứ gì đo được nên không có công thức
+ * nào cho chúng, và hạ cả hai đầu thì phép giảm không đổi được cán cân nào.
  */
-export const COIN_PER_HOUR = 1;
+export const COIN_PER_HOUR = 0.2;
 const priceOf = ({ fill = 0, wake = 0 }) =>
   round2(((fill * FULL_MS + wake * FOCUS_MS) / 3600000) * COIN_PER_HOUR);
 
@@ -174,15 +174,15 @@ const priceOf = ({ fill = 0, wake = 0 }) =>
  * - **Sô-cô-la 0,15** — theobromine cộng một ít caffeine; nhẹ, và trung thực là nhẹ.
  */
 const FOOD_SPEC = {
-  coffee: { fill: 0.25, wake: 0.4 }, //  1,85 xu
-  socola: { fill: 0.15, wake: 0.15 }, // 0,98
-  tea: { fill: 0.2, wake: 0.25 }, //     1,38
-  kem: { fill: 0.2 }, //                 1,00
-  che: { fill: 0.35 }, //                1,75
-  beer: { fill: 0.3 }, //                1,50
-  banhmi: { fill: 0.5 }, //              2,50
-  xoi: { fill: 0.6 }, //                 3,00
-  pho: { fill: 0.9 }, //                 4,50
+  coffee: { fill: 0.25, wake: 0.4 }, //  0,52 xu
+  socola: { fill: 0.15, wake: 0.15 }, // 0,29
+  tea: { fill: 0.2, wake: 0.25 }, //     0,40
+  kem: { fill: 0.2 }, //                 0,32
+  che: { fill: 0.35 }, //                0,56
+  beer: { fill: 0.3 }, //                0,48
+  banhmi: { fill: 0.5 }, //              0,80
+  xoi: { fill: 0.6 }, //                 0,96
+  pho: { fill: 0.9 }, //                 1,44
 };
 
 /**

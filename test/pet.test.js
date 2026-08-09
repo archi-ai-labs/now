@@ -9,9 +9,9 @@ import {
   FULL_MS, FOCUS_MS, BREAK_MS, COIN_PER_HOUR, EAT_MS, FOODS, ITEMS, MOVES, RATE,
   REST_RAMP_MS, SLOTS, doingOf,
 } from '../src/pet.js';
-import { ART, DISHES, FACE_NAMES, MOVE_ART, TIP_KEYS, TIP_KINDS, butlerFace, butlerLook, butlerRows, butlerSays, butlerTalk, butlerThinks, coinNum, dialRows, doingRing, faceRows, focusDial, hungerTray, markArt, nudgeOf, speaking, statCells, statWords, tipArt, trayRows } from '../public/lib/pet.js';
+import { ART, DISHES, FACE_NAMES, MOVE_ART, TIP_KEYS, TIP_KINDS, butlerFace, butlerLook, butlerRows, butlerSays, butlerTalk, butlerThinks, coinNum, dialRows, doingRing, faceRows, focusDial, hungerText, hungerTray, markArt, nudgeOf, speaking, statCells, statWords, tipArt, trayRows } from '../public/lib/pet.js';
 import { rawText } from '../public/lib/dom.js';
-import { FOCUS_DIP, MOVE_HOME, MOVE_IDS, MOVE_PARK, REST_STAGE_MIN, livePet, moveForHour, restStageOf, stateOf, wakeOf, whereOf } from '../public/lib/petmath.js';
+import { FOCUS_DIP, HUNGER_MARKS, MOVE_HOME, MOVE_IDS, MOVE_PARK, REST_STAGE_MIN, livePet, moveForHour, restStageOf, stateOf, wakeOf, whereOf } from '../public/lib/petmath.js';
 import { LOTS, PLACE_IDS, PLACES, ROADS, SCENE_SPOTS, STEP, TOWN_BOX, WALKERS, WELL, butlerArt, cellPos, onRoad, sizeOf } from '../public/lib/town.js';
 import { outlineRows } from '../public/lib/pixel.js';
 import { lastHumanIn } from '../src/collect/sessions.js';
@@ -97,6 +97,44 @@ test('độ no tụt theo ĐỒNG HỒ, không theo lượt quét', () => {
   assert.equal(fullnessOf(l, T0), 1);
   assert.ok(Math.abs(fullnessOf(l, T0 + FULL_MS / 2) - 0.5) < 1e-9);
   assert.equal(fullnessOf(l, T0 + FULL_MS * 2), 0, 'chạm đáy rồi thì không âm');
+});
+
+/**
+ * Đồng hồ đói đếm tới MỐC KẾ TIẾP CÓ TÊN — chữ và số không được cãi nhau.
+ *
+ * Ca gãy có thật (ảnh người dùng gửi 9/8): màn Cửa hàng bày "Đói lả · còn 43 phút nữa thì
+ * đói" — vì bản cũ luôn đếm tới 0% mà gọi mốc ấy là "đói", trong khi cái chữ bên cạnh đã
+ * đổi thành "Đói lả" từ mốc 12%. Từ lượt này đích của phép đếm là đúng chỗ chữ sẽ đổi.
+ */
+test('đồng hồ đói trỏ đúng mốc mà chữ trạng thái sẽ đổi, không trỏ mốc 0%', () => {
+  const at = (full) => hungerText({ full, fullMs: FULL_MS });
+  // Đang ổn (0,5): đích là mốc ĐÓI — (0,5 − 0,35) × 8h = 72′ → nói bằng giờ.
+  assert.equal(at(0.5), 'còn 1 giờ nữa thì đói');
+  // Đang đói (0,2): đích là mốc ĐÓI LẢ — (0,2 − 0,12) × 8h = 38,4′ → trần lên 39.
+  assert.equal(at(0.2), 'còn 39 phút nữa thì đói lả');
+  // Đói lả (0,09): đích là ĐÁY — 0,09 × 8h = 43,2′. Đúng ca trong ảnh: chữ "Đói lả"
+  // đứng cạnh một cái đếm về "bụng rỗng", không còn hứa "sắp đói".
+  assert.equal(at(0.09), 'còn 44 phút nữa thì bụng rỗng');
+  assert.equal(at(0), 'đói lả rồi');
+  // Không bao giờ "còn 0 phút": sát mốc thì trần lên 1 — một cái đếm ngược bày số 0 mà
+  // chưa đổi chữ đọc thành lỗi, không đọc thành gấp.
+  assert.equal(at(HUNGER_MARKS.hungry + 0.0001), 'còn 1 phút nữa thì đói');
+  // Chữ đổi ở đâu thì đồng hồ đổi đích ở đúng đó — hai bên đọc CHUNG một bảng mốc.
+  assert.equal(moodOf(HUNGER_MARKS.hungry), 'hungry');
+  assert.equal(moodOf(HUNGER_MARKS.starving), 'starving');
+});
+
+test('bộ khoá đồng hồ đói đủ ở CẢ HAI ngôn ngữ — và năm khoá *Short đã gỡ hẳn', () => {
+  const vi = tableOf('vi');
+  const en = tableOf('en');
+  for (const k of ['pet.starved', 'pet.leftMin', 'pet.leftHour', 'pet.starveMin', 'pet.starveHour', 'pet.emptyMin', 'pet.emptyHour']) {
+    assert.ok(k in vi, `thiếu ${k} ở VI`);
+    assert.ok(k in en, `thiếu ${k} ở EN`);
+  }
+  // Gỡ là gỡ hẳn: khoá chết nằm lại trong bảng là mời người sau nối lại cái cửa không ai đi.
+  for (const k of ['pet.starvedShort', 'pet.leftMinShort', 'pet.leftHourShort', 'pet.satMinShort', 'pet.satRestedShort']) {
+    assert.ok(!(k in vi) && !(k in en), `${k} đáng lẽ đã gỡ khỏi cả hai bảng`);
+  }
 });
 
 test('cho ăn lúc đang no KHÔNG đẩy mốc ra tương lai', () => {
@@ -1101,7 +1139,7 @@ test('giá mỗi món ăn = số GIỜ nó mua cho bạn, ở đúng một tỉ 
     const it = ITEMS[id];
     const want = (it.fill * h(FULL_MS) + (it.wake ?? 0) * h(FOCUS_MS)) * COIN_PER_HOUR;
     // Sai số một nửa xu lẻ: giá cất trong bảng đã làm tròn tới hai chữ số (sô-cô-la ra
-    // đúng 0,975), nên phép so phải chấp nhận đúng cái nửa bậc ấy chứ không hơn.
+    // đúng 0,285), nên phép so phải chấp nhận đúng cái nửa bậc ấy chứ không hơn.
     assert.ok(Math.abs(it.price - want) <= 0.0051, `${id}: ${it.price} xu, công thức ra ${want}`);
   }
 });
@@ -1117,7 +1155,7 @@ test('giá mỗi món ăn = số GIỜ nó mua cho bạn, ở đúng một tỉ 
  * tỉ giá thật đang chạy. Một cái giá gõ đè lên vẫn lọt lưới của phép chia ấy — và đó chính
  * là thứ phải bắt.
  */
-test('1 xu mua đúng 1 giờ no — chỗ neo của cả bảng giá', () => {
+test('giá một giờ no đọc ngược từ bảng hàng ra ĐÚNG tỉ giá — chỗ neo của cả bảng giá', () => {
   const hours = FULL_MS / 3600000;
   const plain = FOODS.filter((id) => !ITEMS[id].wake);
   assert.ok(plain.length >= 3, 'phải còn ít nhất ba món chỉ lấp bụng để đọc ra tỉ giá');
@@ -1139,15 +1177,17 @@ test('1 xu mua đúng 1 giờ no — chỗ neo của cả bảng giá', () => {
  * không nhờ may: giá một món là số GIỜ nó mua, nên đồng hồ đói chậm lại thì món vừa đắt
  * hơn vừa no lâu hơn cùng một tỉ lệ, và tiền ăn của một ngày đứng yên.
  *
- * Phép kiểm này chốt đúng tính chất ấy, nên lần sau ai đó gõ tay một cái giá là ví lệch
- * ngay và cái lệch ấy có tên.
+ * Phép kiểm neo vào `COIN_PER_HOUR` chứ không vào một con số trần: 9/8 tỉ giá hạ 1 → 0,2
+ * (*"giá tiền mua thức ăn đang hơi đắt → giảm 80%"* — sử ký ở `src/pet.js`), và một bản
+ * ghim cứng "10 xu" sẽ đỏ vì một chuyện không hỏng — đúng vết xe mà bài test tỉ giá ngay
+ * trên đã ghi lại một lần.
  */
-test('đổi nhịp đói không đụng tới ví — tiền ăn một ngày 10 tiếng vẫn là 10 xu', () => {
+test('đổi nhịp đói không đụng tới ví — một ngày 10 tiếng vẫn ăn đúng 10 giờ-no', () => {
   const hours = FULL_MS / 3600000;
   const perHour = Math.min(...FOODS.map((id) => ITEMS[id].price / (ITEMS[id].fill * hours)));
   assert.ok(
-    Math.abs(10 * perHour - 10) <= 0.06,
-    `ngày 10 tiếng ăn hết ${10 * perHour} xu — phải là 10 ở MỌI nhịp đói`,
+    Math.abs(10 * perHour - 10 * COIN_PER_HOUR) <= 0.06,
+    `ngày 10 tiếng ăn hết ${10 * perHour} xu — phải là ${10 * COIN_PER_HOUR} ở MỌI nhịp đói`,
   );
 });
 
@@ -1205,7 +1245,7 @@ test('mua nhiều lượt KHÔNG để lại rác dấu phẩy động trong s�
   const frac = String(l.spent).split('.')[1] ?? '';
   assert.ok(frac.length <= 2, `spent = ${l.spent} — thừa chữ số lẻ`);
   // Vế phải phải làm tròn, và chính chỗ đó là bằng chứng: cộng bốn cái giá bằng phép cộng
-  // trần ra 5.1899999999999995, đúng con số mà sổ sẽ mang nếu `buy` không làm tròn lúc ghi.
+  // trần ra 1.4999999999999998, đúng con số mà sổ sẽ mang nếu `buy` không làm tròn lúc ghi.
   const want = ITEMS.socola.price * 2 + ITEMS.tea.price + ITEMS.coffee.price;
   assert.equal(l.spent, Math.round(want * 100) / 100);
 });

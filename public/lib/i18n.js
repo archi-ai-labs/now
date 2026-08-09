@@ -247,16 +247,18 @@ const DICT = {
     'pet.hunger': 'Độ no',
     'pet.fullAria': (o) => `còn no ${o.pct}%`,
     'pet.starved': 'đói lả rồi',
+    // Đồng hồ đói đếm tới MỐC KẾ TIẾP CÓ TÊN — ba đích, ba cặp khoá, xem `hungerText`
+    // bên `lib/pet.js`. Cặp `empty*Hour` hôm nay không với tới (quãng đói-lả → rỗng chỉ
+    // dài 12% của 8 giờ), nhưng `FULL_MS` đã dời ba bậc rồi; thiếu khoá thì ngày nó dời
+    // bậc tư màn hình in nguyên chữ `pet.emptyHour`.
+    // Năm khoá `*Short` từng đứng ngay đây đã GỠ: người dùng duy nhất của bản ngắn là
+    // dải chân popover, thứ không còn từ lượt 17.
     'pet.leftMin': (o) => `còn ${o.n} phút nữa thì đói`,
     'pet.leftHour': (o) => `còn ${o.n} giờ nữa thì đói`,
-    // Bản NGẮN, cho dải popover. Vế bị cắt ("nữa thì đói", "đã ngồi … liền") là vế mà chính
-    // cái hình đứng ngay cạnh đã nói: thanh mười ô LÀ cơn đói, cái bầu cát LÀ quãng ngồi.
-    // Bản dài ở lại màn Cửa hàng, chỗ có nhãn và có chỗ để đọc chậm.
-    'pet.starvedShort': 'đói lả',
-    'pet.leftMinShort': (o) => `còn ${o.n} phút`,
-    'pet.leftHourShort': (o) => `còn ${o.n} giờ`,
-    'pet.satMinShort': (o) => `${o.n} phút liền`,
-    'pet.satRestedShort': 'vừa nghỉ',
+    'pet.starveMin': (o) => `còn ${o.n} phút nữa thì đói lả`,
+    'pet.starveHour': (o) => `còn ${o.n} giờ nữa thì đói lả`,
+    'pet.emptyMin': (o) => `còn ${o.n} phút nữa thì bụng rỗng`,
+    'pet.emptyHour': (o) => `còn ${o.n} giờ nữa thì bụng rỗng`,
     // Nhãn nói TRẠNG THÁI ĐANG LÀ GÌ, không nói cú bấm sẽ làm gì — cùng cách "Tắt trò chơi"
     // ngay cạnh nó đã viết. Phần "bấm để đổi" do `aria-pressed` chở, không do chữ chở.
     'pet.soundOn': 'Tiếng: bật',
@@ -280,6 +282,11 @@ const DICT = {
     'pet.nudge.spent': (o) => `${o.n} phút rồi. Não đang ở đáy chu kỳ — nghỉ 10 phút rồi quay lại còn nhanh hơn cố ngồi.`,
     'pet.nudge.afternoon': (o) => `${o.n} phút, mà đầu giờ chiều lại đúng đáy nhịp ngày. Ra chỗ có nắng đi bộ 5 phút — với cú trũng này, ánh sáng ăn đứt cà phê.`,
     'pet.nudge.night': (o) => `Quá 22h và đã ${o.n} phút ngồi liền. Cái này để mai; ngủ mới là thứ dọn được cái đầu.`,
+    // Câu tooltip của huy hiệu trên icon thanh menu — server soạn (xem `alert` trong
+    // src/badge.js), app Swift chỉ dán vào tooltip. Trước đây câu ngồi-lâu viết cứng
+    // tiếng Việt ngay trong file Swift; dọn về đây để hai nguồn báo nói cùng một giọng.
+    'badge.starve': 'Quản gia đói lả — mở popover, một xu là đủ bữa.',
+    'badge.sat': (o) => `Đã ngồi ${o.n} phút liền — mở popover, nghỉ một phút có kiểm là gỡ.`,
     // ── Quản gia tự nói, khi bấm vào anh ta trên popover ──────────────────────────
     //
     // Ngôi THỨ NHẤT, và đó là chỗ mấy câu này khác mọi câu khác trong bảng: dải thông số
@@ -492,9 +499,9 @@ const DICT = {
     'pet.how.coin.p':
       'Tỉ giá đúng bằng 1, nên ví xu đọc ra chính hoá đơn: 213 xu nghĩa là $213 kể từ ngày mở sổ. Cộng theo ngày chứ không theo tổng, vì Claude Code tự xoá transcript cũ nên tổng lịch sử TỤT xuống theo thời gian — khoá theo ngày thì mỗi ngày tự chốt sổ của nó và một ngày rơi khỏi sổ token không kéo ai theo.',
     'pet.how.full.t': 'Độ no',
-    'pet.how.full.f': 'no = 1 − (bây giờ − lần ăn cuối) ÷ 5 giờ',
+    'pet.how.full.f': 'no = 1 − (bây giờ − lần ăn cuối) ÷ 8 giờ',
     'pet.how.full.p':
-      '5 giờ là khoảng cách giữa hai bữa của người — sáng, trưa, tối. Con vật vì thế đói cùng lúc với bạn, và cái thanh ấy kiêm luôn việc nhắc đến giờ ăn. Cho ăn thì mốc được đẩy về trước sao cho độ no tăng đúng phần của món và không vượt quá no căng; cộng thẳng vào mốc thì ăn lúc đang no sẽ khoá thanh ở mức đầy nhiều giờ liền.',
+      '8 giờ là trọn một buổi làm liền tay: cho ăn lúc ngồi vào bàn thì con vật vừa hết no lúc đứng dậy. Bậc trước là 5 giờ — khoảng cách giữa hai bữa — nhưng ở 5 giờ thì một buổi 9h–17h ăn trọn cả thanh, mở popover lúc tan việc là lần nào cũng gặp đói lả; một chỉ số chạm đáy mỗi ngày thì thôi là chỉ số, nó thành cái đèn đỏ luôn sáng. Cho ăn thì mốc được đẩy về trước sao cho độ no tăng đúng phần của món và không vượt quá no căng; cộng thẳng vào mốc thì ăn lúc đang no sẽ khoá thanh ở mức đầy nhiều giờ liền.',
     'pet.how.focus.t': 'Tập trung',
     'pet.how.focus.f': 'tập trung = 1 − (bây giờ − mốc nghỉ cuối) ÷ 90 phút',
     'pet.how.focus.p':
@@ -502,7 +509,7 @@ const DICT = {
     'pet.how.price.t': 'Giá đồ ăn',
     'pet.how.price.f': (o) => `giá = số GIỜ món ấy mua cho bạn × ${o.n} xu/giờ`,
     'pet.how.price.p':
-      'Thanh no kéo 5 giờ và một thanh no đầy giá 5 xu, nên 1 xu mua đúng 1 giờ no — ghép với tỉ giá 1 xu = $1 thì cả cửa hàng rút về một câu: $1 token đổi được một giờ no. Tập trung tính cùng tỉ giá ấy trên chu kỳ 90 phút, nên nó rẻ hơn, và đúng là phải rẻ hơn: sự tỉnh táo có một đường miễn phí về đầy, cái bụng thì không. Bảng giá cũ là chín con số đặt tay và nó đã lọt hai ca một món đè bẹp món khác — cà phê vừa rẻ hơn vừa hơn sô-cô-la ở cả hai mặt. Suy từ công thức thì ca ấy không dựng lên được: trả nhiều hơn là nhận nhiều hơn, theo nghĩa đen.',
+      'Một giờ no giá 0,2 xu — thanh no đầy (8 giờ) giá 1,6 xu, ghép với tỉ giá 1 xu = $1 thì cả cửa hàng rút về một câu: 20 cent token đổi được một giờ no. Hệ số 0,2 là quyết định giá duy nhất của quầy đồ ăn, đặt 9/8: cho ăn là khoản bắt buộc vài bữa một ngày, mà ở tỉ giá cũ (1 xu một giờ) nó ngốn 20% thu nhập một ngày nhẹ — cửa hàng trang trí, thứ tự chọn duy nhất trong tiệm, chỉ còn nhận phần thừa; ở 0,2 còn 4%. Tập trung tính cùng tỉ giá ấy trên chu kỳ 90 phút, nên nó rẻ hơn, và đúng là phải rẻ hơn: sự tỉnh táo có một đường miễn phí về đầy, cái bụng thì không. Bảng giá cũ là chín con số đặt tay và nó đã lọt hai ca một món đè bẹp món khác — cà phê vừa rẻ hơn vừa hơn sô-cô-la ở cả hai mặt. Suy từ công thức thì ca ấy không dựng lên được: trả nhiều hơn là nhận nhiều hơn, theo nghĩa đen.',
     'pet.how.rest.t': 'Mốc nghỉ đến từ đâu',
     'pet.how.rest.p':
       'Ba đường: Claude Code im trên 10 phút, một quãng nghỉ khai trước rồi được kiểm, hoặc một phần từ đồ uống có caffeine. Đường thứ nhất là ƯỚC LƯỢNG và nó sai được hai kiểu — cả hai đều nhắc hụt chứ không nhắc oan: cắm mặt vào editor cả tiếng mà không gọi Claude thì máy tưởng bạn nghỉ; để một phiên chạy dài rồi bỏ đi thì máy tưởng bạn vẫn ngồi. Quãng nghỉ khai trước không dính hai ca đó, vì ở đấy ý định là do bạn nói ra chứ không do máy đoán. Nó kiểm bằng lượt GÕ CỦA BẠN, không bằng lượt ghi của Claude: một lượt chạy dài ghi vào transcript liên tục, mà đúng quãng ấy mới là quãng bạn rảnh để đứng dậy — đo nhầm chỗ đó thì càng làm đúng càng chắc chắn bị huỷ.',
@@ -2020,11 +2027,10 @@ const DICT = {
     'pet.starved': 'starving',
     'pet.leftMin': (o) => `hungry in ${o.n} min`,
     'pet.leftHour': (o) => `hungry in ${o.n} h`,
-    'pet.starvedShort': 'starving',
-    'pet.leftMinShort': (o) => `${o.n} min left`,
-    'pet.leftHourShort': (o) => `${o.n} h left`,
-    'pet.satMinShort': (o) => `${o.n} min straight`,
-    'pet.satRestedShort': 'just rested',
+    'pet.starveMin': (o) => `starving in ${o.n} min`,
+    'pet.starveHour': (o) => `starving in ${o.n} h`,
+    'pet.emptyMin': (o) => `stomach empty in ${o.n} min`,
+    'pet.emptyHour': (o) => `stomach empty in ${o.n} h`,
     'pet.soundOn': 'Sound: on',
     'pet.soundOff': 'Sound: off',
     'pet.mood.starving': 'Starving',
@@ -2044,6 +2050,8 @@ const DICT = {
     'pet.nudge.spent': (o) => `${o.n} minutes. Your brain is at the bottom of the cycle — a 10-minute break beats pushing through.`,
     'pet.nudge.afternoon': (o) => `${o.n} minutes, and early afternoon is the daily trough. Walk outside for 5 minutes — for this dip, bright light beats coffee.`,
     'pet.nudge.night': (o) => `Past 10pm and ${o.n} minutes straight. Leave it for tomorrow; sleep is what actually clears your head.`,
+    'badge.starve': 'The butler is starving — open the popover; one coin covers a meal.',
+    'badge.sat': (o) => `${o.n} minutes in the chair — open the popover; one verified minute clears it.`,
     'pet.says.well': 'All good. Screen on, hands on the keys.',
     'pet.says.hungry': 'Stomach is talking. Still typing, but not for long.',
     'pet.says.starving': 'Starving. Hands off the keys — all I see is food.',
@@ -2177,9 +2185,9 @@ const DICT = {
     'pet.how.coin.p':
       'The rate is exactly 1, so the wallet reads back your bill: 213 coins means $213 since the ledger opened. Credited per day rather than against a running total, because Claude Code prunes old transcripts, so the historical total DROPS over time — keyed by day, each day settles on its own and a day falling out of the token ledger drags nobody with it.',
     'pet.how.full.t': 'Fullness',
-    'pet.how.full.f': 'full = 1 − (now − last fed) ÷ 5 hours',
+    'pet.how.full.f': 'full = 1 − (now − last fed) ÷ 8 hours',
     'pet.how.full.p':
-      'Five hours is the gap between human meals — breakfast, lunch, dinner. So the pet gets hungry when you do, and the bar doubles as a reminder that it is meal time. Feeding moves the mark forward so fullness rises by exactly the item and never past stuffed; adding to the mark directly would pin the bar at full for hours if you ate while already fed.',
+      'Eight hours is one full stretch of work: feed it when you sit down and it runs out right as you stand up. The previous step was 5 hours — the gap between meals — but at 5 a single 9-to-5 stretch ate the whole bar, so opening the popover at the end of the day always met a starving pet; a gauge that bottoms out every day stops being a gauge and becomes a red light that is always on. Feeding moves the mark forward so fullness rises by exactly the item and never past stuffed; adding to the mark directly would pin the bar at full for hours if you ate while already fed.',
     'pet.how.focus.t': 'Focus',
     'pet.how.focus.f': 'focus = 1 − (now − last rest) ÷ 90 minutes',
     'pet.how.focus.p':
@@ -2187,7 +2195,7 @@ const DICT = {
     'pet.how.price.t': 'What food costs',
     'pet.how.price.f': (o) => `price = the HOURS it buys you × ${o.n} coin/hour`,
     'pet.how.price.p':
-      'A full hunger bar lasts 5 hours and costs 5 coins, so 1 coin buys exactly 1 hour of being fed — and with 1 coin = $1, the whole shop collapses into one sentence: $1 of tokens buys an hour. Focus is priced at the same rate over the 90-minute cycle, so it comes out cheaper, and it should: alertness has a free road back to full, a stomach does not. The old price list was nine hand-picked numbers, and two of them were strictly dominated — coffee was both cheaper than chocolate and better on every axis. Derived prices cannot do that: paying more gets you more, literally.',
+      'An hour of being fed costs 0.2 coins — a full bar (8 hours) is 1.6 coins, and with 1 coin = $1 the whole shop collapses into one sentence: 20 cents of tokens buys an hour. The 0.2 factor is the one hand-set price decision in the food aisle, made 9 Aug: feeding is mandatory a few times a day, and at the old rate (1 coin an hour) it swallowed 20% of a light day’s income — the decor shop, the only real choice in here, got the leftovers; at 0.2 it takes 4%. Focus is priced at the same rate over the 90-minute cycle, so it comes out cheaper, and it should: alertness has a free road back to full, a stomach does not. The old price list was nine hand-picked numbers, and two of them were strictly dominated — coffee was both cheaper than chocolate and better on every axis. Derived prices cannot do that: paying more gets you more, literally.',
     'pet.how.rest.t': 'Where the rest mark comes from',
     'pet.how.rest.p':
       'Three ways: Claude Code quiet for over 10 minutes, a declared break that then gets checked, or partially from a caffeinated drink. The first is an ESTIMATE and it fails two ways — both of which under-nudge rather than nag: an hour heads-down in the editor without calling Claude looks like rest; a long-running session left behind looks like work. A declared break avoids both, because there the intent is stated rather than guessed. It is checked against YOUR typing, not against Claude writing: a long run writes to the transcript continuously, and that is exactly the stretch when you are free to get up — measure the wrong one and doing it right guarantees a rejection.',

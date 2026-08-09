@@ -78,5 +78,37 @@ export function badgeOf(s, now = Date.now(), pet = null) {
     rest: pet?.on
       ? { satMin: pet.satMin, stage: pet.doing?.kind === 'move' ? null : restStageOf(pet.satMin) }
       : null,
+    // ── Huy hiệu trên icon — server chốt HÌNH, app chỉ vẽ ─────────────────────
+    //
+    // Ra đời một ngày sau `rest`, vì người dùng ngồi trước một icon câm với con thú đói
+    // kiệt (`full = 0`) và hỏi đúng câu phải hỏi: *"Tôi đã đói + mệt rồi mà vẫn chưa có
+    // thông báo gì"* (9/8, kèm ảnh). Thang `rest` chỉ đọc số phút ngồi — tức icon hiện
+    // được bậc HẠNG BA của `stateOf` (`spent`) mà câm với bậc HẠNG HAI (`starving`);
+    // một cái icon cãi lại chính bảng xếp hạng của mô hình nó đang vẽ.
+    //
+    // `level` là HÌNH, không phải nguyên nhân: `dot` chấm vàng 7pt · `bang` đĩa đỏ 11pt
+    // mang dấu chấm than · `flood` đĩa đỏ cộng nhuộm đỏ cả chữ. Nguyên nhân nằm trọn
+    // trong `say` (câu cho tooltip, server soạn bằng i18n) — app Swift vì thế vẫn không
+    // biết một luật nào, đúng ranh giới đã khai ở đầu NowMenuBar.swift, và thêm nguồn
+    // báo thứ ba sau này không phải dựng lại app.
+    //
+    // Ghép bậc: `starving` đứng ngang `spent` (đĩa đỏ) theo đúng thứ hạng của `stateOf`
+    // — nó là bậc duy nhất mà chính CON VẬT đang hỏng; `over` vẫn là mức mạnh nhất. ĐÓI
+    // THƯỜNG thì không bao giờ lên icon: chu kỳ no là 8 giờ nên "đang đói" là chuyện mỗi
+    // ngày một lần — một huy hiệu nổ hằng ngày là cái đèn đỏ luôn sáng, đúng thứ mà chú
+    // thích FULL_MS đã gỡ một lần. Đang làm gì đó (`doing`) thì im hết: ăn dở là cơn đói
+    // đang được chữa, nghỉ dở mà icon vẫn giục là cãi lại chính cú bấm vừa xong.
+    alert: (() => {
+      if (!pet?.on) return null;
+      const stage = pet.doing ? null : restStageOf(pet.satMin);
+      const starving = !pet.doing && pet.mood === 'starving';
+      const level =
+        stage === 'over' ? 'flood' : starving || stage === 'spent' ? 'bang' : stage === 'dip' ? 'dot' : null;
+      if (!level) return null;
+      const say = [starving ? t('badge.starve') : null, stage ? t('badge.sat', { n: pet.satMin }) : null]
+        .filter(Boolean)
+        .join('\n');
+      return { level, say };
+    })(),
   };
 }

@@ -51,12 +51,12 @@ export const clamp01 = (v) => Math.max(0, Math.min(1, v));
  * từng phá nó: bảng giá đặt hồi còn 20 giờ đứng yên trong khi đồng hồ đói nhanh lên gấp
  * bốn, nên tiền ăn một ngày ngốn trọn thu nhập của một ngày nhẹ. Chỗ sửa không nằm ở đây
  * mà ở bảng giá — xem `COIN_PER_HOUR` trong `src/pet.js`, nơi giá đồ ăn SUY RA từ chính
- * con số này: một thanh no đầy giá 8 xu, tức **1 xu vẫn mua đúng 1 giờ no**.
+ * con số này (0,2 xu một giờ no từ 9/8 — lịch sử tỉ giá nằm ở đó).
  *
- * Vì cái tỉ giá ấy là một hằng số, bậc 8 giờ KHÔNG đụng tới ví một đồng nào — và đó là
- * điều đáng nói thẳng: tiền ăn của một ngày mười tiếng là 10 xu ở cả bậc 5 lẫn bậc 8, chỉ
- * khác số lần phải bấm. Đổi hằng số ở đây thì bảng giá, số đĩa trên khay và cả phép kiểm
- * ngân sách tự đi theo, không còn hai con số phải nhớ chỉnh cùng lúc.
+ * Vì cái tỉ giá ấy là một hằng số, đổi con số ở ĐÂY không đụng tới ví một đồng nào: món
+ * vừa đắt hơn vừa no lâu hơn đúng cùng một tỉ lệ. Đổi hằng số ở đây thì bảng giá, số đĩa
+ * trên khay và cả phép kiểm ngân sách tự đi theo, không còn hai con số phải nhớ chỉnh
+ * cùng lúc.
  */
 export const FULL_MS = 8 * 3600 * 1000;
 
@@ -483,14 +483,22 @@ export function phaseOf(hour) {
 }
 
 /**
+ * Hai mốc ĐÓI, xuất ra vì từ lượt này chúng có người dùng thứ hai: `hungerText` đếm
+ * ngược tới ĐÚNG mốc mà chữ trạng thái sẽ đổi. Trước đó nó đếm tới 0%, nên màn Cửa hàng
+ * từng bày "Đói lả · còn 43 phút nữa thì đói" — chữ nói đã lả, đồng hồ hứa sắp đói.
+ * Người dùng chụp đúng màn ấy (9/8). Hai bản của hai con số này là hai câu cãi nhau.
+ */
+export const HUNGER_MARKS = { hungry: 0.35, starving: 0.12 };
+
+/**
  * Tâm trạng — suy từ độ no, và nó phải nói được bằng HÌNH chứ không chỉ bằng màu.
  *
  * Cùng lý do đã ghi cho cặp mắt mở/nhắm trong `lib/menubar-view.js`: theme daltonized
  * không được dựa vào mỗi một khác biệt màu.
  */
 export function moodOf(full) {
-  if (full <= 0.12) return 'starving';
-  if (full <= 0.35) return 'hungry';
+  if (full <= HUNGER_MARKS.starving) return 'starving';
+  if (full <= HUNGER_MARKS.hungry) return 'hungry';
   if (full >= 0.85) return 'stuffed';
   return 'fine';
 }

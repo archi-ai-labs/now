@@ -55,11 +55,12 @@ struct Badge {
     /// có trả lời hay không, `fresh` nói cái server trả lời có còn giá trị hay không —
     /// và hỏng kiểu thứ hai mới là kiểu nguy hiểm, vì màn hình vẫn đầy số trông như thật.
     var fresh = true
-    /// Ngồi lâu — bậc và số phút, lấy nguyên từ trường `rest` của `/api/badge`. Bậc do
-    /// SERVER quyết (thang ba mốc suy từ chu kỳ 90 phút, xem restStageOf bên petmath.js);
-    /// file này chỉ đổi bậc thành hình, đúng ranh giới "app không biết luật nào" ở đầu file.
-    var restStage: String? = nil
-    var restMin: Int? = nil
+    /// Huy hiệu cần-để-ý — lấy nguyên `level` từ trường `alert` của `/api/badge`. Server
+    /// chốt cả HÌNH lẫn CÂU tooltip (ngồi lâu, đói lả — nguyên nhân không đi qua ranh
+    /// giới này, xem `alert` trong src/badge.js); file này chỉ đổi tên hình thành nét vẽ,
+    /// đúng ranh giới "app không biết luật nào" ở đầu file. Ba tên hình: `dot` chấm vàng
+    /// 7pt · `bang` đĩa đỏ 11pt mang dấu chấm than · `flood` đĩa đỏ cộng nhuộm đỏ cả chữ.
+    var alertLevel: String? = nil
 }
 
 // ── App ──────────────────────────────────────────────────────────────────────
@@ -87,6 +88,14 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
 
         popover.behavior = .transient
         popover.delegate = self
+        // KHÔNG animate. Trang đẩy chiều cao qua messageHandler `size` ở MỖI lần nội dung
+        // đổi cỡ (2–3 lượt vẽ cho một lần mở, cộng đường lui scrollHeight trong didFinish),
+        // mà NSPopover mặc định animate mọi cú setContentSize — thành ra mỗi lần mở là
+        // popover nhún một tới hai nhịp, và người dùng đọc cái nhún ấy là "nền trời giật"
+        // (9/8, lần hai). Lần một (lượt 23) là do hoạt hình CSS không khoá pha — đã chữa
+        // và ĐÃ ĐO là còn nguyên ở cả Chromium lẫn WebKit; lần này thứ nhúc nhích là chính
+        // cái cửa sổ. Tắt animate thì cỡ mới ăn NGAY trong một khung hình, hết đường nhún.
+        popover.animates = false
 
         ensureServer()
         refresh()
@@ -153,13 +162,13 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
                     // phần đuôi của câu tả con số.
                     if let note = q["note"] as? String, !note.isEmpty { b.tip += "\n\(note)" }
                 }
-                // Ngồi lâu — chỉ nhận khi có BẬC. `satMin` không bậc là chuyện thường
-                // (dưới 70 phút), và lúc ấy không có gì để vẽ hay để nói.
-                if let r = root["rest"] as? [String: Any], let stage = r["stage"] as? String {
-                    b.restStage = stage
-                    b.restMin = r["satMin"] as? Int
-                    if let m = b.restMin {
-                        b.tip += "\nĐã ngồi \(m) phút liền — mở popover, nghỉ một phút có kiểm là gỡ."
+                // Huy hiệu — server đã chốt HÌNH (`level`) và CÂU (`say`); ở đây chỉ
+                // nhận. Không có `alert` là chuyện thường (chưa tới mốc nào), lúc ấy
+                // không có gì để vẽ hay để nói.
+                if let a = root["alert"] as? [String: Any], let level = a["level"] as? String {
+                    b.alertLevel = level
+                    if let say = a["say"] as? String, !say.isEmpty {
+                        b.tip += "\n\(say)"
                     }
                 }
             }
@@ -200,11 +209,11 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
         // hiểm là lúc endpoint chết mà ảnh chụp cũ vẫn còn: thanh menu bày "11%·41%"
         // trông y hệt số thật, và người đọc tin nó cả buổi.
         let dim = !(b.live && b.fresh)
-        let stage = b.restStage
+        let lvl = b.alertLevel
 
-        // Bậc ngồi-lâu đổi cách vẽ, và nó phải RỜI template: ảnh template chỉ giữ alpha
+        // Huy hiệu đổi cách vẽ, và nó phải RỜI template: ảnh template chỉ giữ alpha
         // (đúng lý do nó được chọn — xem đoạn trên), nên một huy hiệu ĐỎ trên nền template
-        // là thứ không tồn tại. Nhánh có-bậc vì thế vẽ bằng drawingHandler với màu ĐỘNG
+        // là thứ không tồn tại. Nhánh có-huy-hiệu vì thế vẽ bằng drawingHandler với màu ĐỘNG
         // (chữ là labelColor, huy hiệu là Tones.warn/.crit bóc từ styles.css lúc dựng):
         // handler chạy trong CHÍNH lượt vẽ của cái nút, nên màu động resolve theo cửa sổ
         // thanh menu — nguồn đúng duy nhất.
@@ -215,32 +224,42 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
         // chữ đen biến mất trên thanh tối — trong khi bản màu-động vẽ đúng ở mọi ca vì nó
         // resolve MUỘN, lúc đã đứng trong cây view thật. Đừng "sửa" lại lần nữa.
         //
-        // Ba bậc, ba mức to dần — thang và lý do ở restStageOf bên petmath.js, server đã
-        // quyết xong, ở đây chỉ đổi bậc thành hình:
-        //   dip   → chấm vàng 7pt góc trên phải
-        //   spent → đĩa đỏ 11pt mang dấu chấm than
-        //   over  → đĩa đỏ, và toàn bộ chữ nhuộm đỏ theo
-        let ink: NSColor = stage == "over" ? Tones.crit : (stage == nil ? .black : .labelColor)
+        // Ba tên hình, server đã chốt (`alert.level`, xem src/badge.js) — ở đây chỉ vẽ:
+        //   dot   → chấm vàng 7pt góc trên phải
+        //   bang  → đĩa đỏ 11pt mang dấu chấm than
+        //   flood → đĩa đỏ, và toàn bộ chữ nhuộm đỏ theo
+        let ink: NSColor = lvl == "flood" ? Tones.crit : (lvl == nil ? .black : .labelColor)
+        // Huy hiệu đang bật thì CHỮ KHÔNG MỜ — chủ sản phẩm chốt sau khi nhìn thật (9/8):
+        // trên thanh menu SÁNG, labelColor ở alpha 0.3 gần như biến mất, và hai tín hiệu
+        // chen nhau trong 63pt — chữ mờ nói "số cũ" cạnh đĩa đỏ nói "cần để ý" — đọc thành
+        // icon hỏng chứ không thành hai tin. Lúc ấy đĩa đỏ là tiếng nói của icon; "số đã
+        // cũ" vẫn nguyên trong tooltip. Không huy hiệu thì kênh mờ giữ đúng như cũ — nó
+        // sinh ra từ một ca thật (số ôi sáu tiếng trông y số tươi) và không mất đi đâu.
+        let dimText = dim && lvl == nil
         let label = NSAttributedString(string: "CLAUDE", attributes: [
             .font: NSFont.systemFont(ofSize: LABEL_SIZE, weight: .medium),
             .kern: 0.8,
-            .foregroundColor: ink.withAlphaComponent(dim ? 0.3 : 0.55),
+            .foregroundColor: ink.withAlphaComponent(dimText ? 0.3 : 0.55),
         ])
         let value = NSAttributedString(string: b.quotaText, attributes: [
             .font: NSFont.monospacedDigitSystemFont(ofSize: VALUE_SIZE, weight: .medium),
-            .foregroundColor: ink.withAlphaComponent(dim ? 0.4 : 1),
+            .foregroundColor: ink.withAlphaComponent(dimText ? 0.4 : 1),
         ])
 
         let lw = label.size(), vw = value.size()
         let tw = ceil(max(lw.width, vw.width)) + 2
-        // Có huy hiệu thì nới mép phải cho nó đứng; chữ vẫn canh giữa phần cũ, nên nút
-        // chỉ rộng thêm 4pt chứ không xô cả hàng icon bên cạnh mỗi lần bậc bật tắt.
-        let w = stage == nil ? tw : tw + 4
+        // Mép phải cho huy hiệu được CHỪA SẴN cả khi không có huy hiệu. Bản trước chỉ nới
+        // khi có bậc ("nút chỉ rộng thêm 4pt") — nghe vô hại mà chính là một nguồn giật:
+        // nút đổi bề rộng thì cả hàng icon dịch theo, và một popover ĐANG MỞ neo vào nút
+        // thì lệch neo ngay giữa chừng. Bậc thì bật tắt thường xuyên: cứ bấm một nút nghỉ
+        // là 30 giây sau huy hiệu tắt (đang-nghỉ không nhắc), nghỉ xong lại bật. 4pt nằm
+        // im lặng bên phải là cái giá của một cái neo đứng yên.
+        let w = tw + 4
         let img: NSImage
 
-        if let stage {
-            let mark = stage == "dip" ? Tones.warn : Tones.crit
-            let bang = stage != "dip"
+        if let lvl {
+            let mark = lvl == "dot" ? Tones.warn : Tones.crit
+            let bang = lvl != "dot"
             img = NSImage(size: NSSize(width: w, height: BTN_H), flipped: false) { _ in
                 value.draw(at: NSPoint(x: (tw - vw.width) / 2, y: VALUE_Y))
                 label.draw(at: NSPoint(x: (tw - lw.width) / 2, y: LABEL_Y))
@@ -263,8 +282,10 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
         } else {
             img = NSImage(size: NSSize(width: w, height: BTN_H))
             img.lockFocus()
-            value.draw(at: NSPoint(x: (w - vw.width) / 2, y: VALUE_Y))
-            label.draw(at: NSPoint(x: (w - lw.width) / 2, y: LABEL_Y))
+            // Canh theo `tw` như nhánh trên, không theo `w`: chữ phải đứng nguyên một chỗ
+            // dù huy hiệu có mặt hay không — lệch 2pt mỗi lần bậc bật tắt cũng là giật.
+            value.draw(at: NSPoint(x: (tw - vw.width) / 2, y: VALUE_Y))
+            label.draw(at: NSPoint(x: (tw - lw.width) / 2, y: LABEL_Y))
             img.unlockFocus()
             img.isTemplate = true
         }

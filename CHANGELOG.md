@@ -26,6 +26,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   must stay *dynamic* and resolve inside the button's own draw pass, not be resolved at
   paint time against the app's appearance (a bare binary resolves to Aqua and the text
   vanishes on a dark bar; measured, reverted, documented in place).
+
+  A day later the pet's **starving** state joined the ladder at the red-disc rung — the
+  user sat hungry and tired at a silent icon (screenshot, 9 Aug): the ladder read only
+  the sitting clock, so the icon could show `stateOf`'s #3 state (spent) while staying
+  mute on #2 (starving). The server now resolves the final *picture* (`alert.level`:
+  dot / bang / flood) plus the tooltip sentence; the Swift side dropped its one
+  hardcoded sentence and paints three named shapes, so a third cause someday costs no
+  app rebuild (the `rest` data field stays for older builds). Ordinary hunger never
+  reaches the icon — an 8-hour cycle fires daily, and a daily badge is a light that is
+  always on. Anything in progress (eating, resting) silences it: busy tops `stateOf`,
+  and the icon does not argue with its own model's ranking. And the stale-dim never
+  stacks with a badge — dimmed text beside a red disc read as a broken icon on a light
+  menu bar (owner's call on sight, 9 Aug); while a badge shows, the text keeps its
+  normal weight and staleness speaks only in the tooltip. With no badge, the dim
+  channel is untouched — it was born from a real six-hours-of-stale-numbers incident
+  and still owns that job.
 - **The five free moves are now one click from the icon.** The row appears in the popover
   under the nudge line, exactly when the nudge points at the park and nothing is already
   running — previously the walk the reminder recommended was three surfaces away (popover
@@ -70,7 +86,48 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   reading should be); eating or resting → the full three-sentence rotation stays, because
   it narrates an action the user just clicked and lives for one minute. The eight
   time-of-day sentences are gone from both languages.
-- Tests: 510 → 513.
+- **Food costs a fifth of what it did: the food-aisle rate drops 1 → 0.2 coins per hour
+  of fullness** — the owner's call, 9 Aug: *"food is a bit expensive — cut it 80%"*. One
+  constant moved (`COIN_PER_HOUR`); the nine prices, both price tests and the in-shop
+  "how these numbers are computed" sheet all derive from it, so the whole table followed
+  in the same edit — coffee 2.60 → 0.52, phở 4.50 → 1.44. The number behind the call is
+  a budget share: feeding is mandatory a few times a day, and at 1 coin/hour a 10-hour
+  day's food bill (10 coins) took 20% of a light day's measured income ($50) — the decor
+  shop, the only actual *choice* in the game, got the leftovers; at 0.2 it takes 4%.
+  Decor prices stay put on purpose: they buy nothing measurable, so no formula prices
+  them, and cutting both sides would have moved no balance at all.
+
+### Fixed
+
+- **The hunger clock counts down to the mark where the word beside it changes — not to
+  0%.** The shop HUD could read "Starving · hungry in 43 min" (user's screenshot, 9 Aug):
+  the countdown always aimed at empty and called that moment "hungry", while the state
+  word had said "Starving" since the 12% mark. Three targets now — fed counts to
+  *hungry*, hungry to *starving*, starving to *stomach empty* — read from the same
+  `HUNGER_MARKS` table `moodOf` reads, so the word and the clock cannot disagree again.
+  It also ceils instead of rounding: a countdown showing "0 min" reads as a bug, not as
+  urgency. The dead `short` variants went with it — five keys for a popover strip that
+  has not existed since round 17.
+- **The "how these numbers are computed" sheet caught up with its own numbers.** It
+  still said the fullness bar spans 5 hours and "1 coin buys 1 hour" — stale since round
+  21 moved the bar to 8 hours, and wrong twice over after today's rate cut. The one
+  surface whose entire job is declaring where every number comes from was the one lying
+  about two of them. Both languages rewritten from the current constants; the formula
+  line was already reading the rate off the live ledger.
+- **The popover stops twitching — the "sky jitters" report, second time around.**
+  Measured before touching anything: the round-23 phase lock is intact — animation
+  phases survive a full re-render in Chromium *and* in real WebKit (headless WKWebView
+  probe; its initial "1.5 s drift" turned out to be WebKit reporting `currentTime` as 0
+  for negative-delay CSS animations, while the freshly resolved delays proved the new
+  clock lands). What moves is the window itself, two ways, both closed. One: `NSPopover`
+  animates every `contentSize` change the page pushes — 2–3 renders per open plus the
+  `didFinish` fallback, each a visible rubber-band — so `animates` is now off and a new
+  size lands in one frame. Two: the sit-too-long badge widened the button by 4 pt exactly
+  while a stage was showing, so every stage flip — including the one 30 s after starting
+  a verified break — shifted the whole icon row and dragged the open popover's anchor
+  sideways; the 4 pt is now always reserved and the text is centred identically on both
+  paint paths.
+- Tests: 510 → 519.
 
 ## [1.1.1] — 2026-08-08
 
