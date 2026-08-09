@@ -37,8 +37,15 @@ const NOW = Date.parse('2026-07-26T09:00:00+07:00');
  *
  * Chờ theo ĐIỀU KIỆN thì không có ngưỡng nào để đoán: máy nhanh xong sau một nhịp, máy tải
  * nặng xong muộn hơn, và cả hai đều đúng.
+ *
+ * Trần 10 giây, không phải 3 — vì cái trần cũng từng là một con số đoán và nó đã sập:
+ * 9/8, runner GitHub Actions tải nặng cần 3014ms cho ca "sống sót qua khởi động lại",
+ * đỏ oan đúng một lần rồi rerun xanh (run 31317627491) — tức lại dạy người ta chạy lại
+ * cho tới khi xanh, đúng thứ khối trên vừa kể là đã gỡ. Vì đã chờ theo điều kiện, máy
+ * khoẻ không bao giờ chạm trần; trần chỉ quyết định lúc THẬT SỰ hỏng thì báo sau bao
+ * lâu — và 10 giây cho một câu trả lời đúng rẻ hơn hẳn 3 giây cho một câu trả lời sai.
  */
-async function settleUntil(pred, ms = 3000) {
+async function settleUntil(pred, ms = 10_000) {
   const t0 = Date.now();
   for (;;) {
     let data = null;
