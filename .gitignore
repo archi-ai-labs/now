@@ -7,3 +7,7 @@ node_modules/
 .claude/settings.local.json
 *.log
 briefs/
+
+# Claude working files — local only, never published
+CLAUDE.md
+.claude/
