@@ -278,10 +278,13 @@ export const ITEMS = {
   //
   // Luật riêng ấy: **món đắt hơn phải đổi THÊM MỘT KÊNH, không phải đổi màu đậm hơn.** Đo
   // được, vì mỗi mặt là một luật CSS khai lại một số biến — đếm số biến ấy ra một bậc thang
-  // không được đi lùi theo giá (phép kiểm trong `test/pet.test.js`). Cụ thể: hai mặt đầu đổi
-  // VẬT LIỆU (màu nền, viền, mực); `slate` đổi thêm ĐỘ DÀY viền; `ticket` đổi thêm KIỂU viền
-  // và cắt góc vuông lại, đọc thành một cái vé; `neon` thêm QUẦNG SÁNG; `pulse` — đắt nhất —
-  // thêm một VẠCH NHỊP chạy dưới chân con số, tức nó chở thêm một tin mà năm mặt kia không có.
+  // không được đi lùi theo giá (phép kiểm trong `test/pet.test.js`). Phép thử khi vẽ một mặt
+  // mới: che tên đi, nhìn ở cỡ thật, gọi được tên món thì mặt ấy đạt. Cụ thể — `brass` là một
+  // đồng xu đúc (viên thuốc, gờ sáng-tối, chữ serif); `wood` là tấm thẻ khắc (vân dọc, chữ
+  // chìm); `slate` là phiến đá vát tám cạnh, chữ giãn rộng như khắc bia; `ticket` là cuống vé
+  // có răng cưa thật và nếp xé; `neon` là ống đèn, chính con số phát sáng; `pulse` — đắt nhất —
+  // chở thêm một VẠCH NHỊP nằm trong máng ở đáy, dài đúng phần nhịp còn lại, tức nó là mặt duy
+  // nhất trả lời được "còn bao lâu nữa" mà không phải mở sổ.
   //
   // Giá theo đúng luật bậc thang của các khe trên (mỗi tầng đắt hơn tầng trước 55–70%), nên
   // khe này so được với năm khe kia thay vì đứng riêng một thang.

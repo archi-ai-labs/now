@@ -109,6 +109,25 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   a 40% wash across the whole background and the bar kept only the job of marking the exact
   end.
 
+  **Second pass, after the owner looked at them: "the clock faces aren't pretty yet."** Four
+  things were wrong and none of them was taste. All six were the same *shape* — a rounded box
+  with a 1px rule — so at real size they were six labels in different colors; brass and wood
+  shared one brown-gold tone; the pulse wash cut vertically through the digits, reading as a
+  render bug rather than a bar; and a hard `1px 1px 0` shadow made every face read as a
+  sticker pasted onto the picture. The root cause was one line: the badge was anchored by its
+  LEFT edge, so anything that made it wider pushed it toward the butler, which banned every
+  channel that changes width — typeface, tracking, clip shape. Anchoring the RIGHT edge
+  instead makes it grow *away* from him into 100+ px of empty sky, and fixes a live bug on the
+  way: `2g05` is six pixels wider than `47′`, and those six pixels used to land on the sprite.
+  With that unlocked, each face became a different *object* rather than a different shade —
+  brass a struck coin (pill, top-lit rim, serif digits), wood an engraved tag (uneven grain,
+  incised text), slate an eight-sided chip with letter-spaced sans, ticket a real perforated
+  stub with a tear line, neon a glowing tube, pulse a bar in a *bed* (the missing half: a
+  progress bar needs the trough as much as the fill, which is why the first version was
+  invisible and the wash that replaced it was worse). The test that guards the price ladder
+  earned its keep immediately — it failed the moment ticket at 400 coins declared fewer
+  channels than slate at 240.
+
 ### Changed
 
 - **The focus rhythm drops 90 minutes → 60.** Owner's call (*"lower the rhythm to 60 minutes

@@ -2737,13 +2737,20 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
    con số — tức mặt đắt nhất chở thêm một TIN mà năm mặt kia không có. Bậc thang ấy đo được
    (đếm số biến mỗi luật khai lại) và có phép kiểm canh cho nó không đi lùi theo giá.
 
-   ## Vỏ dày lên mà hộp KHÔNG to ra
+   ## Hộp nở về BÊN TRÁI, và đó là điều kiện để có sáu mặt khác nhau
 
-   Vỏ CỐ Ý không được đụng `position`, `font-size` hay `padding`. Đó là những thứ quyết định
-   huy hiệu đứng đâu và có che mất đầu quản gia hay không, mà một món mua bằng xu thì không
-   được phép dịch bố cục bức tranh. Nên viền dày đi vào TRONG bằng `--sat-ring`
-   (`box-shadow: inset`) chứ không nới `border-width`: nới viền thì hộp neo mép trái sẽ phình
-   sang phải, tức mặt càng đắt càng lấn về phía nhân vật. Bán cái vỏ, không bán chỗ đứng.
+   Bản đầu neo `left: -26px`, tức mép TRÁI đứng yên còn hộp dài ra thì lấn sang phải — về phía
+   nhân vật. Ở bản ấy mọi kênh làm hộp rộng thêm đều bị cấm (kiểu chữ, giãn chữ, viền dày), nên
+   sáu mặt chỉ còn đổi được màu, và trên màn hình chúng thành sáu cái nhãn giống hệt nhau khác
+   sắc. Chủ dự án gọi đúng tên: *"mấy mặt đồng hồ chưa đẹp lắm"*.
+
+   Neo bằng `right` thì mép PHẢI đứng yên và hộp dài ra về phía trái, tức ra XA nhân vật. Bên
+   ấy trống 130px trong bầu trời, nên cái trần thật sự không tồn tại. Nó cũng sửa luôn một lỗi
+   có sẵn: `2g05` dài hơn `47′` sáu pixel, và ở bản cũ sáu pixel ấy đi thẳng vào người quản gia.
+
+   Vì thế vỏ được phép đụng những kênh làm ĐỔI CỠ hộp — kiểu chữ, giãn chữ, hình cắt. Cái vẫn
+   CẤM là `position`, `top` và `font-size`: chỗ đứng và chiều cao dòng quyết định huy hiệu nằm
+   ngang đâu trên bức tranh, mà một món mua bằng xu thì không được dịch bố cục.
 
    Vỏ chỉ sống ở huy hiệu, không theo con số vào sổ: trong sổ nó nằm giữa hai dòng chữ, và ở
    đó một cái mặt đồng hồ thôi không còn là đồ trang trí, nó thành một ô dữ liệu thứ ba. */
@@ -2759,77 +2766,142 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
      cũng sáng, mà hai thứ ấy đi qua hai thuộc tính khác nhau (`box-shadow` với `text-shadow`).
      Gộp làm một biến thì mặt nào muốn hộp sáng mà chữ đục sẽ không khai được. */
   --sat-ink-glow: none;
-  /* Vạch nhịp: trong suốt ở mọi mặt trừ `pulse`. Khai ở đây chứ không chỉ trong luật của
-     `pulse` để `background` dưới không phải có hai bản. */
+  /* Bóng đổ MỀM, không phải `1px 1px 0` cứng như bản đầu. Bóng cứng một pixel là ngữ pháp của
+     hình dán, và nó làm cả sáu mặt đọc thành sticker chứ không thành vật treo trong cảnh —
+     chủ dự án chỉ ra đúng chỗ đó. Vẫn là một biến, vì mặt phát sáng cần bóng nhạt hơn hẳn. */
+  --sat-shadow: 0 1.5px 3px rgb(10 6 24 / 0.5);
+  /* Hình CẮT — kênh mở ra ở lượt này, và là kênh tách sáu cái nhãn thành sáu cái vật. `none`
+     thì hộp giữ nguyên dáng chữ nhật bo góc. */
+  --sat-clip: none;
+  /* Kiểu chữ và giãn chữ. Cùng một font mono ở mọi mặt là lý do một cái "mặt đồng" và một cái
+     "mặt đá" đọc ra cùng một thứ: con số mới là phần người ta nhìn, mà nó thì không đổi. */
+  --sat-font: var(--mono);
+  --sat-track: 0.02em;
+  /* Lớp HỌA TIẾT phủ trên nền — vân gỗ, hạt đá. Đứng trên `--sat-bg` và dưới con số. */
+  --sat-tex: none;
+  /* Vạch nhịp: mực của phần ĐÃ CHẠY, và mực của cái MÁNG nó chạy trong. Bản đầu chỉ có mực
+     phần chạy, không có máng, nên cái vạch không có gì để so và mắt không đọc ra nó — sửa bằng
+     cách phủ 40% cả nền, và cách ấy hỏng nặng hơn: mảng sáng cắt dọc giữa `47` với `′`, đọc ra
+     một lỗi render. Một thanh tiến trình cần CẢ HAI nửa; thiếu máng là thiếu một nửa. */
   --sat-run-ink: transparent;
-  /* Lùi hẳn ra khỏi người (-26px) và hạ xuống ngang vai (12px), theo chỉnh của chủ dự án.
-     Ở sát vai như bản đầu (-13px / -3px) nó dính vào nét vẽ và đọc thành một món quản gia
-     đang đeo; tách ra thì nó đọc đúng cái nó là — một cái nhãn treo trong khung cảnh. */
-  position: absolute; left: -26px; top: 12px; z-index: 6;
-  padding: 2px 5px; border-radius: var(--sat-round);
-  /* Hai lớp nền: vạch nhịp nằm sát đáy, dài theo `--sat-run` (phần nhịp CÒN LẠI, 0..1, gửi
-     sang từ `satChip`), rồi mới tới màu nền. Vẽ bằng nền chứ không bằng một thẻ con: huy hiệu
-     là một thẻ `b` nằm trong một `summary`, và thêm một thẻ con vào đấy là thêm một thứ phải
-     nhớ khi ai đó đổi cách dựng. */
-  /* Vạch nhịp đi qua HAI lớp, và cả hai nói cùng một tin. Bản đầu chỉ có lớp vạch, và trên màn
-     hình thật nó thất bại thẳng: ba mức nhịp 85% · 42% · 8% ra ba cái huy hiệu trông giống hệt
-     nhau, vì 2px trên một cái hộp cao 19px là thứ mắt không tách khỏi đường viền. Nên thêm lớp
-     LOÃNG phủ nền — cùng độ dài, mờ 40% — và nó mới là lớp đọc được ở cỡ này; cái vạch đậm ở
-     đáy chỉ còn việc chỉ ra mép kết thúc cho chính xác. Bản 22% vẫn chưa đủ trên nền tím sẫm
-     cộng quầng sáng của chính mặt này; 40% là mức đo trên màn hình thật, không phải mức ướm.
-     Loãng SUY từ mực vạch bằng `color-mix` chứ không là một biến thứ hai: hai màu phải luôn
-     cùng sắc, mà hai biến rời thì lần thêm mặt thứ bảy sẽ có người khai một cái và quên cái kia. */
+  --sat-run-bed: transparent;
+  /* Neo mép PHẢI: cách mép trái khung sprite 6px, hạ xuống ngang vai. Xem khối trên để biết vì
+     sao không còn neo mép trái. `top` và `right` là hai con số CẤM vỏ đụng vào. */
+  position: absolute; right: calc(100% - 6px); top: 12px; z-index: 6;
+  padding: 2px 5px; border-radius: var(--sat-round); clip-path: var(--sat-clip);
+  /* Ba lớp nền, từ trên xuống: vạch nhịp đã chạy · máng của nó · họa tiết · màu nền. Vẽ bằng
+     nền chứ không bằng thẻ con: huy hiệu là một thẻ `b` nằm trong một `summary`, và thêm một
+     thẻ con vào đấy là thêm một thứ phải nhớ khi ai đó đổi cách dựng. */
   background:
     linear-gradient(to right, var(--sat-run-ink) calc(var(--sat-run, 0) * 100%), transparent 0)
       bottom left / 100% 3px no-repeat,
-    linear-gradient(
-      to right,
-      color-mix(in srgb, var(--sat-run-ink) 40%, transparent) calc(var(--sat-run, 0) * 100%),
-      transparent 0
-    ),
+    linear-gradient(var(--sat-run-bed), var(--sat-run-bed)) bottom left / 100% 3px no-repeat,
+    var(--sat-tex),
     var(--sat-bg);
-  /* Hai lớp vạch cắt theo PADDING-box, nền cắt theo border-box. Để chung border-box thì vạch
+  /* Hai lớp vạch cắt theo PADDING-box, còn lại theo border-box. Để chung border-box thì vạch
      nằm dưới cả đường viền và bị bo góc gặm mất hai đầu. */
-  background-clip: padding-box, padding-box, border-box;
+  background-clip: padding-box, padding-box, border-box, border-box;
   border: 1px var(--sat-line-style) var(--sat-line);
-  font: 700 10.5px/1.2 var(--mono); color: var(--sat-ink);
-  letter-spacing: 0.02em; white-space: nowrap;
-  box-shadow: var(--sat-ring), var(--sat-glow), 1px 1px 0 rgb(10 6 24 / 0.34);
+  font: 700 10.5px/1.2 var(--sat-font); color: var(--sat-ink);
+  letter-spacing: var(--sat-track); white-space: nowrap;
+  box-shadow: var(--sat-ring), var(--sat-glow), var(--sat-shadow);
   text-shadow: var(--sat-ink-glow);
 }
 .mb-who[open] .mb-sat { display: none; }
 
-/* Sáu mặt đang bán, xếp theo giá — và mỗi bậc thêm đúng một kênh, không phải thêm một sắc.
-   Đồng 90 · Gỗ 100 — đổi VẬT LIỆU: nền, viền, mực, độ bo. Vàng ám đọc như một vật đúc; nâu
-     ấm bo tròn hơn đọc như một cái thẻ khắc.
-   Đá 240 — thêm VÀNH TRONG, nên viền dày gấp đôi mà hộp không rộng thêm một pixel nào.
-   Vé 400 — thêm KIỂU VIỀN đứt và cắt góc gần vuông: hai thứ ấy hợp lại đọc ra một cái cuống vé.
-   Đèn 680 — thêm QUẦNG QUANH CHỮ, nên nó là mặt đầu tiên mà chính con số phát sáng chứ không
-     chỉ cái hộp.
-   Nhịp 1120 — thêm MỰC VẠCH NHỊP: vạch dưới chân con số dài đúng phần nhịp còn lại, nên đây
-     là mặt duy nhất trả lời được "còn bao lâu nữa" mà không phải mở sổ. */
-.mb-sat.sat-brass { --sat-bg: rgb(74 52 18 / 0.92); --sat-line: rgb(240 180 41 / 0.72); --sat-ink: #f7d488; --sat-round: 6px; }
-.mb-sat.sat-wood { --sat-bg: rgb(62 40 28 / 0.92); --sat-line: rgb(214 168 122 / 0.5); --sat-ink: #f0d9c0; --sat-round: 9px; }
+/* Sáu mặt đang bán, xếp theo giá — mỗi bậc thêm một KÊNH, và từ lượt này mỗi mặt phải ra một
+   VẬT khác nhau chứ không phải một sắc khác nhau. Cách thử: che tên đi, nhìn ở cỡ thật, gọi
+   được tên món thì mặt ấy đạt.
+
+   Đồng 90 — một đồng xu đúc. Bo tròn hết thành viên thuốc, nền chuyển từ vàng sáng trên xuống
+     vàng tối dưới, gờ sáng ở mép trên và gờ tối ở mép dưới, chữ SERIF — bốn thứ ấy hợp lại là
+     ngữ pháp của kim loại dập.
+   Gỗ 100 — một tấm thẻ khắc. Vân dọc mảnh chạy trên nền nâu đỏ (tách hẳn khỏi tông vàng của
+     đồng, hai món này đứng cạnh nhau trong tiệm), chữ khắc CHÌM: bóng tối phía trên và bóng
+     sáng phía dưới, đúng chiều ngược với chữ nổi.
+   Đá 240 — một phiến đá vát. Tám cạnh, không bo góc; mặt nhám bằng lớp hạt mờ; chữ sans giãn
+     rộng, đọc như chữ khắc trên bia chứ không như chữ máy.
+   Vé 400 — một cuống vé. Răng cưa THẬT ở hai đầu (bản trước dùng viền đứt, và ở cỡ 19px viền
+     đứt chỉ ra một đường lởm chởm), nền giấy đỏ, chữ mono kiểu máy in vé.
+   Đèn 680 — một ống neon. Nền gần đen, ống sáng viền quanh, con số tự phát sáng, bóng đổ gần
+     như bỏ hẳn: vật phát sáng thì không đổ bóng đậm.
+   Nhịp 1120 — mặt duy nhất chở THÊM MỘT TIN. Máng tối chạy hết bề ngang ở đáy, phần đã chạy
+     sáng lên trong máng ấy, dài đúng phần nhịp còn lại. Nó đứng dưới chân con số chứ không phủ
+     lên con số. */
+.mb-sat.sat-brass {
+  --sat-bg: linear-gradient(180deg, rgb(126 90 30 / 0.96), rgb(72 48 14 / 0.96));
+  --sat-line: rgb(232 176 62 / 0.8); --sat-ink: #ffe6a8; --sat-round: 999px;
+  --sat-font: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --sat-ring: inset 0 1px 0 rgb(255 232 168 / 0.45), inset 0 -1px 0 rgb(40 24 4 / 0.55);
+}
+.mb-sat.sat-wood {
+  --sat-bg: linear-gradient(180deg, rgb(96 48 32 / 0.96), rgb(62 28 18 / 0.96));
+  --sat-line: rgb(38 18 10 / 0.85); --sat-ink: #f2d8b8; --sat-round: 3px;
+  --sat-font: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  /* Vân KHÔNG đều: hai nhịp lồng nhau, một đậm thưa một nhạt dày. Bản đầu là một nhịp 3px đều
+     tăm tắp, và một sọc đều thì đọc ra hàng rào chứ không ra thớ gỗ — thớ gỗ thật không bao
+     giờ cách đều. */
+  --sat-tex:
+    repeating-linear-gradient(
+      90deg,
+      rgb(0 0 0 / 0) 0 3px, rgb(30 12 6 / 0.24) 3px 4px,
+      rgb(0 0 0 / 0) 4px 9px, rgb(30 12 6 / 0.13) 9px 10px
+    );
+  --sat-ink-glow: 0 -1px 0 rgb(34 14 6 / 0.85), 0 1px 0 rgb(214 168 122 / 0.3);
+}
 .mb-sat.sat-slate {
-  --sat-bg: rgb(30 36 48 / 0.94); --sat-line: rgb(176 192 214 / 0.6); --sat-ink: #dce6f2; --sat-round: 3px;
-  --sat-ring: inset 0 0 0 1px rgb(176 192 214 / 0.28);
+  --sat-bg: linear-gradient(180deg, rgb(58 68 84 / 0.96), rgb(34 40 52 / 0.96));
+  /* Viền TRONG suốt, nét chuyển sang `--sat-ring`: một đường viền chạy quanh hộp chữ nhật rồi
+     bị hình vát cắt cụt ở bốn góc để lại bốn đầu hở, và trên màn hình bốn đầu ấy đọc ra một
+     đường kẻ gãy chứ không ra mép đá. Cùng lý do đã bỏ viền của mặt cuống vé. */
+  --sat-line: transparent; --sat-ink: #e6eefa; --sat-round: 0;
+  --sat-font: var(--sans); --sat-track: 0.14em;
+  --sat-ring: inset 0 1px 0 rgb(214 228 246 / 0.3), inset 0 -1px 0 rgb(10 14 22 / 0.5);
+  --sat-tex: repeating-linear-gradient(126deg, rgb(255 255 255 / 0.05) 0 1px, rgb(0 0 0 / 0) 1px 3px);
+  /* Vát tám cạnh bằng px chứ không %: hộp dài ra khi số đổi sang `2g05`, mà một cái vát tính
+     theo % thì nở ra theo và mất luôn dáng phiến đá. */
+  --sat-clip: polygon(
+    4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px),
+    calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px
+  );
 }
 .mb-sat.sat-ticket {
-  --sat-bg: rgb(58 24 34 / 0.93); --sat-line: rgb(246 178 168 / 0.68); --sat-ink: #f8ccc2; --sat-round: 2px;
-  --sat-ring: inset 0 0 0 2px rgb(58 24 34 / 0.93); --sat-line-style: dashed;
+  --sat-bg: linear-gradient(180deg, rgb(196 62 62 / 0.96), rgb(148 36 44 / 0.96));
+  --sat-line: transparent; --sat-ink: #fff0e4; --sat-round: 0;
+  --sat-font: var(--mono); --sat-track: 0.08em;
+  /* Mực in NHOÈ một pixel và mặt giấy dày: hai kênh của một cái vé in máy, và cũng là hai kênh
+     phép kiểm bậc thang đòi — mặt 400 xu không được đổi ít hơn mặt 240 xu. */
+  --sat-ink-glow: 0 1px 0 rgb(96 16 22 / 0.7);
+  --sat-ring: inset 0 1px 0 rgb(255 214 204 / 0.28), inset 0 -2px 0 rgb(104 20 28 / 0.4);
+  /* Một đường đục dọc cách mép phải 9px — cái nếp xé của mọi cuống vé. */
+  --sat-tex: linear-gradient(90deg, rgb(0 0 0 / 0) calc(100% - 10px), rgb(56 12 16 / 0.55) calc(100% - 10px) calc(100% - 9px), rgb(0 0 0 / 0) calc(100% - 9px));
+  /* Bốn răng mỗi cạnh, tính bằng px cùng lý do với mặt đá. Viền để `transparent` vì một đường
+     viền liền chạy quanh răng cưa thì cái răng đọc ra như lỗi cắt chứ không như mép xé. */
+  --sat-clip: polygon(
+    0 0, 100% 0,
+    calc(100% - 3px) 12.5%, 100% 25%, calc(100% - 3px) 37.5%, 100% 50%,
+    calc(100% - 3px) 62.5%, 100% 75%, calc(100% - 3px) 87.5%, 100% 100%,
+    0 100%,
+    3px 87.5%, 0 75%, 3px 62.5%, 0 50%, 3px 37.5%, 0 25%, 3px 12.5%
+  );
 }
 .mb-sat.sat-neon {
-  --sat-bg: rgb(10 14 22 / 0.94); --sat-line: rgb(126 207 149 / 0.75); --sat-ink: #7ecf95; --sat-round: 4px;
-  --sat-ring: inset 0 0 3px rgb(126 207 149 / 0.3); --sat-glow: 0 0 7px rgb(126 207 149 / 0.42);
-  --sat-ink-glow: 0 0 6px rgb(126 207 149 / 0.7);
+  --sat-bg: rgb(8 12 18 / 0.95); --sat-line: rgb(126 231 168 / 0.9); --sat-ink: #a6f5c6;
+  --sat-round: 10px; --sat-font: var(--mono); --sat-track: 0.1em;
+  --sat-ring: inset 0 0 5px rgb(126 231 168 / 0.45);
+  --sat-glow: 0 0 10px rgb(126 231 168 / 0.5), 0 0 20px rgb(126 231 168 / 0.22);
+  --sat-ink-glow: 0 0 7px rgb(166 245 198 / 0.9), 0 0 14px rgb(126 231 168 / 0.5);
+  --sat-shadow: 0 0 0 0 transparent;
 }
-/* Độ bo 4px chứ không 8px, và đó là ràng buộc do chính vạch nhịp đặt ra: bo càng tròn thì hai
-   góc dưới càng gặm vào cái vạch, mà vạch chỉ dày 2px trên một hộp cao 19px. Mặt nào chở vạch
-   thì mặt ấy phải bo vừa phải — một luật riêng của mặt này, không phải luật chung của vỏ. */
 .mb-sat.sat-pulse {
-  --sat-bg: rgb(18 14 40 / 0.94); --sat-line: rgb(167 139 250 / 0.68); --sat-ink: #ddd2ff; --sat-round: 4px;
-  --sat-ring: inset 0 0 0 1px rgb(167 139 250 / 0.24); --sat-glow: 0 0 8px rgb(167 139 250 / 0.34);
-  --sat-ink-glow: 0 0 5px rgb(167 139 250 / 0.5); --sat-run-ink: rgb(167 139 250 / 0.95);
+  --sat-bg: linear-gradient(180deg, rgb(38 26 74 / 0.96), rgb(20 14 44 / 0.96));
+  --sat-line: rgb(186 158 255 / 0.7); --sat-ink: #efe6ff; --sat-round: 5px;
+  --sat-font: var(--mono); --sat-track: 0.06em;
+  --sat-ring: inset 0 0 0 1px rgb(186 158 255 / 0.22);
+  --sat-glow: 0 0 9px rgb(167 139 250 / 0.36);
+  --sat-ink-glow: 0 0 5px rgb(186 158 255 / 0.45);
+  --sat-run-bed: rgb(8 4 24 / 0.85);
+  --sat-run-ink: #c9b0ff;
 }
 
 /* Bệ TRƯNG BÀY trong tiệm — ô hàng, thẻ khe, tủ đồ trong nhà. Ba chỗ ấy đều dựng huy hiệu

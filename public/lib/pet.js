@@ -2870,9 +2870,15 @@ export function satTiny(pet) {
  * và vỏ thì mua được. Cả vỏ đi qua CSS, nên một mặt mới tốn một luật CSS cộng một cái tên —
  * không dòng mã nào ở đây phải đổi, và chỗ này không phải biết mỗi mặt vẽ ra sao.
  *
- * Vỏ CỐ Ý không được đụng `position` hay cỡ chữ. Đó là những thứ quyết định huy hiệu đứng
- * đâu và có che mất đầu quản gia hay không, mà một món mua bằng xu thì không được phép dịch
- * bố cục bức tranh. Bán cái vỏ, không bán chỗ đứng.
+ * Vỏ được đụng vào hình cắt, kiểu chữ, giãn chữ và họa tiết — tức mọi kênh làm nó ra một VẬT
+ * khác, không chỉ một sắc khác. Bản đầu cấm hết mấy kênh ấy vì hộp neo mép TRÁI, nên rộng thêm
+ * là lấn về phía nhân vật; kết quả là sáu cái nhãn giống hệt nhau khác màu, và chủ dự án gọi
+ * đúng tên. Giờ hộp neo mép PHẢI và nở về bên trái, chỗ trống hơn trăm pixel, nên cái cấm ấy
+ * hết lý do. Lý lẽ đầy đủ ở `.mb-sat` bên `styles.css`.
+ *
+ * Cái vẫn CẤM là `position`, `top` và cỡ chữ: chúng quyết định huy hiệu nằm ngang đâu trên bức
+ * tranh và có che mất đầu quản gia hay không, mà một món mua bằng xu thì không được phép dịch
+ * bố cục. Bán cái vỏ, không bán chỗ đứng.
  *
  * Danh sách nằm ở ĐÂY chứ không suy từ `pet.worn`: một id lạ trong sổ (bản cũ, sổ chép tay,
  * món đã gỡ khỏi cửa hàng) phải rơi về mặt trần chứ không được biến thành một tên lớp CSS
