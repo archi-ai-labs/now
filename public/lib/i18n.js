@@ -274,6 +274,10 @@ const DICT = {
     'pet.focusMood.spent': 'Quá nhịp rồi',
     'pet.satMin': (o) => `đã ngồi ${o.n} phút liền`,
     'pet.satRested': 'vừa nghỉ xong',
+    // Bản CỤT của khoá trên, cho cái huy hiệu treo cạnh quản gia — xem `satTiny` bên
+    // `lib/pet.js`. Bản dài vẫn sống, nó là tooltip của chính cái huy hiệu ấy.
+    'pet.satTinyMin': (o) => `${o.n}′`,
+    'pet.satTinyHour': (o) => `${o.h}g${o.m}`,
     // Nhãn phải nói đúng nó ĐO GÌ. Nó không biết bạn có rời ghế hay không, nó chỉ biết
     // máy im — giấu chỗ đó đi là dán nhãn đo lường lên một phép đoán.
     'pet.focusNote': 'Đếm từ quãng lặng gần nhất của Claude Code; im trên 10 phút là đầy lại. Một nhịp 60 phút — đúng pha tỉnh của chu kỳ nghỉ-hoạt động cơ bản.',
@@ -467,6 +471,7 @@ const DICT = {
     // Tên chỗ đứng là tên VỊ TRÍ, không phải tên loại đồ: cái khe bên trái nhận cây hôm
     // nay và có thể nhận thứ khác ngày mai. Xem `SLOTS` trong `src/pet.js`.
     'pet.slot.head': 'Trên đầu',
+    'pet.slot.clock': 'Mặt đồng hồ',
     'pet.slot.left': 'Góc trái',
     'pet.slot.right': 'Góc phải',
     'pet.slot.air': 'Lơ lửng',
@@ -579,6 +584,16 @@ const DICT = {
     'pet.item.aurora': 'Cực quang',
     'pet.item.skyline': 'Đường chân trời',
     'pet.item.peak': 'Đỉnh núi tuyết',
+
+    // Mặt đồng hồ — vỏ của con số phút đã ngồi. Tên gọi theo VẬT LIỆU hoặc theo thứ nó
+    // giống, không theo màu: "mặt đồng" nói được cả sắc lẫn chất, còn "mặt vàng" thì chỉ
+    // nói được sắc và trùng luôn với đồng tiền trong ví.
+    'pet.item.brass': 'Mặt đồng',
+    'pet.item.wood': 'Mặt gỗ',
+    'pet.item.slate': 'Mặt đá',
+    'pet.item.ticket': 'Mặt cuống vé',
+    'pet.item.neon': 'Mặt đèn',
+    'pet.item.pulse': 'Mặt nhịp',
 
     // Ngôn ngữ
     'lang.title': (o) => `Ngôn ngữ: Tiếng Việt — bấm để đổi sang ${o.next} (l)`,
@@ -2053,6 +2068,8 @@ const DICT = {
     'pet.focusMood.spent': 'Past the cycle',
     'pet.satMin': (o) => `${o.n} min at the desk`,
     'pet.satRested': 'just back from a break',
+    'pet.satTinyMin': (o) => `${o.n}′`,
+    'pet.satTinyHour': (o) => `${o.h}h${o.m}`,
     'pet.focusNote': 'Counted from the last quiet spell in Claude Code; over 10 minutes quiet refills it. A 60-minute run — the alert phase of the basic rest–activity cycle.',
     'pet.nudge.starving': 'He is starving — hands off the keyboard, screen dark, food the only thing on his mind. One coin fixes it.',
     'pet.nudge.dip': (o) => `${o.n} minutes straight — a 60-minute run is nearly up. Stand up and move for 3 minutes.`,
@@ -2166,6 +2183,7 @@ const DICT = {
     'pet.tryOff': 'Take it off',
     'pet.tryHint': 'This is the exact picture the popover will show. Click anything below you do not own yet to try it on the butler.',
     'pet.slot.head': 'On the head',
+    'pet.slot.clock': 'Clock face',
     'pet.slot.left': 'Left corner',
     'pet.slot.right': 'Right corner',
     'pet.slot.air': 'Up in the air',
@@ -2274,6 +2292,14 @@ const DICT = {
     'pet.item.aurora': 'Aurora',
     'pet.item.skyline': 'City skyline',
     'pet.item.peak': 'Snow peak',
+
+    // Clock faces — the shell around the sitting-minutes badge.
+    'pet.item.brass': 'Brass face',
+    'pet.item.wood': 'Wood face',
+    'pet.item.slate': 'Slate face',
+    'pet.item.ticket': 'Ticket stub face',
+    'pet.item.neon': 'Neon face',
+    'pet.item.pulse': 'Pulse face',
 
     // Language
     'lang.title': (o) => `Language: English — click to switch to ${o.next} (l)`,

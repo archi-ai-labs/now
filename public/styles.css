@@ -2359,6 +2359,21 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
   content: ''; display: block; height: 100%; width: calc(var(--f) * 100%);
   border-radius: 2px; background: var(--lv);
 }
+/* Đuôi "đã ngồi bao lâu" của dòng NHỊP, chỗ đứng THỨ HAI của con số trên huy hiệu — nó chỉ
+   ở đây khi sổ đang mở, lúc huy hiệu đã tắt. Xem `.mb-sat` ở khối trên.
+
+   Nằm TRONG `.mb-word` chứ không đứng cạnh nó, và đó là điều kiện chứ không phải khẩu vị:
+   `.mb-line` là một cột (chữ trên, vạch dưới), nên một phần tử anh em của chữ sẽ rơi xuống
+   hàng riêng và đẩy sổ cao thêm hẳn một dòng. Là con của chữ thì nó chảy theo dòng chữ.
+
+   Nhẹ hơn chữ chính hai bậc (600 so với 700, 10,5px so với 13px, mờ 0,82): nó là số phụ chú
+   cho cái tên trạng thái, không phải một chỉ số thứ hai. Mượn nguyên `--lv` nên nó đổi sắc
+   cùng thang với chữ — một phép đo, một màu. Không mang vỏ trang trí: vỏ thuộc về huy hiệu. */
+.mb-min {
+  font: 600 10.5px/1.25 var(--mono); font-style: normal; color: var(--lv);
+  opacity: 0.82; margin-left: 4px; white-space: nowrap;
+}
+
 /* Trò chơi TẮT: không có chỉ số nào để bày, nên cái sổ chở đúng câu quản gia nói về chuyện
    ấy. Một cú bấm mở ra một cái hộp rỗng thì tệ hơn hẳn một cú bấm không làm gì. */
 .mb-stat-off { margin: 0; max-width: 108px; font: 500 11px/1.35 var(--sans); color: #e8dfd0; }
@@ -2687,6 +2702,145 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
    phải tranh nhau một ô `animation-delay`. */
 .mb-zzz.zz2 { right: -1px; top: 6px; font-size: 10px; animation-delay: calc(var(--life-lag) - 0.87s); }
 .mb-zzz.zz3 { right: -8px; top: -2px; font-size: 12px; animation-delay: calc(var(--life-lag) - 1.74s); }
+
+/* ── HUY HIỆU "ĐÃ NGỒI LIỀN BAO LÂU" ──────────────────────────────────────────
+
+   Treo ở vai TRÁI, ngoài khung 64px của sprite. Nửa PHẢI bầu trời là chỗ của hai bong bóng
+   nói và nghĩ, nên treo con số bên ấy là mời hai thứ tranh nhau một góc mỗi lần quản gia có
+   gì để kể — người dùng chỉ ra đúng chỗ đó. Bên trái chỉ có vòng đếm ngược, thứ sống đúng
+   một phút mỗi bữa ăn. Ba chữ z lúc ngủ gật cũng ở góc phải, nên luật một-nét-một-lúc trên
+   sprite 64px tự thoả, không cần một ngoại lệ nào.
+
+   ## Bấm vào thì TẮT, và con số dọn vào sổ
+
+   Sổ trạng thái mở ra chiếm đúng cột trái — tức đúng chỗ cái huy hiệu đang treo. Nên lúc ấy
+   huy hiệu tắt và con số đi vào chính cái sổ, làm đuôi dòng nhịp (xem `.mb-min` bên dưới và
+   `wordRows` bên `lib/pet.js`). Một con số, hai chỗ đứng, không bao giờ cùng lúc.
+
+   Luật ẩn nằm ở ĐÂY chứ không ở chỗ dựng HTML: cú bấm mở `details` không dựng lại DOM, nên
+   một câu if bên JS sẽ đóng băng theo trạng thái của lượt vẽ và gập sổ lại là con số biến
+   mất hẳn. Cùng cái bẫy đã ghi cho `mark-crave` ở khối trên.
+
+   ## Cấu tạo HAI LỚP, và đây là chỗ bán trang trí
+
+   Lớp trong là CON SỐ (dữ liệu, luôn có). Lớp ngoài là VỎ, và trọn cái vỏ đi qua tám biến —
+   nền, viền, sắc chữ, độ bo, kiểu viền, một vành trong, một quầng quanh hộp, một quầng quanh
+   chữ, cộng mực của vạch nhịp. Nên một mặt mới KHÔNG phải sửa dòng nào ở khối này: nó khai
+   lại một số biến trong một luật `.mb-sat.sat-<tên>`, `SAT_FACES` bên `lib/pet.js` nhận tên
+   ấy, và `ITEMS` bên `src/pet.js` đặt giá.
+
+   ## Luật giá của khe này: đắt hơn phải đổi THÊM MỘT KÊNH
+
+   Sáu mặt đang bán đi từ 90 xu tới 1120 xu, và cái phân biệt chúng không phải màu đậm nhạt
+   mà là SỐ KÊNH mỗi mặt động vào: hai mặt rẻ đổi vật liệu; `slate` thêm một vành dày; `ticket`
+   thêm kiểu viền đứt; `neon` thêm quầng sáng; `pulse` thêm hẳn một vạch nhịp chạy dưới chân
+   con số — tức mặt đắt nhất chở thêm một TIN mà năm mặt kia không có. Bậc thang ấy đo được
+   (đếm số biến mỗi luật khai lại) và có phép kiểm canh cho nó không đi lùi theo giá.
+
+   ## Vỏ dày lên mà hộp KHÔNG to ra
+
+   Vỏ CỐ Ý không được đụng `position`, `font-size` hay `padding`. Đó là những thứ quyết định
+   huy hiệu đứng đâu và có che mất đầu quản gia hay không, mà một món mua bằng xu thì không
+   được phép dịch bố cục bức tranh. Nên viền dày đi vào TRONG bằng `--sat-ring`
+   (`box-shadow: inset`) chứ không nới `border-width`: nới viền thì hộp neo mép trái sẽ phình
+   sang phải, tức mặt càng đắt càng lấn về phía nhân vật. Bán cái vỏ, không bán chỗ đứng.
+
+   Vỏ chỉ sống ở huy hiệu, không theo con số vào sổ: trong sổ nó nằm giữa hai dòng chữ, và ở
+   đó một cái mặt đồng hồ thôi không còn là đồ trang trí, nó thành một ô dữ liệu thứ ba. */
+.mb-sat {
+  --sat-bg: rgb(24 16 44 / 0.9);
+  --sat-line: rgb(247 239 224 / 0.34);
+  --sat-ink: #f7efe0;
+  --sat-round: 7px;
+  --sat-line-style: solid;
+  --sat-ring: 0 0 0 0 transparent;
+  --sat-glow: 0 0 0 0 transparent;
+  /* Quầng quanh CHỮ, tách khỏi quầng quanh hộp: một mặt đèn thật thì cái ống sáng và con số
+     cũng sáng, mà hai thứ ấy đi qua hai thuộc tính khác nhau (`box-shadow` với `text-shadow`).
+     Gộp làm một biến thì mặt nào muốn hộp sáng mà chữ đục sẽ không khai được. */
+  --sat-ink-glow: none;
+  /* Vạch nhịp: trong suốt ở mọi mặt trừ `pulse`. Khai ở đây chứ không chỉ trong luật của
+     `pulse` để `background` dưới không phải có hai bản. */
+  --sat-run-ink: transparent;
+  /* Lùi hẳn ra khỏi người (-26px) và hạ xuống ngang vai (12px), theo chỉnh của chủ dự án.
+     Ở sát vai như bản đầu (-13px / -3px) nó dính vào nét vẽ và đọc thành một món quản gia
+     đang đeo; tách ra thì nó đọc đúng cái nó là — một cái nhãn treo trong khung cảnh. */
+  position: absolute; left: -26px; top: 12px; z-index: 6;
+  padding: 2px 5px; border-radius: var(--sat-round);
+  /* Hai lớp nền: vạch nhịp nằm sát đáy, dài theo `--sat-run` (phần nhịp CÒN LẠI, 0..1, gửi
+     sang từ `satChip`), rồi mới tới màu nền. Vẽ bằng nền chứ không bằng một thẻ con: huy hiệu
+     là một thẻ `b` nằm trong một `summary`, và thêm một thẻ con vào đấy là thêm một thứ phải
+     nhớ khi ai đó đổi cách dựng. */
+  /* Vạch nhịp đi qua HAI lớp, và cả hai nói cùng một tin. Bản đầu chỉ có lớp vạch, và trên màn
+     hình thật nó thất bại thẳng: ba mức nhịp 85% · 42% · 8% ra ba cái huy hiệu trông giống hệt
+     nhau, vì 2px trên một cái hộp cao 19px là thứ mắt không tách khỏi đường viền. Nên thêm lớp
+     LOÃNG phủ nền — cùng độ dài, mờ 40% — và nó mới là lớp đọc được ở cỡ này; cái vạch đậm ở
+     đáy chỉ còn việc chỉ ra mép kết thúc cho chính xác. Bản 22% vẫn chưa đủ trên nền tím sẫm
+     cộng quầng sáng của chính mặt này; 40% là mức đo trên màn hình thật, không phải mức ướm.
+     Loãng SUY từ mực vạch bằng `color-mix` chứ không là một biến thứ hai: hai màu phải luôn
+     cùng sắc, mà hai biến rời thì lần thêm mặt thứ bảy sẽ có người khai một cái và quên cái kia. */
+  background:
+    linear-gradient(to right, var(--sat-run-ink) calc(var(--sat-run, 0) * 100%), transparent 0)
+      bottom left / 100% 3px no-repeat,
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--sat-run-ink) 40%, transparent) calc(var(--sat-run, 0) * 100%),
+      transparent 0
+    ),
+    var(--sat-bg);
+  /* Hai lớp vạch cắt theo PADDING-box, nền cắt theo border-box. Để chung border-box thì vạch
+     nằm dưới cả đường viền và bị bo góc gặm mất hai đầu. */
+  background-clip: padding-box, padding-box, border-box;
+  border: 1px var(--sat-line-style) var(--sat-line);
+  font: 700 10.5px/1.2 var(--mono); color: var(--sat-ink);
+  letter-spacing: 0.02em; white-space: nowrap;
+  box-shadow: var(--sat-ring), var(--sat-glow), 1px 1px 0 rgb(10 6 24 / 0.34);
+  text-shadow: var(--sat-ink-glow);
+}
+.mb-who[open] .mb-sat { display: none; }
+
+/* Sáu mặt đang bán, xếp theo giá — và mỗi bậc thêm đúng một kênh, không phải thêm một sắc.
+   Đồng 90 · Gỗ 100 — đổi VẬT LIỆU: nền, viền, mực, độ bo. Vàng ám đọc như một vật đúc; nâu
+     ấm bo tròn hơn đọc như một cái thẻ khắc.
+   Đá 240 — thêm VÀNH TRONG, nên viền dày gấp đôi mà hộp không rộng thêm một pixel nào.
+   Vé 400 — thêm KIỂU VIỀN đứt và cắt góc gần vuông: hai thứ ấy hợp lại đọc ra một cái cuống vé.
+   Đèn 680 — thêm QUẦNG QUANH CHỮ, nên nó là mặt đầu tiên mà chính con số phát sáng chứ không
+     chỉ cái hộp.
+   Nhịp 1120 — thêm MỰC VẠCH NHỊP: vạch dưới chân con số dài đúng phần nhịp còn lại, nên đây
+     là mặt duy nhất trả lời được "còn bao lâu nữa" mà không phải mở sổ. */
+.mb-sat.sat-brass { --sat-bg: rgb(74 52 18 / 0.92); --sat-line: rgb(240 180 41 / 0.72); --sat-ink: #f7d488; --sat-round: 6px; }
+.mb-sat.sat-wood { --sat-bg: rgb(62 40 28 / 0.92); --sat-line: rgb(214 168 122 / 0.5); --sat-ink: #f0d9c0; --sat-round: 9px; }
+.mb-sat.sat-slate {
+  --sat-bg: rgb(30 36 48 / 0.94); --sat-line: rgb(176 192 214 / 0.6); --sat-ink: #dce6f2; --sat-round: 3px;
+  --sat-ring: inset 0 0 0 1px rgb(176 192 214 / 0.28);
+}
+.mb-sat.sat-ticket {
+  --sat-bg: rgb(58 24 34 / 0.93); --sat-line: rgb(246 178 168 / 0.68); --sat-ink: #f8ccc2; --sat-round: 2px;
+  --sat-ring: inset 0 0 0 2px rgb(58 24 34 / 0.93); --sat-line-style: dashed;
+}
+.mb-sat.sat-neon {
+  --sat-bg: rgb(10 14 22 / 0.94); --sat-line: rgb(126 207 149 / 0.75); --sat-ink: #7ecf95; --sat-round: 4px;
+  --sat-ring: inset 0 0 3px rgb(126 207 149 / 0.3); --sat-glow: 0 0 7px rgb(126 207 149 / 0.42);
+  --sat-ink-glow: 0 0 6px rgb(126 207 149 / 0.7);
+}
+/* Độ bo 4px chứ không 8px, và đó là ràng buộc do chính vạch nhịp đặt ra: bo càng tròn thì hai
+   góc dưới càng gặm vào cái vạch, mà vạch chỉ dày 2px trên một hộp cao 19px. Mặt nào chở vạch
+   thì mặt ấy phải bo vừa phải — một luật riêng của mặt này, không phải luật chung của vỏ. */
+.mb-sat.sat-pulse {
+  --sat-bg: rgb(18 14 40 / 0.94); --sat-line: rgb(167 139 250 / 0.68); --sat-ink: #ddd2ff; --sat-round: 4px;
+  --sat-ring: inset 0 0 0 1px rgb(167 139 250 / 0.24); --sat-glow: 0 0 8px rgb(167 139 250 / 0.34);
+  --sat-ink-glow: 0 0 5px rgb(167 139 250 / 0.5); --sat-run-ink: rgb(167 139 250 / 0.95);
+}
+
+/* Bệ TRƯNG BÀY trong tiệm — ô hàng, thẻ khe, tủ đồ trong nhà. Ba chỗ ấy đều dựng huy hiệu
+   bằng đúng hàm popover dùng (xem `artOn` trong `views/pet.js`), nên chỗ duy nhất phải gỡ là
+   cái `position: absolute` treo nó cạnh quản gia: ở đây không có ai để mà treo cạnh.
+
+   Gỡ bằng `position: static` chứ không bằng cách dựng một bản HTML thứ hai không có toạ độ —
+   một bản thứ hai là một bản sẽ trôi khỏi bản thật, và lúc ấy tiệm bày một thứ, popover trả
+   một thứ khác. */
+.face-demo { align-items: center; padding-bottom: 0; }
+.face-demo .mb-sat { position: static; display: inline-block; }
 
 /* Bốn sắc độ, suy từ hướng nắng trong `shadeOf` — một mảng tím phẳng đọc thành hình
    dán, không đọc thành vật có khối. */

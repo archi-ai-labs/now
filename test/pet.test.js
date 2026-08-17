@@ -10,7 +10,7 @@ import {
   FULL_MS, FOCUS_MS, BREAK_MS, COIN_PER_HOUR, EAT_MS, FOODS, ITEMS, MOVES, RATE,
   REST_RAMP_MS, SLOTS, doingOf,
 } from '../src/pet.js';
-import { ART, DISHES, FACE_NAMES, MOVE_ART, STATE_SCALES, TIP_KEYS, TIP_KINDS, butlerFace, butlerLook, butlerRows, butlerSays, butlerTalk, butlerThinks, coinNum, dialRows, doingRing, faceRows, focusDial, hungerText, hungerTray, markArt, nudgeOf, speaking, statCells, stateTable, statWords, tipArt, trayRows } from '../public/lib/pet.js';
+import { ART, DISHES, FACE_NAMES, MOVE_ART, SAT_FACES, STATE_SCALES, TIP_KEYS, TIP_KINDS, butlerFace, butlerLook, butlerRows, butlerSays, butlerTalk, butlerThinks, coinNum, dialRows, doingRing, faceRows, focusDial, hungerText, hungerTray, markArt, nudgeOf, satChip, satTiny, speaking, statCells, stateTable, statWords, tipArt, trayRows } from '../public/lib/pet.js';
 import { rawText } from '../public/lib/dom.js';
 import { FOCUS_DIP, HUNGER_MARKS, MOVE_HOME, MOVE_IDS, MOVE_PARK, REST_STAGE_MIN, livePet, moveForHour, restStageOf, stampPet, stateOf, wakeOf, whereOf } from '../public/lib/petmath.js';
 import { LOTS, PLACE_IDS, PLACES, ROADS, SCENE_SPOTS, STEP, TOWN_BOX, WALKERS, WELL, butlerArt, cellPos, onRoad, sizeOf } from '../public/lib/town.js';
@@ -271,9 +271,18 @@ test('món đang ăn đứng cạnh nhân vật đúng bằng quãng ăn nó, r�
  * định giá (mở DevTools là mua sạch). Cái nối chúng chỉ có thể là một bài test — nó bắt
  * đúng ca thêm món ở một bên mà quên bên kia, thứ mà chạy thật sẽ ra một ô trống hoặc
  * một món không mua nổi.
+ *
+ * Từ lượt bán MẶT ĐỒNG HỒ thì bảng hình chia làm hai: món có sprite phải có mã trong `ART`,
+ * còn món khai `face: true` phải có tên trong `SAT_FACES` — vì thứ nó bán là một luật CSS,
+ * không phải một lưới pixel. Vẫn là cùng một phép kiểm và vẫn chặt như cũ: mỗi món phải có
+ * ĐÚNG MỘT trong hai, nên quên bên nào cũng đỏ, và không món nào lọt qua bằng cách không
+ * thuộc nhóm nào.
  */
 test('mỗi món có đủ GIÁ, HÌNH và TÊN ở cả hai ngôn ngữ', () => {
-  assert.deepEqual(Object.keys(ITEMS).sort(), Object.keys(ART).sort(), 'bảng giá và bảng hình lệch mã');
+  const drawn = Object.keys(ITEMS).filter((id) => !ITEMS[id].face);
+  const faces = Object.keys(ITEMS).filter((id) => ITEMS[id].face);
+  assert.deepEqual(drawn.sort(), Object.keys(ART).sort(), 'bảng giá và bảng hình lệch mã');
+  assert.deepEqual(faces.sort(), [...SAT_FACES].sort(), 'bảng giá và bảng mặt đồng hồ lệch mã');
 
   const vi = tableOf('vi');
   const en = tableOf('en');
@@ -284,6 +293,7 @@ test('mỗi món có đủ GIÁ, HÌNH và TÊN ở cả hai ngôn ngữ', () =>
     assert.ok(it.price > 0, `${id} phải có giá`);
     if (it.kind === 'food') assert.ok(it.fill > 0 && it.fill <= 1, `${id} phải no được`);
     else assert.ok(it.slot, `${id} phải có chỗ đứng trong khung trời`);
+    if (it.face) assert.equal(it.kind, 'decor', `${id} là một cái vỏ mua một lần, không phải món ăn`);
   }
 });
 
@@ -454,10 +464,14 @@ test('trong mỗi khe, món đắt hơn không được vẽ nhỏ hơn', () => 
     const rows = ART[id].rows;
     return Math.max(...rows.map((r) => r.length)) * 4 * rows.length * 4;
   };
+  // Khe mặt đồng hồ không có sprite nào để đo, và luật tương đương của nó — đắt hơn phải đổi
+  // thêm một KÊNH — có phép kiểm riêng ngay dưới. Lọc bằng `face` chứ không viết cứng tên khe:
+  // ngày có khe vỏ thứ hai thì chỗ này không phải sửa.
   for (const slot of SLOTS) {
     const ids = Object.keys(ITEMS)
-      .filter((id) => ITEMS[id].kind === 'decor' && ITEMS[id].slot === slot)
+      .filter((id) => ITEMS[id].kind === 'decor' && ITEMS[id].slot === slot && !ITEMS[id].face)
       .sort((a, b) => ITEMS[a].price - ITEMS[b].price);
+    if (!ids.length) continue;
     assert.ok(ids.length >= 4, `khe ${slot} chỉ có ${ids.length} món — phép kiểm này cần cả bậc thang`);
     for (let i = 1; i < ids.length; i += 1) {
       assert.ok(
@@ -495,6 +509,72 @@ test('không sprite nào vượt bệ — trần 184×112, tức bậc co cuối
   }
 });
 
+/**
+ * MẶT ĐỒNG HỒ — luật giá của khe không-có-hình, và nó phải đo được như luật của khe có hình.
+ *
+ * Khe `clock` không có sprite nên phép kiểm "đắt hơn không được vẽ nhỏ hơn" không hỏi được nó.
+ * Bỏ trống chỗ ấy thì cả một khe hàng không có luật nào canh, và cái xảy ra sau đó thì đã xảy
+ * ra một lần rồi ở khe LƠ LỬNG: bốn món chung đúng một khung suốt bốn lượt vì không ai đo.
+ *
+ * Luật thay thế: **đắt hơn phải đổi THÊM MỘT KÊNH.** Mỗi mặt là một luật CSS khai lại một số
+ * biến `--sat-*`, nên số biến ấy đếm được, và bậc thang ấy không được đi lùi theo giá. Nó chặn
+ * đúng cái nó phải chặn: thêm một mặt 900 xu chỉ đổi ba con số màu thì đỏ, vì nó bán một cái
+ * giá mà không bán thêm thứ gì.
+ *
+ * Đọc thẳng `styles.css` cùng lý lẽ với mấy phép kiểm bắc cầu khác trong file này — một cái
+ * tên gõ sai bên CSS ra một huy hiệu mất nền, không ra một dòng lỗi nào.
+ */
+test('mặt đồng hồ: mỗi mặt có luật CSS, và mặt đắt hơn đổi thêm kênh chứ không đổi thêm màu', () => {
+  const css = fs.readFileSync(new URL('../public/styles.css', import.meta.url), 'utf8');
+  const chans = (face) => {
+    const m = css.match(new RegExp(`\\.mb-sat\\.sat-${face}\\s*\\{([^}]*)\\}`));
+    assert.ok(m, `mặt ${face} không có luật .mb-sat.sat-${face} nào trong styles.css`);
+    return new Set(m[1].match(/--sat-[a-z-]+/g) ?? []).size;
+  };
+  const ids = [...SAT_FACES].sort((a, b) => ITEMS[a].price - ITEMS[b].price);
+  assert.ok(ids.length >= 4, `khe mặt đồng hồ chỉ có ${ids.length} mặt — phép kiểm này cần cả bậc thang`);
+  for (let i = 1; i < ids.length; i += 1) {
+    assert.ok(
+      chans(ids[i]) >= chans(ids[i - 1]),
+      `${ids[i]} (${ITEMS[ids[i]].price} xu, ${chans(ids[i])} kênh) đổi ít kênh hơn ` +
+        `${ids[i - 1]} (${ITEMS[ids[i - 1]].price} xu, ${chans(ids[i - 1])} kênh) — giá đi lên mà nội dung đi xuống`,
+    );
+  }
+  assert.ok(
+    chans(ids[ids.length - 1]) > chans(ids[0]),
+    'mặt đắt nhất và mặt rẻ nhất đổi đúng bằng nhau số kênh — cả thang chỉ còn là một thang màu',
+  );
+  // Mọi biến một mặt khai lại đều phải là biến `.mb-sat` gốc BIẾT ĐỌC. Một cái tên gõ sai
+  // (`--sat-bgg`) không gây lỗi gì cả: nó chỉ nằm đó, và mặt ấy im lặng rơi về màu mặc định.
+  const base = new Set(css.match(/\.mb-sat\s*\{([^}]*)\}/)[1].match(/--sat-[a-z-]+/g) ?? []);
+  for (const face of SAT_FACES) {
+    const m = css.match(new RegExp(`\\.mb-sat\\.sat-${face}\\s*\\{([^}]*)\\}`));
+    for (const v of m[1].match(/--sat-[a-z-]+/g) ?? []) {
+      assert.ok(base.has(v), `mặt ${face} khai ${v} — không có biến này ở luật .mb-sat gốc`);
+    }
+  }
+});
+
+/**
+ * Huy hiệu là MỘT bản dựng, dùng cho cả popover lẫn tiệm — xem `satChip`.
+ *
+ * Hai bản dựng riêng là hai bản sẽ trôi khỏi nhau đúng lần đầu ai đó thêm một mặt, và lúc ấy
+ * ô hàng bày một thứ còn thứ trả về sau khi trả 680 xu là một thứ khác. Phép kiểm đóng đinh
+ * ba chỗ: mặt lạ rơi về mặt trần, con số là số THẬT, và phần nhịp còn lại đi ra CSS.
+ */
+test('huy hiệu: mặt lạ rơi về mặt trần, số là số thật, nhịp còn lại đi ra biến CSS', () => {
+  const pet = { satMin: 47, focus: 0.4, worn: { clock: 'neon' } };
+  const on = rawText(satChip(pet));
+  assert.match(on, /class="mb-sat sat-neon"/);
+  assert.match(on, new RegExp(satTiny(pet)), 'huy hiệu phải chở đúng con số satTiny dựng');
+  assert.match(on, /--sat-run:0\.4/);
+
+  const junk = rawText(satChip({ ...pet, worn: { clock: 'khong-co-mat-nay' } }));
+  assert.match(junk, /class="mb-sat "/, 'mã lạ phải rơi về mặt trần, không thành một class không ai định nghĩa');
+
+  assert.equal(satChip({ ...pet, satMin: null }), '', 'không có số thì không có huy hiệu');
+});
+
 /* ── Nhịp sống của đồ trang trí ────────────────────────────────────────────── */
 
 /**
@@ -510,7 +590,7 @@ test('không sprite nào vượt bệ — trần 184×112, tức bậc co cuối
  */
 test('mỗi món trang trí đều KHAI nhịp sống, kể cả khi nhịp ấy là "đứng yên"', () => {
   const quen = Object.keys(ITEMS).filter(
-    (id) => ITEMS[id].kind === 'decor' && !Object.hasOwn(ART[id] ?? {}, 'life'),
+    (id) => ITEMS[id].kind === 'decor' && !ITEMS[id].face && !Object.hasOwn(ART[id] ?? {}, 'life'),
   );
   assert.deepEqual(
     quen,

@@ -28,6 +28,7 @@ import {
   doingRing,
   markArt,
   nudgeOf,
+  satChip,
   speaking,
   statWords,
   talkArt,
@@ -204,7 +205,7 @@ const WORK_TONE = { alert: 'crit', warn: 'warn', calm: 'ok', mute: 'later' };
  * quyết định, và bản thứ hai là bản sẽ lệch.
  *
  * `head` vẫn nằm TRONG `.mb-sprite` chứ không nằm trong `.mb-sky`, và đó là lý do khung
- * cảnh không thể vẽ sáu chỗ bằng một vòng lặp: cái mũ phải đi theo cái đầu, mà `.mb-sprite`
+ * cảnh không thể vẽ mọi chỗ bằng một vòng lặp: cái mũ phải đi theo cái đầu, mà `.mb-sprite`
  * là thứ duy nhất biết cái đầu đang ở đâu (nó căn `left:50%` rồi dịch lại một nửa). Đặt mũ
  * vào bầu trời thì mỗi lần đổi bề rộng popover là mũ trượt khỏi đầu — và bề rộng thì bàn
  * chỉnh vặn được.
@@ -339,8 +340,8 @@ function scene(b, phase, pet, bump = 0, skyEcho = false) {
   const thoughts = on ? butlerThinks(pet) : [];
   const worn = on ? (pet.worn ?? {}) : {};
   // Trả thẳng cả cái thẻ chỗ đứng, không trả mảng hình: chỗ nào cũng đúng một món (bảng
-  // `worn` khoá theo chỗ), nên nhánh "có món thì bọc, không thì thôi" lặp lại y hệt ở sáu
-  // chỗ — sáu bản chép của một câu `if` là sáu chỗ để quên một cái.
+  // `worn` khoá theo chỗ), nên nhánh "có món thì bọc, không thì thôi" lặp lại y hệt ở mọi
+  // chỗ — mỗi bản chép của một câu `if` là thêm một chỗ để quên.
   const deco = (slot) =>
     worn[slot] ? html`<div class="pet-slot slot-${slot}">${itemArt(worn[slot])}</div>` : '';
 
@@ -451,6 +452,29 @@ function scene(b, phase, pet, bump = 0, skyEcho = false) {
                thứ nói "đang ngủ". Chúng bay ra ngoài khung 64px của sprite — sang phải và
                lên trên — nên chỗ đứng của chúng là chỗ trống, không đè lên cái đầu. -->
           ${dozing ? html`<span class="mb-zzz zz1">z</span><span class="mb-zzz zz2">z</span><span class="mb-zzz zz3">z</span>` : ''}
+          <!-- ĐÃ NGỒI LIỀN BAO LÂU — huy hiệu số, treo ở vai phải, ngoài khung 64px.
+               Người dùng: "tôi muốn nhìn thấy lượng thời gian tôi đang tập trung trên
+               popover trong không gian của pet quản gia".
+               Con số ấy trước nay chỉ có ở câu nhắc dưới bức tranh, mà nudgeOf trả null
+               ngay khi focusMood là sharp — tức suốt cái quãng người ta ĐANG tập trung,
+               thứ đáng nhìn nhất, màn hình không có con số nào. Nó chỉ hiện sau khi đã quá
+               mốc, tức lúc câu trả lời đã thành lời trách.
+               Đứng NGOÀI details, không nằm trong sổ trạng thái: sổ chỉ mở sau một cú bấm,
+               mà một con số phải xin mới thấy thì không phải là thứ nhìn thấy được.
+               Vai TRÁI, không phải vai phải: nửa phải bầu trời là chỗ của hai bong bóng nói
+               và nghĩ, nên treo con số bên ấy là mời hai thứ tranh nhau một góc mỗi lần quản
+               gia có gì để kể. Bên trái chỉ có vòng đếm ngược, mà nó chỉ sống đúng một phút
+               mỗi bữa ăn.
+               Ba chữ z lúc ngủ gật cũng ở góc phải, nên luật một-nét-một-lúc trên sprite
+               64px tự thoả — không cần một câu if nào cho ca ấy nữa.
+               BẤM vào thì nó TẮT, và con số dọn vào sổ trạng thái (xem statWords bên
+               lib/pet.js): lúc sổ mở, chính sổ chiếm cột trái, nên hai thứ sẽ đứng chồng
+               nhau. Luật ẩn nằm ở CSS chứ không ở đây, vì cú bấm không dựng lại DOM — một
+               câu if ở chỗ này sẽ đóng băng theo trạng thái lúc vẽ. Xem mb-sat trong
+               styles.css.
+               Chữ trần, không backtick: backtick trong chú thích HTML nằm trong template
+               literal sẽ ĐÓNG LUÔN chuỗi — CLAUDE.md điều 3. -->
+          ${on ? satChip(pet) : ''}
           <!-- Nét trạng thái — bụng kêu khi đói, giọt mồ hôi khi sắp hết nhịp. Nó nằm
                TRONG mb-sprite cùng lý do với món đồ đang cầm: nó bám vào thân của đúng tư
                thế đang vẽ (xem bellyOf trong lib/pet.js), nên đổi tư thế là nó đi theo.
@@ -559,7 +583,7 @@ function scene(b, phase, pet, bump = 0, skyEcho = false) {
       <!-- CỬA VÀO CỬA HÀNG — một hàng riêng DƯỚI bức tranh, mang tên tiệm và số dư.
            Bản đầu của lượt này treo cái ví thành một tấm biển ngay trong tranh, ở góc
            trái-dưới. Người dùng bác ngay và lý do đo được: bức tranh rộng 326px mà đã phải
-           chở sổ trạng thái, bong bóng thoại, nhân vật và sáu chỗ trang trí — thêm một vật
+           chở sổ trạng thái, bong bóng thoại, nhân vật và cả một khung trời đồ trang trí — thêm một vật
            thường trực 100px nữa thì góc trái-dưới không còn chỗ cho món đồ đã mua, và cả
            khung đọc thành chật chứ không đọc thành rộng.
            Ở đây thì nó trả lời câu hỏi tốt hơn hẳn một tấm biển: hàng này có TÊN — nó ghi

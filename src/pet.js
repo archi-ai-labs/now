@@ -265,21 +265,54 @@ export const ITEMS = {
   aurora: { kind: 'decor', price: 520, slot: 'back' },
   skyline: { kind: 'decor', price: 880, slot: 'back' },
   peak: { kind: 'decor', price: 1420, slot: 'back' },
+
+  // ── Mặt đồng hồ: cùng bảng, nhưng KHÔNG cùng loại vật ────────────────────
+  //
+  // Sáu khe trên bán một VẬT đứng trong bức tranh, có sprite, có nhịp thở. Khe này bán cái
+  // VỎ của con số phút đã ngồi — nó không có sprite và không bao giờ có, vì thứ nó bọc là
+  // một con số do trình duyệt dựng bằng CSS. `face: true` khai ra chỗ khác ấy ngay trong
+  // bảng, và mọi phép kiểm về hình vẽ đọc trường này để biết món nào chúng có quyền hỏi.
+  // Giấu chỗ khác ấy đi thì phép kiểm "món đắt hơn không được vẽ nhỏ hơn" phải nới lỏng cho
+  // sáu món không có hình — tức là một luật đang giữ chất lượng bị đục một lỗ để chiều một
+  // ca ngoại lệ. Khai thẳng thì luật cũ giữ nguyên độ chặt và khe này có luật riêng của nó.
+  //
+  // Luật riêng ấy: **món đắt hơn phải đổi THÊM MỘT KÊNH, không phải đổi màu đậm hơn.** Đo
+  // được, vì mỗi mặt là một luật CSS khai lại một số biến — đếm số biến ấy ra một bậc thang
+  // không được đi lùi theo giá (phép kiểm trong `test/pet.test.js`). Cụ thể: hai mặt đầu đổi
+  // VẬT LIỆU (màu nền, viền, mực); `slate` đổi thêm ĐỘ DÀY viền; `ticket` đổi thêm KIỂU viền
+  // và cắt góc vuông lại, đọc thành một cái vé; `neon` thêm QUẦNG SÁNG; `pulse` — đắt nhất —
+  // thêm một VẠCH NHỊP chạy dưới chân con số, tức nó chở thêm một tin mà năm mặt kia không có.
+  //
+  // Giá theo đúng luật bậc thang của các khe trên (mỗi tầng đắt hơn tầng trước 55–70%), nên
+  // khe này so được với năm khe kia thay vì đứng riêng một thang.
+  brass: { kind: 'decor', price: 90, slot: 'clock', face: true },
+  wood: { kind: 'decor', price: 100, slot: 'clock', face: true },
+  slate: { kind: 'decor', price: 240, slot: 'clock', face: true },
+  ticket: { kind: 'decor', price: 400, slot: 'clock', face: true },
+  neon: { kind: 'decor', price: 680, slot: 'clock', face: true },
+  pulse: { kind: 'decor', price: 1120, slot: 'clock', face: true },
 };
 
 /**
- * Sáu chỗ đứng trong khung trời, theo THỨ TỰ ĐỌC của cửa hàng — trên đầu trước, nền trời
- * sau cùng.
+ * Bảy chỗ đứng trong khung trời, theo THỨ TỰ ĐỌC của cửa hàng — gắn vào người trước, nền
+ * trời sau cùng.
  *
  * Tên chỗ là tên VỊ TRÍ chứ không phải tên loại đồ ("head", không phải "hat"). Đặt theo
  * loại thì cái khe bên trái vĩnh viễn chỉ nhận được cây, và ngày muốn đặt một cái đèn bàn
  * xuống đấy là phải đổi cả bảng. Vị trí thì đúng với thứ người xem thấy: mỗi khe là một
  * CHỖ trong bức tranh, ai đứng vào cũng được.
+ *
+ * `clock` đứng thứ hai vì thứ tự này là thứ tự trong BỨC TRANH: hai khe đầu bám vào người
+ * (trên đầu, bên vai), bốn khe sau là cảnh vật quanh người. Nó cũng là khe duy nhất bán vỏ
+ * chứ không bán vật — xem khối chú thích ở cuối `ITEMS`.
  */
-export const SLOTS = ['head', 'left', 'right', 'air', 'top', 'back'];
+export const SLOTS = ['head', 'clock', 'left', 'right', 'air', 'top', 'back'];
 
 export const FOODS = Object.keys(ITEMS).filter((k) => ITEMS[k].kind === 'food');
 export const DECORS = Object.keys(ITEMS).filter((k) => ITEMS[k].kind === 'decor');
+/** Món trang trí có SPRITE — tức mọi món trừ mấy cái mặt đồng hồ. Nhiều phép kiểm và cả
+ *  chỗ vẽ ô hàng chỉ có nghĩa với nhóm này. */
+export const DRAWN = DECORS.filter((id) => !ITEMS[id].face);
 
 /*
  * `MEAL_SHOW_MS` đã bỏ. Trước 5/8 nó là 45 phút và chỉ để nhìn — món ăn nằm cạnh nhân vật

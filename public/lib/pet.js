@@ -2147,14 +2147,20 @@ export function doingRing(doing) {
  * cách nhau nửa ngày còn so được với nhau.
  *
  * `aria-hidden` vì mọi thứ nó nói đã có bằng chữ ngay cạnh: tên món, khe đang bày, giá.
+ *
+ * Khe `clock` không đi qua `deco`: nó không phải một vật đặt vào bức tranh mà là cái vỏ của
+ * huy hiệu, nên nó dựng bằng `satChip` — đúng hàm popover đang dùng — và treo trong
+ * `.mb-sprite` đúng chỗ nó sẽ treo thật. `pet` truyền vào để con số là số THẬT của người
+ * đang đứng trước tiệm; một tấm gương thử đồ bày số bịa thì nó thử một thứ khác.
  */
-export function dressArt(worn = {}) {
+export function dressArt(worn = {}, pet = null) {
   const deco = (slot) =>
     worn[slot] ? html`<div class="pet-slot slot-${slot}">${itemArt(worn[slot])}</div>` : '';
+  const chip = pet && worn.clock ? satChip(pet, `sat-${worn.clock}`) : '';
   return html`<div class="mb-scene shop-scene" aria-hidden="true">
     <div class="mb-sky">
       ${deco('back')}${deco('top')}
-      <div class="mb-sprite">${pixels(butlerRows('stand'), BUTLER_CHARS)}${deco('head')}</div>
+      <div class="mb-sprite">${pixels(butlerRows('stand'), BUTLER_CHARS)}${deco('head')}${chip}</div>
       ${deco('left')}${deco('right')}${deco('air')}
     </div>
   </div>`;
@@ -2832,6 +2838,74 @@ export const satText = (pet) =>
   pet.satMin > 0 ? t('pet.satMin', { n: pet.satMin }) : t('pet.satRested');
 
 /**
+ * Cũng con số ấy, ở dạng CỤT NHẤT còn đọc được — `37′`, `2g05`. Dùng cho cái huy hiệu treo
+ * cạnh quản gia trên popover (xem `mb-sat` bên `menubar-view.js`).
+ *
+ * ## Vì sao con số này quay lại bề mặt, sau khi từng bị gỡ
+ *
+ * Lượt trước gỡ nó khỏi sổ trạng thái với lý do *"con số ấy đã ở trên trang rồi, `nudgeOf`
+ * in nó ngay dưới bức tranh"*. Lý do ấy chỉ đúng ở nửa quãng: `nudgeOf` trả `null` ngay khi
+ * `focusMood === 'sharp'`, nên suốt cái quãng người ta ĐANG tập trung — thứ đáng nhìn nhất —
+ * màn hình không có con số nào; nó chỉ hiện sau khi đã quá mốc, tức lúc câu trả lời đã thành
+ * lời trách. Người dùng chỉ đúng chỗ hở ấy: *"tôi muốn nhìn thấy lượng thời gian tôi đang
+ * tập trung trên popover trong không gian của pet quản gia"*.
+ *
+ * Lần này nó đứng NGOÀI bức tranh chứ không chen vào sổ, nên ràng buộc 119px từng dùng làm
+ * cớ gỡ nó đi không áp vào đây nữa. Cụt là vì một cái nhãn nổi trên tranh phải đọc xong
+ * trong một cái liếc, không phải vì hết chỗ.
+ *
+ * Đổi sang giờ từ mốc 60 chứ không in `125′`: ba chữ số phút là con số phải NHẨM mới ra
+ * nghĩa. Phút giữ hai chữ số sau giờ — `2g5` đọc ra "hai giờ năm" chậm hơn hẳn `2g05`.
+ */
+export function satTiny(pet) {
+  const n = Math.max(0, Math.round(pet?.satMin ?? 0));
+  if (n < 60) return t('pet.satTinyMin', { n });
+  return t('pet.satTinyHour', { h: Math.floor(n / 60), m: String(n % 60).padStart(2, '0') });
+}
+
+/**
+ * MẶT ĐỒNG HỒ — vỏ của cái huy hiệu, và từ lượt này nó là hàng bán trong tiệm.
+ *
+ * Huy hiệu tách làm hai lớp: con số là DỮ LIỆU (luôn có, `satTiny` lo), còn dáng vẻ là VỎ
+ * và vỏ thì mua được. Cả vỏ đi qua CSS, nên một mặt mới tốn một luật CSS cộng một cái tên —
+ * không dòng mã nào ở đây phải đổi, và chỗ này không phải biết mỗi mặt vẽ ra sao.
+ *
+ * Vỏ CỐ Ý không được đụng `position` hay cỡ chữ. Đó là những thứ quyết định huy hiệu đứng
+ * đâu và có che mất đầu quản gia hay không, mà một món mua bằng xu thì không được phép dịch
+ * bố cục bức tranh. Bán cái vỏ, không bán chỗ đứng.
+ *
+ * Danh sách nằm ở ĐÂY chứ không suy từ `pet.worn`: một id lạ trong sổ (bản cũ, sổ chép tay,
+ * món đã gỡ khỏi cửa hàng) phải rơi về mặt trần chứ không được biến thành một tên lớp CSS
+ * không ai định nghĩa — lúc ấy huy hiệu mất nền và chỉ còn chữ trắng trôi trên tranh. Bảng
+ * này phải khớp đúng nhóm `face: true` bên `src/pet.js`, và có phép kiểm canh hai bảng ấy.
+ */
+export const SAT_FACES = ['brass', 'wood', 'slate', 'ticket', 'neon', 'pulse'];
+
+export const satFace = (pet) =>
+  SAT_FACES.includes(pet?.worn?.clock) ? `sat-${pet.worn.clock}` : '';
+
+/**
+ * Trọn cái huy hiệu, dựng MỘT chỗ cho cả hai bề mặt dùng.
+ *
+ * Popover treo nó cạnh quản gia; cửa hàng bày nó trong ô hàng và trên bàn thử đồ. Ba chỗ,
+ * một hàm — vì cái tiệm này bán đúng cái mà popover vẽ, và hai bản dựng riêng là hai bản sẽ
+ * trôi khỏi nhau đúng lần đầu ai đó thêm một mặt. Người mua nhìn ô hàng rồi trả 680 xu để
+ * nhận một thứ hơi khác là lỗi nặng nhất một cửa hàng có thể mắc.
+ *
+ * `face` truyền vào được, để ô hàng vẽ được mặt CHƯA MUA trong khi con số vẫn là số thật của
+ * người đang xem. Một ô hàng bày số bịa thì nó chỉ là một cái nhãn, không phải bản xem trước.
+ *
+ * `--sat-run` là phần nhịp còn lại, 0..1. Chỉ mặt `pulse` đọc tới nó; năm mặt kia kệ nó nằm
+ * đó. Đặt sẵn cho mọi mặt chứ không đặt riêng cho `pulse`: một biến chỉ tồn tại ở một nhánh
+ * là một biến sẽ thiếu đúng ở nhánh người ta quên, mà chi phí của nó là một chuỗi vài ký tự.
+ */
+export function satChip(pet, face = satFace(pet)) {
+  if (typeof pet?.satMin !== 'number') return '';
+  return html`<b class="mb-sat ${face}" style="--sat-run:${clamp01(pet.focus)}"
+    title="${satText(pet)}">${satTiny(pet)}</b>`;
+}
+
+/**
  * DẢI THÔNG SỐ — ba ô, và từ lượt này CẢ HAI bề mặt vẽ nó bằng đúng hàm này.
  *
  * ## Chỗ hỏng, và nó nhìn thấy được trên ảnh người dùng gửi
@@ -2951,7 +3025,25 @@ export const satText = (pet) =>
  * đời cũ (`pet.focus` là `undefined`), và lúc ấy sổ còn đúng một hàng chứ không bày một
  * hàng rỗng — cùng luật với `focusDial`.
  *
- * ## Con số "đã ngồi bao lâu" KHÔNG vào đây, và nó không bị mất
+ * ## Con số "đã ngồi bao lâu" VÀO ĐÂY, nhưng chỉ ở đúng một bề mặt
+ *
+ * Trên popover nó có hai chỗ đứng và chúng thay phiên nhau theo CÚ BẤM: chưa bấm thì nó là
+ * cái huy hiệu nổi bên vai trái quản gia (xem `satTiny`, `satFace`); bấm ra thì huy hiệu tắt
+ * và con số dọn vào đây, làm đuôi của dòng nhịp. Lý do là chỗ đứng: sổ mở ra chiếm đúng cột
+ * trái, tức đúng chỗ cái huy hiệu đang treo, nên để cả hai cùng lúc là hai con số giống nhau
+ * chồng lên nhau. Người dùng chốt đúng thế: *"khi bấm vào thì hiện vào bên thanh status"*.
+ *
+ * Ở đây nó là chữ TRẦN, không mang vỏ trang trí: vỏ là thứ bán kèm cái huy hiệu, và một cái
+ * mặt đồng hồ nhét vào giữa hai dòng chữ thì nó không còn là đồ trang trí, nó thành một ô
+ * dữ liệu thứ ba. Người dùng cũng chốt: *"trang trí chỉ hiện khi không bấm"*.
+ *
+ * Cái giá đã đo, không giấu: dòng nhịp dài nhất cần 125px (VI) và 147px (EN) trong khi ô chữ
+ * chỉ có 106px, nên chữ dài thì xuống dòng và sổ cao thêm 17px (63,5 → 80,2). Không nới rộng
+ * sổ để chữa: nới đủ cho một dòng thì mép phải chạm x=149, mà nét vẽ quản gia bắt đầu ở
+ * x=143 — người dùng dặn *"đừng làm che mất nhân vật"*. Sổ neo ĐÁY nên phần cao thêm mọc lên
+ * trời trống, không lấn xuống đâu cả.
+ *
+ * Luận điểm cũ vẫn đứng, chỉ đổi phạm vi. Nguyên văn nó thế này:
  *
  * `statCells` có một luận điểm phải trả lời: mặt đồng hồ nhịp BÃO HOÀ — ngồi 91 phút và ngồi
  * 300 phút cho ra cùng một cái vành rỗng — nên con số phút phải ở lại trên trang. Chữ "Quá
@@ -2965,13 +3057,25 @@ export const satText = (pet) =>
  * Bỏ nó đi còn giải một chỗ đo được: sổ chỉ có 119px chữ trước khi chạm nét vẽ của quản gia
  * (mép trái tranh 6px + đệm 18px, thân người bắt đầu ở x=143). "Sắp hết nhịp" cộng "61 phút
  * liền" cần 132px, nên chúng xuống dòng và cái sổ cao thêm 15px để in lại một câu đã có.
+ *
+ * Chỗ hở của nó: `nudgeOf` im ở `sharp`, tức suốt quãng người ta ĐANG tập trung thì không
+ * còn con số nào trên màn hình cả. Nên con số về lại — ở dạng cụt (`37′`, không phải "61
+ * phút liền"), nối đuôi chữ trạng thái thay vì xin một hàng riêng.
  */
 const clamp01 = (n) => (Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0);
 
 const wordRows = (pet) => [
   { k: 'mood', word: t(`pet.mood.${pet.mood}`), frac: clamp01(pet.full) },
   ...(typeof pet.focus === 'number'
-    ? [{ k: 'focus', word: t(`pet.focusMood.${pet.focusMood}`), frac: clamp01(pet.focus) }]
+    ? [{
+        k: 'focus',
+        word: t(`pet.focusMood.${pet.focusMood}`),
+        frac: clamp01(pet.focus),
+        // Chỉ dòng NHỊP mang đuôi số. Dòng no đã có đồng hồ riêng (`hungerText`) ở màn Cửa
+        // hàng, và hai cái đuôi trên hai dòng cạnh nhau thì sổ đọc thành bảng số chứ không
+        // còn đọc thành hai câu.
+        tail: typeof pet.satMin === 'number' ? satTiny(pet) : null,
+      }]
     : []),
 ];
 
@@ -2989,7 +3093,7 @@ const wordRows = (pet) => [
 export function statWords(pet) {
   return html`${wordRows(pet).map(
     (r) => html`<span class="mb-line" style="--f:${r.frac.toFixed(3)}">
-      <b class="mb-word">${r.word}</b>
+      <b class="mb-word">${r.word}${r.tail ? html`<em class="mb-min">${r.tail}</em>` : ''}</b>
       <i class="mb-lvl" aria-hidden="true"></i>
     </span>`,
   )}`;

@@ -3,7 +3,7 @@
  *
  * ## Vì sao cái cửa hàng ở dashboard mà con thú ở popover
  *
- * Popover rộng 360pt và nó tồn tại để LIẾC. Nhét một lưới hai mươi lăm món hàng vào đấy là
+ * Popover rộng 360pt và nó tồn tại để LIẾC. Nhét cả một lưới hàng chục món vào đấy là
  * đổi cái nó giỏi lấy một cái nó không cần giỏi. Còn nhân vật thì ngược lại: nó phải ở
  * chỗ mở ra chín lần một ngày, không phải ở màn thứ mười của một trang web.
  *
@@ -13,7 +13,7 @@
  * ## Vì sao một bản đồ chứ không phải một trang cuộn
  *
  * Bản trước là bốn khối xếp chồng — nghỉ ngắn, ăn uống, trang trí, cách tính — và ở cỡ
- * hiện tại (25 món, sáu chỗ đứng, bảy khối chữ) nó dài ba màn hình. Cuộn thì không có lối
+ * hiện tại (hàng chục món, bảy chỗ đứng, bảy khối chữ) nó dài ba màn hình. Cuộn thì không có lối
  * tắt: muốn đổi cái nón cũng phải đi hết đồ ăn.
  *
  * Bản đồ đổi cái danh sách ấy lấy một chỗ có VỊ TRÍ — xem khối đầu của `lib/town.js`. Mỗi
@@ -29,7 +29,7 @@
 
 import { html } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
-import { CHEER_MS, artFit, itemArt, lifeClock, moveArt, doingArt, dressArt, nudgeOf, stateTable, statCells, coinNum } from '../lib/pet.js';
+import { CHEER_MS, artFit, itemArt, lifeClock, moveArt, doingArt, dressArt, nudgeOf, satChip, stateTable, statCells, coinNum } from '../lib/pet.js';
 import { LOTS, PLACES, PLACE_IDS, ROADS, SCENE_SPOTS, STROLL, TOWN_BOX, WALKERS, butlerArt, lotArt, placeArt, sceneArt, sizeOf, strollLag, strolling, walkerArt } from '../lib/town.js';
 import { BREAK_MS, livePet, moveForHour, phaseOf, rampAt, stampPet, wakeOf } from '../lib/petmath.js';
 import { loadPet as cachedPet, savePet } from '../lib/petcache.js';
@@ -320,7 +320,7 @@ function onClick(e) {
   //
   // Bấm lại đúng khe đang mở thì KHÔNG gập nó lại, và đó là chủ ý: một cái ngăn kéo gập được
   // hết thì có một trạng thái mà cả tiệm trống trơn, và người rơi vào đấy không có gì để đọc
-  // ngoài sáu cái thẻ. Sáu cái thẻ là đường ĐI, không phải đích đến.
+  // ngoài cái dải thẻ. Dải thẻ là đường ĐI, không phải đích đến.
   const sh = e.target.closest('[data-shelf]');
   if (sh) {
     shelf = sh.dataset.shelf;
@@ -883,7 +883,7 @@ function homeSec() {
  *   18px đệm hai bên và 2px viền còn 92; chiều cao 62px trừ 4px đệm đáy trừ 2px viền còn 56.
  * - `BOX_FOOD` 92×40 — lưới đồ ăn, cùng bề rộng, bệ thấp hơn (46px).
  * - `BOX_PICK` 70×38 — cái khay chọn món, bệ khai cứng 72×42.
- * - `BOX_SHELF` 78×26 — sáu cái thẻ chọn khe; bệ 28px cao, không viền.
+ * - `BOX_SHELF` 78×26 — dải thẻ chọn khe; bệ 28px cao, không viền.
  *
  * Bốn con số thay cho `scale(0.5)` cứng của cái thẻ khe: một hệ số cố định đúng cho đúng cái
  * sprite cao nhất tại lúc gõ nó, và sai ngay ở lần sprite ấy đổi — đã sai một lần ở lượt 20,
@@ -894,9 +894,19 @@ const BOX_FOOD = [92, 40];
 const BOX_PICK = [70, 38];
 const BOX_SHELF = [78, 26];
 
-/** Một món trên bệ: hình cộng đúng một biến CSS nói nó phải co bao nhiêu. */
+/**
+ * Một món trên bệ: hình cộng đúng một biến CSS nói nó phải co bao nhiêu.
+ *
+ * Mặt đồng hồ đi lối khác, và lối ấy phải nằm ở ĐÂY chứ không ở ba chỗ gọi: ô hàng, thẻ khe
+ * và tủ đồ trong nhà đều bày món bằng hàm này, nên một câu if ở mỗi chỗ là ba chỗ để quên.
+ * Mấy cái mặt ấy không có sprite và sẽ không bao giờ có — thứ chúng bán là vỏ của một con số
+ * do CSS dựng — nên bản xem trước phải là CHÍNH cái huy hiệu, dựng bằng đúng hàm popover
+ * dùng. Bịa một hình đồng hồ nhỏ cho ô hàng là bán một thứ người mua sẽ không nhận được.
+ */
 const artOn = (cls, id, [w, h], eat = null) =>
-  html`<span class="${cls}" style="--fit:${artFit(id, w, h)}">${id ? itemArt(id, eat) : ''}</span>`;
+  id && pet.items?.[id]?.face
+    ? html`<span class="${cls} face-demo">${satChip(pet, `sat-${id}`)}</span>`
+    : html`<span class="${cls}" style="--fit:${artFit(id, w, h)}">${id ? itemArt(id, eat) : ''}</span>`;
 
 /**
  * Một ô đồ ăn — CHỌN, không phải mua. Cú bấm thứ hai nằm dưới khay (xem `foodTray`).
@@ -974,7 +984,7 @@ function decorTile(id, item) {
  *
  * Nút mua ở ĐÂY chứ không ở trong ô hàng, và đó là chỗ quan trọng nhất của cả khối: lúc
  * quyết thì mắt đang ở trên bức tranh, mà ô hàng thì có thể đang nằm cách đó nửa màn hình
- * (sáu khe, hai mươi lăm món). Bắt người ta nhìn ở một chỗ rồi bấm ở một chỗ khác là mời họ
+ * (bảy khe, ngót bốn chục món). Bắt người ta nhìn ở một chỗ rồi bấm ở một chỗ khác là mời họ
  * cuộn lên cuộn xuống để kiểm lại xem mình đang chọn đúng cái nào.
  *
  * Chưa thử gì thì khung vẫn đứng đó với bộ đồ đang bày — không phải một ô trống chờ bấm.
@@ -987,7 +997,7 @@ function tryDesk() {
   if (item) worn[item.slot] = tryOn;
   const poor = item && pet.coins < item.price;
   return html`<div class="shop-try">
-    ${dressArt(worn)}
+    ${dressArt(worn, pet)}
     <div class="try-side">
       ${item
         ? html`<p class="try-on">${t('pet.tryOn', { name: t(`pet.item.${tryOn}`), slot: t(`pet.slot.${item.slot}`) })}</p>
@@ -1096,8 +1106,8 @@ function shelfTab(slot, open) {
   return html`<button type="button" class="shelf-tab ${slot === open ? 'on' : ''}"
     data-shelf="${slot}" aria-pressed="${slot === open}"
     title="${t('pet.shelfOwn', { own, all: ids.length })}">
-    <!-- Ô hình giữ chỗ KỂ CẢ khi khe đang trống, và đó không phải chỗ quên: sáu cái thẻ cao
-         bằng nhau thì cả dải là một hàng, còn cao thấp so le thì nó đọc thành sáu cái nút
+    <!-- Ô hình giữ chỗ KỂ CẢ khi khe đang trống, và đó không phải chỗ quên: mấy cái thẻ cao
+         bằng nhau thì cả dải là một hàng, còn cao thấp so le thì nó đọc thành một nắm nút
          rời. Chỗ trống ấy cũng chính là thứ nói khe này chưa có gì.
          Chữ trần, không quote: backtick trong comment HTML nằm trong template literal sẽ
          ĐÓNG LUÔN chuỗi — CLAUDE.md điều 3. -->

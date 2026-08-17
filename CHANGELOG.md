@@ -78,6 +78,37 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `HUNGER_MARKS` on the way — it had been a bare `0.85` inside `moodOf`, and a table that
   explains the marks by keeping a copy of them is the first thing that goes stale.
 
+- **The minutes you have been sitting now show beside the butler, and the badge around them
+  is for sale.** The number had been pulled off the status sheet a round earlier on the
+  grounds that `nudgeOf` already prints it — true only half the time, because `nudgeOf`
+  returns `null` while `focusMood` is `sharp`, so the whole stretch you are *actually*
+  focused had no number anywhere. It hangs on the butler's **left** shoulder: the right half
+  of the sky belongs to the speech and thought bubbles, and the sleeping z's, so a number
+  over there fights for a corner every time the butler has something to say. Click the
+  sprite open and the badge switches off — the stat sheet takes that same column — and the
+  number moves into the focus row as a tail. The switch is a CSS rule, not a JS branch:
+  opening a `details` does not rebuild the DOM, so a branch decided at render time would
+  freeze and the number would vanish for good on the next fold.
+
+  The badge is two layers, and the outer one is a shop item: six **clock faces** in a new
+  `clock` slot, 90 → 1120 coins on the same tier ladder the other six slots use. The slot
+  sells a *shell*, not an object — no sprite, and never will have one, because what it wraps
+  is a number the browser draws — so `face: true` says so in `ITEMS` and every sprite-side
+  check reads that field instead of being loosened to tolerate six items with no art. Its
+  own rule replaces the one it cannot take: **a dearer face changes one more channel, not
+  one more shade** — brass and wood swap material, slate adds an inner ring (thicker rule,
+  same box: widening `border-width` would push a left-anchored badge toward the sprite),
+  ticket adds a dashed edge, neon adds a glow around the digits themselves, and pulse — the
+  top of the ladder — adds a run bar under the number as long as the rhythm you have left,
+  so it is the one face that answers "how much longer" without opening anything. That ladder
+  is counted (the `--sat-*` declarations per rule) and a test refuses to let it go backwards
+  against price. The shop previews each face with the *real* badge at the *real* current
+  minute — the same `satChip` the popover calls — because a shelf that mocks up what it
+  sells is the worst mistake a shop can make. First try shipped the run bar as a 2px line
+  and it failed on screen: 85%, 42% and 8% all looked identical at a 19px box, so it gained
+  a 40% wash across the whole background and the bar kept only the job of marking the exact
+  end.
+
 ### Changed
 
 - **The focus rhythm drops 90 minutes → 60.** Owner's call (*"lower the rhythm to 60 minutes
