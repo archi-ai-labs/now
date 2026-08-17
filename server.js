@@ -8,6 +8,7 @@ import { execFile } from 'node:child_process';
 import { PORT, SESSIONS_DIR, TASKS_DIR } from './src/config.js';
 import { buildState } from './src/state.js';
 import { badgeOf } from './src/badge.js';
+import { reqUrl } from './src/reqpath.js';
 import {
   accrue, buy, cancelBreak, emptyLedger, observeRest, petView, readLedger, resolveBreak,
   startBreak, wear, writeLedger, ITEMS, MOVES, SLOTS,
@@ -482,7 +483,14 @@ async function openPath(res, target, app) {
 }
 
 async function handle(req, res) {
-  const url = new URL(req.url, 'http://localhost');
+  // Địa chỉ hỏng là một CÂU TRẢ LỜI, không phải một sự cố — xem `src/reqpath.js`. Cùng
+  // luật với nhánh `decodeURIComponent` trong `serveStatic`: client gõ sai thì client nhận
+  // 400, còn 500 là lời khai rằng server này hỏng.
+  const url = reqUrl(req.url);
+  if (!url) {
+    res.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' }).end('đường dẫn hỏng');
+    return;
+  }
 
   // Trả lời tức thì, KHÔNG chờ lượt quét. Dùng để kiểm tra "server đã chạy chưa";
   // hỏi `/api/state` cho việc này sẽ timeout trong lúc quét lần đầu và khiến

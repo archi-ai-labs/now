@@ -127,6 +127,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   a verified break — shifted the whole icon row and dragged the open popover's anchor
   sideways; the 4 pt is now always reserved and the text is centred identically on both
   paint paths.
+- **A malformed path answered "the server is broken" instead of "that is not a path."**
+  `GET //` returned **500** and logged `Invalid URL` — found 10 Aug by a `curl` loop that
+  joined one slash too many while chasing an unrelated report. The cause was not the extra
+  slash: `req.url` is a *request target*, not a URL, and feeding it straight to `new URL`
+  lets the second meaning of `//` in — authority. So `//` threw (empty host) and escaped
+  through the last-resort catch as a 500, while the quieter sibling `//lib/pet.js` did
+  *not* throw: it resolves to host `lib`, path `/pet.js`, so the router silently saw a
+  different path than the client asked for. Both now answer **400** through one small
+  parser (`src/reqpath.js`) that requires exactly one leading slash and still accepts a
+  proxy's absolute-form; `/%` keeps its own 400 further in, where the code knows it is
+  serving a file. Same rule as that older branch: a client typo gets a client error, and
+  a 500 is a statement about *this* server that had better be true.
 - Tests: 510 → 519.
 
 ## [1.1.1] — 2026-08-08
