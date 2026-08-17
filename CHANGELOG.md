@@ -34,8 +34,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   dot / bang / flood) plus the tooltip sentence; the Swift side dropped its one
   hardcoded sentence and paints three named shapes, so a third cause someday costs no
   app rebuild (the `rest` data field stays for older builds). Ordinary hunger never
-  reaches the icon — an 8-hour cycle fires daily, and a daily badge is a light that is
-  always on. Anything in progress (eating, resting) silences it: busy tops `stateOf`,
+  reaches the icon — a 16-hour cycle still comes around about once a day, and a daily
+  badge is a light that is always on. Anything in progress (eating, resting) silences it: busy tops `stateOf`,
   and the icon does not argue with its own model's ranking. And the stale-dim never
   stacks with a badge — dimmed text beside a red disc read as a broken icon on a light
   menu bar (owner's call on sight, 9 Aug); while a badge shows, the text keeps its
@@ -80,6 +80,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Hunger runs at half speed: 8 hours → 16 hours to empty.** Owner's call, and a call about
+  PRIORITY rather than a broken measurement — feeding is the only gauge in the project that
+  asks the person to *do* something, and if that chore isn't worth doing twice a day, the
+  rhythm is what has to stretch, not their memory. Sixteen hours reads as one waking day:
+  feed it when you sit down in the morning, it's still fed at bedtime, and the next meal
+  lands the following morning. The trade is written down rather than buried — the bar now
+  drains 6.25%/hour instead of 12.5%, so two looks half an hour apart move it 3%, still
+  clear of the 5%/hour that disqualified the old 20-hour step but with half the margin;
+  if that bar ever reads as frozen, the way back is 12 hours, not 8. Nothing else needed
+  touching: food prices derive from `FULL_MS` at a fixed 0.2 coins/hour, so every dish got
+  proportionally pricier *and* longer-lasting (phở: 1.44 coins for 7.2 hours → 2.88 for
+  14.4), the five-dish tray is a UI constant, and the day's food budget check is unchanged
+  because both of its factors moved in opposite directions by the same ratio. The hunger
+  clock's two lower countdowns now speak in hours where they used to speak in minutes, so
+  the `starve*`/`empty*` minute branches gained test cases of their own rather than
+  quietly losing their only caller.
 - **The service sheds its author's name: `dev.hoanluu.now-dash` → `io.github.archi-ai-labs.now-dash`**
   (and `.menu`, `.launcher` along with it) — the public-release pass. Reverse-DNS that the
   org actually controls, instead of a personal label baked into every adopter's
@@ -118,6 +134,20 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **The busy countdown ran at double speed — a one-minute meal drained in thirty seconds.**
+  User measured it on screen: *"the feeding cooldown is still ticking 2s at a time"*. No
+  function was wrong on its own, which is what made it invisible to the whole suite.
+  `leftMs` is a DIFFERENCE, so it only means anything alongside the moment it counts from,
+  and the ledger carries that moment in `at`; `livePet` keeps the pair consistent, moving
+  `at` forward by exactly what it takes off `leftMs`. The shop view, though, still kept a
+  second mark of its own (`petAt`, stamped on receipt and then frozen for the 30 seconds
+  between fetches) and subtracted against *that* as well — one elapsed span removed twice.
+  It was correct until `livePet` moved into the draw pass and took over the first
+  subtraction. `doingNow` now reads `pet.at`, the mark the number actually belongs to, so
+  it is right on both sides of `pet = livePet(pet)`, and the second mark is gone rather
+  than kept in sync by hand. Everything gated on "is it busy" moves with it: the countdown,
+  the locked buy buttons, the butler's pose, the dish draining in his hand — buttons had
+  been unlocking twice as early while the server was still refusing.
 - **The hunger clock counts down to the mark where the word beside it changes — not to
   0%.** The shop HUD could read "Starving · hungry in 43 min" (user's screenshot, 9 Aug):
   the countdown always aimed at empty and called that moment "hungry", while the state
@@ -158,7 +188,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   proxy's absolute-form; `/%` keeps its own 400 further in, where the code knows it is
   serving a file. Same rule as that older branch: a client typo gets a client error, and
   a 500 is a statement about *this* server that had better be true.
-- Tests: 510 → 519.
+- Tests: 510 → 530.
 
 ## [1.1.1] — 2026-08-08
 

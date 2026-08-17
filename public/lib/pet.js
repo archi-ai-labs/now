@@ -2229,7 +2229,7 @@ export function wallet(pet, bump = 0) {
  * trần thật — dải thông số còn phải nuôi mặt đồng hồ tập trung và cái ví trên cùng một hàng.
  *
  * Nên giờ **số đĩa là hằng, còn giá trị một đĩa mới là thứ suy ra**: một đĩa đáng
- * `FULL_MS / DISHES`, tức 96 phút ở nhịp 8 giờ hôm nay. Không cất con số ấy vào một hằng số
+ * `FULL_MS / DISHES`, tức 192 phút ở nhịp 16 giờ hôm nay. Không cất con số ấy vào một hằng số
  * nào — không chỗ nào cần tới nó, và một hằng số không ai đọc là một hằng số sẽ trôi.
  *
  * ## Cái MẤT, viết ra chứ không giấu

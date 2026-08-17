@@ -12,7 +12,7 @@ import {
 } from '../src/pet.js';
 import { ART, DISHES, FACE_NAMES, MOVE_ART, STATE_SCALES, TIP_KEYS, TIP_KINDS, butlerFace, butlerLook, butlerRows, butlerSays, butlerTalk, butlerThinks, coinNum, dialRows, doingRing, faceRows, focusDial, hungerText, hungerTray, markArt, nudgeOf, speaking, statCells, stateTable, statWords, tipArt, trayRows } from '../public/lib/pet.js';
 import { rawText } from '../public/lib/dom.js';
-import { FOCUS_DIP, HUNGER_MARKS, MOVE_HOME, MOVE_IDS, MOVE_PARK, REST_STAGE_MIN, livePet, moveForHour, restStageOf, stateOf, wakeOf, whereOf } from '../public/lib/petmath.js';
+import { FOCUS_DIP, HUNGER_MARKS, MOVE_HOME, MOVE_IDS, MOVE_PARK, REST_STAGE_MIN, livePet, moveForHour, restStageOf, stampPet, stateOf, wakeOf, whereOf } from '../public/lib/petmath.js';
 import { LOTS, PLACE_IDS, PLACES, ROADS, SCENE_SPOTS, STEP, TOWN_BOX, WALKERS, WELL, butlerArt, cellPos, onRoad, sizeOf } from '../public/lib/town.js';
 import { outlineRows } from '../public/lib/pixel.js';
 import { lastHumanIn } from '../src/collect/sessions.js';
@@ -109,13 +109,21 @@ test('độ no tụt theo ĐỒNG HỒ, không theo lượt quét', () => {
  */
 test('đồng hồ đói trỏ đúng mốc mà chữ trạng thái sẽ đổi, không trỏ mốc 0%', () => {
   const at = (full) => hungerText({ full, fullMs: FULL_MS });
-  // Đang ổn (0,5): đích là mốc ĐÓI — (0,5 − 0,35) × 8h = 72′ → nói bằng giờ.
-  assert.equal(at(0.5), 'còn 1 giờ nữa thì đói');
-  // Đang đói (0,2): đích là mốc ĐÓI LẢ — (0,2 − 0,12) × 8h = 38,4′ → trần lên 39.
-  assert.equal(at(0.2), 'còn 39 phút nữa thì đói lả');
-  // Đói lả (0,09): đích là ĐÁY — 0,09 × 8h = 43,2′. Đúng ca trong ảnh: chữ "Đói lả"
+  // Mọi con số dưới đây suy từ nhịp 16 giờ, và nhấc bậc `FULL_MS` là phải tính lại chúng.
+  // Đó là chủ đích: test này ghim ĐÍCH của phép đếm, nên nó phải đọc ra đích ấy bằng số
+  // thật chứ không bằng một phép nhân chép lại từ chính `hungerText`.
+  // Đang ổn (0,5): đích là mốc ĐÓI — (0,5 − 0,35) × 16h = 144′ → nói bằng giờ.
+  assert.equal(at(0.5), 'còn 2 giờ nữa thì đói');
+  // Đang đói (0,2): đích là mốc ĐÓI LẢ — (0,2 − 0,12) × 16h = 76,8′ → trần lên 77, sang giờ.
+  assert.equal(at(0.2), 'còn 1 giờ nữa thì đói lả');
+  // Đói lả (0,09): đích là ĐÁY — 0,09 × 16h = 86,4′. Đúng ca trong ảnh: chữ "Đói lả"
   // đứng cạnh một cái đếm về "bụng rỗng", không còn hứa "sắp đói".
-  assert.equal(at(0.09), 'còn 44 phút nữa thì bụng rỗng');
+  assert.equal(at(0.09), 'còn 1 giờ nữa thì bụng rỗng');
+  // Nhịp 16 giờ đẩy CẢ HAI nhánh cuối sang cách nói bằng giờ, nên hai ca này vào đây cùng
+  // lượt nhấc bậc: thiếu chúng thì nhánh phút của `starve*` và `empty*` không còn ai đi
+  // qua, mà một khoá không ai đi qua là một khoá sẽ hỏng lặng lẽ.
+  assert.equal(at(0.15), 'còn 29 phút nữa thì đói lả'); // (0,15 − 0,12) × 16h = 28,8′
+  assert.equal(at(0.05), 'còn 48 phút nữa thì bụng rỗng'); // 0,05 × 16h = 48′
   assert.equal(at(0), 'đói lả rồi');
   // Không bao giờ "còn 0 phút": sát mốc thì trần lên 1 — một cái đếm ngược bày số 0 mà
   // chưa đổi chữ đọc thành lỗi, không đọc thành gấp.
@@ -945,6 +953,45 @@ test('ăn thì độ no bò lên đều, tính bằng đồng hồ của chính 
 
   // Hết quãng thì thôi bò — và tụt lại theo đúng nhịp đói cũ, không giữ nguyên.
   assert.ok(at(EAT_MS + 60_000) < at(EAT_MS), 'ăn xong là đói lại từ đó, không đứng đầy');
+});
+
+/**
+ * Đồng hồ việc đang làm tụt ĐÚNG một giây mỗi giây — hai phép trừ không được chồng lên nhau.
+ *
+ * Lỗi người dùng đo được trên màn hình: *"cooldown thời gian cho ăn vẫn đang chạy 2s 1
+ * lần"*. Không hàm nào sai cả, và đó là chỗ đáng đọc kỹ: `leftMs` là một HIỆU SỐ, nên nó
+ * chỉ có nghĩa kèm cái mốc mà nó ứng vào, và bản sổ mang theo đúng cái mốc ấy trong `at`.
+ * `livePet` giữ cặp ấy khớp nhau — trừ `leftMs` bao nhiêu thì dời `at` bấy nhiêu. Chỗ hỏng
+ * là màn Cửa hàng còn giữ MỘT MỐC THỨ HAI của riêng nó (`petAt`, đóng dấu lúc nhận sổ và
+ * đứng yên suốt 30 giây giữa hai lượt hỏi), rồi trừ lần nữa theo mốc đó — nên một phút ăn
+ * cạn trong ba mươi giây và mọi nút mua mở khoá sớm gấp đôi, trong khi server vẫn còn khoá.
+ *
+ * `views/pet.js` chạm DOM nên không nhập được vào đây; thứ ghim được là BẤT BIẾN mà nó dựa
+ * vào, cộng với chính ca đã hỏng — để lần sau ai dựng lại một mốc thứ hai thì phép kiểm này
+ * đỏ trước khi màn hình kịp nói dối.
+ */
+test('đồng hồ việc đang làm tụt đúng một giây mỗi giây, không trừ chồng', () => {
+  const l = emptyLedger([], '2026-08-05', T0);
+  const hungry = { ...l, coins: 50, fedAt: new Date(T0 - 0.75 * FULL_MS).toISOString() };
+  const { ledger, error } = buy(hungry, 'banhmi', T0);
+  assert.equal(error, null);
+
+  // Đúng chuỗi màn Cửa hàng chạy: nhận sổ → đóng dấu → mỗi lượt vẽ vặn lại một lần.
+  const tick = (subtractFrom) => {
+    let pet = stampPet(petView(ledger, T0), T0);
+    const seen = [];
+    for (let s = 1; s <= 5; s++) {
+      const now = T0 + s * 1000;
+      pet = livePet(pet, now);
+      seen.push(pet.doing.leftMs - (now - subtractFrom(pet)));
+    }
+    return seen;
+  };
+
+  // Trừ theo mốc của CHÍNH bản vừa vặn — đây là điều `doingNow` làm từ lượt này.
+  assert.deepEqual(tick((p) => p.at), [59_000, 58_000, 57_000, 56_000, 55_000]);
+  // Ca đã hỏng, ghim lại nguyên hình: mốc nhận đứng yên thì mỗi giây tụt hai giây.
+  assert.deepEqual(tick(() => T0), [58_000, 56_000, 54_000, 52_000, 50_000]);
 });
 
 /**

@@ -248,9 +248,9 @@ const DICT = {
     'pet.fullAria': (o) => `còn no ${o.pct}%`,
     'pet.starved': 'đói lả rồi',
     // Đồng hồ đói đếm tới MỐC KẾ TIẾP CÓ TÊN — ba đích, ba cặp khoá, xem `hungerText`
-    // bên `lib/pet.js`. Cặp `empty*Hour` hôm nay không với tới (quãng đói-lả → rỗng chỉ
-    // dài 12% của 8 giờ), nhưng `FULL_MS` đã dời ba bậc rồi; thiếu khoá thì ngày nó dời
-    // bậc tư màn hình in nguyên chữ `pet.emptyHour`.
+    // bên `lib/pet.js`. Cặp `empty*Hour` tới lượt này MỚI với tới: quãng đói-lả → rỗng dài
+    // 12% của thanh, tức 58 phút ở nhịp 8 giờ nhưng đã là 1 giờ 55 ở nhịp 16 giờ — cùng
+    // một lý do khiến các khoá này được giữ qua bốn bậc `FULL_MS` thay vì bị gỡ.
     // Năm khoá `*Short` từng đứng ngay đây đã GỠ: người dùng duy nhất của bản ngắn là
     // dải chân popover, thứ không còn từ lượt 17.
     'pet.leftMin': (o) => `còn ${o.n} phút nữa thì đói`,
@@ -499,9 +499,9 @@ const DICT = {
     'pet.how.coin.p':
       'Tỉ giá đúng bằng 1, nên ví xu đọc ra chính hoá đơn: 213 xu nghĩa là $213 kể từ ngày mở sổ. Cộng theo ngày chứ không theo tổng, vì Claude Code tự xoá transcript cũ nên tổng lịch sử TỤT xuống theo thời gian — khoá theo ngày thì mỗi ngày tự chốt sổ của nó và một ngày rơi khỏi sổ token không kéo ai theo.',
     'pet.how.full.t': 'Độ no',
-    'pet.how.full.f': 'no = 1 − (bây giờ − lần ăn cuối) ÷ 8 giờ',
+    'pet.how.full.f': 'no = 1 − (bây giờ − lần ăn cuối) ÷ 16 giờ',
     'pet.how.full.p':
-      '8 giờ là trọn một buổi làm liền tay: cho ăn lúc ngồi vào bàn thì con vật vừa hết no lúc đứng dậy. Bậc trước là 5 giờ — khoảng cách giữa hai bữa — nhưng ở 5 giờ thì một buổi 9h–17h ăn trọn cả thanh, mở popover lúc tan việc là lần nào cũng gặp đói lả; một chỉ số chạm đáy mỗi ngày thì thôi là chỉ số, nó thành cái đèn đỏ luôn sáng. Cho ăn thì mốc được đẩy về trước sao cho độ no tăng đúng phần của món và không vượt quá no căng; cộng thẳng vào mốc thì ăn lúc đang no sẽ khoá thanh ở mức đầy nhiều giờ liền.',
+      '16 giờ là trọn một ngày thức: cho ăn lúc ngồi vào bàn buổi sáng thì tới lúc đi ngủ con vật vẫn còn no, và bữa kế rơi vào sáng hôm sau — một bữa một ngày. Hai bậc trước đều hụt về cùng một phía: 5 giờ thì một buổi 9h–17h ăn trọn cả thanh, mở popover lúc tan việc là lần nào cũng gặp đói lả; 8 giờ đỡ hơn nhưng vẫn là hai bữa một ngày, mà cho ăn không đáng là việc phải nhớ hai lần mỗi ngày. Cái giá của bậc này nằm ở tốc độ tụt: 6,25% mỗi giờ thay vì 12,5%, nên nhìn hai lần cách nhau nửa tiếng thì mức tụt 3% đã sát ngưỡng mắt còn thấy. Cho ăn thì mốc được đẩy về trước sao cho độ no tăng đúng phần của món và không vượt quá no căng; cộng thẳng vào mốc thì ăn lúc đang no sẽ khoá thanh ở mức đầy nhiều giờ liền.',
     'pet.how.focus.t': 'Tập trung',
     'pet.how.focus.f': 'tập trung = 1 − (bây giờ − mốc nghỉ cuối) ÷ 90 phút',
     'pet.how.focus.p':
@@ -509,7 +509,7 @@ const DICT = {
     'pet.how.price.t': 'Giá đồ ăn',
     'pet.how.price.f': (o) => `giá = số GIỜ món ấy mua cho bạn × ${o.n} xu/giờ`,
     'pet.how.price.p':
-      'Một giờ no giá 0,2 xu — thanh no đầy (8 giờ) giá 1,6 xu, ghép với tỉ giá 1 xu = $1 thì cả cửa hàng rút về một câu: 20 cent token đổi được một giờ no. Hệ số 0,2 là quyết định giá duy nhất của quầy đồ ăn, đặt 9/8: cho ăn là khoản bắt buộc vài bữa một ngày, mà ở tỉ giá cũ (1 xu một giờ) nó ngốn 20% thu nhập một ngày nhẹ — cửa hàng trang trí, thứ tự chọn duy nhất trong tiệm, chỉ còn nhận phần thừa; ở 0,2 còn 4%. Tập trung tính cùng tỉ giá ấy trên chu kỳ 90 phút, nên nó rẻ hơn, và đúng là phải rẻ hơn: sự tỉnh táo có một đường miễn phí về đầy, cái bụng thì không. Bảng giá cũ là chín con số đặt tay và nó đã lọt hai ca một món đè bẹp món khác — cà phê vừa rẻ hơn vừa hơn sô-cô-la ở cả hai mặt. Suy từ công thức thì ca ấy không dựng lên được: trả nhiều hơn là nhận nhiều hơn, theo nghĩa đen.',
+      'Một giờ no giá 0,2 xu — thanh no đầy (16 giờ) giá 3,2 xu, ghép với tỉ giá 1 xu = $1 thì cả cửa hàng rút về một câu: 20 cent token đổi được một giờ no. Hệ số 0,2 là quyết định giá duy nhất của quầy đồ ăn, đặt 9/8: cho ăn là khoản bắt buộc vài bữa một ngày, mà ở tỉ giá cũ (1 xu một giờ) nó ngốn 20% thu nhập một ngày nhẹ — cửa hàng trang trí, thứ tự chọn duy nhất trong tiệm, chỉ còn nhận phần thừa; ở 0,2 còn 4%. Tập trung tính cùng tỉ giá ấy trên chu kỳ 90 phút, nên nó rẻ hơn, và đúng là phải rẻ hơn: sự tỉnh táo có một đường miễn phí về đầy, cái bụng thì không. Bảng giá cũ là chín con số đặt tay và nó đã lọt hai ca một món đè bẹp món khác — cà phê vừa rẻ hơn vừa hơn sô-cô-la ở cả hai mặt. Suy từ công thức thì ca ấy không dựng lên được: trả nhiều hơn là nhận nhiều hơn, theo nghĩa đen.',
     'pet.how.rest.t': 'Vì sao đồng hồ ngồi cứ tự về 0',
     'pet.how.rest.f': (o) => `mốc nghỉ ← bây giờ, mỗi khi Claude Code im ≥ ${o.m} phút`,
     'pet.how.rest.p': (o) =>
@@ -2194,9 +2194,9 @@ const DICT = {
     'pet.how.coin.p':
       'The rate is exactly 1, so the wallet reads back your bill: 213 coins means $213 since the ledger opened. Credited per day rather than against a running total, because Claude Code prunes old transcripts, so the historical total DROPS over time — keyed by day, each day settles on its own and a day falling out of the token ledger drags nobody with it.',
     'pet.how.full.t': 'Fullness',
-    'pet.how.full.f': 'full = 1 − (now − last fed) ÷ 8 hours',
+    'pet.how.full.f': 'full = 1 − (now − last fed) ÷ 16 hours',
     'pet.how.full.p':
-      'Eight hours is one full stretch of work: feed it when you sit down and it runs out right as you stand up. The previous step was 5 hours — the gap between meals — but at 5 a single 9-to-5 stretch ate the whole bar, so opening the popover at the end of the day always met a starving pet; a gauge that bottoms out every day stops being a gauge and becomes a red light that is always on. Feeding moves the mark forward so fullness rises by exactly the item and never past stuffed; adding to the mark directly would pin the bar at full for hours if you ate while already fed.',
+      'Sixteen hours is one full waking day: feed it when you sit down in the morning and it is still fed when you go to bed, with the next meal landing the following morning — one meal a day. Both earlier steps fell short the same way: at 5 hours a single 9-to-5 stretch ate the whole bar, so opening the popover at the end of the day always met a starving pet; 8 hours fixed that but still asked for two meals a day, and feeding is not worth remembering twice a day. The price of this step is the drain rate: 6.25% an hour instead of 12.5%, so two looks half an hour apart move the bar 3% — close to the edge of what the eye catches. Feeding moves the mark forward so fullness rises by exactly the item and never past stuffed; adding to the mark directly would pin the bar at full for hours if you ate while already fed.',
     'pet.how.focus.t': 'Focus',
     'pet.how.focus.f': 'focus = 1 − (now − last rest) ÷ 90 minutes',
     'pet.how.focus.p':
@@ -2204,7 +2204,7 @@ const DICT = {
     'pet.how.price.t': 'What food costs',
     'pet.how.price.f': (o) => `price = the HOURS it buys you × ${o.n} coin/hour`,
     'pet.how.price.p':
-      'An hour of being fed costs 0.2 coins — a full bar (8 hours) is 1.6 coins, and with 1 coin = $1 the whole shop collapses into one sentence: 20 cents of tokens buys an hour. The 0.2 factor is the one hand-set price decision in the food aisle, made 9 Aug: feeding is mandatory a few times a day, and at the old rate (1 coin an hour) it swallowed 20% of a light day’s income — the decor shop, the only real choice in here, got the leftovers; at 0.2 it takes 4%. Focus is priced at the same rate over the 90-minute cycle, so it comes out cheaper, and it should: alertness has a free road back to full, a stomach does not. The old price list was nine hand-picked numbers, and two of them were strictly dominated — coffee was both cheaper than chocolate and better on every axis. Derived prices cannot do that: paying more gets you more, literally.',
+      'An hour of being fed costs 0.2 coins — a full bar (16 hours) is 3.2 coins, and with 1 coin = $1 the whole shop collapses into one sentence: 20 cents of tokens buys an hour. The 0.2 factor is the one hand-set price decision in the food aisle, made 9 Aug: feeding is mandatory a few times a day, and at the old rate (1 coin an hour) it swallowed 20% of a light day’s income — the decor shop, the only real choice in here, got the leftovers; at 0.2 it takes 4%. Focus is priced at the same rate over the 90-minute cycle, so it comes out cheaper, and it should: alertness has a free road back to full, a stomach does not. The old price list was nine hand-picked numbers, and two of them were strictly dominated — coffee was both cheaper than chocolate and better on every axis. Derived prices cannot do that: paying more gets you more, literally.',
     'pet.how.rest.t': 'Why the sitting clock keeps resetting itself',
     'pet.how.rest.f': (o) => `rest mark ← now, whenever Claude Code goes quiet for ≥ ${o.m} min`,
     'pet.how.rest.p': (o) =>

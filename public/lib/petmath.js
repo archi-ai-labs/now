@@ -23,29 +23,37 @@
 export const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 /**
- * No căng → đói hẳn. **8 giờ**, neo vào một BUỔI LÀM VIỆC LIỀN của người.
+ * No căng → đói hẳn. **16 giờ**, tức trọn một ngày thức của người.
  *
  * Lịch sử con số này đi xuống rồi quay lại, và mỗi bậc có lý do riêng. 20 giờ chọn theo
  * "mỗi ngày chỉ phải cho ăn một lần" — tiện, nhưng 5%/giờ thì hai lần mở popover liên
  * tiếp thanh nhúc nhích 6% và không ai thấy; một cái thanh không bao giờ động là một cái
  * thanh không ai đọc. 10 giờ neo vào một ngày làm việc, đúng hơn nhưng vẫn là nhịp của
  * cái MÁY, không phải nhịp của người ngồi trước nó. 5 giờ neo vào khoảng cách giữa hai
- * bữa, và nó chạy đúng suốt sáu lượt.
+ * bữa, và nó chạy đúng suốt sáu lượt. Lượt 21 nhấc lên 8 giờ — trọn một BUỔI LÀM LIỀN —
+ * vì ở 5 giờ thì một buổi 9h–17h ăn hết cả khay, nên mở popover lúc tan việc là lần nào
+ * cũng gặp con vật đói lả; một chỉ số chạm đáy MỖI NGÀY thì nó thôi không còn là chỉ số,
+ * nó thành một cái đèn đỏ luôn sáng.
  *
- * ## Vì sao 5 → 8, lượt 21
+ * ## Vì sao 8 → 16
  *
- * Người dùng: *"Thời gian no có thể kéo dài lên 8 tiếng"*. Chỗ 5 giờ hụt là một chuyện đo
- * được chứ không phải khẩu vị: cái thanh này đọc bằng ĐĨA, mỗi đĩa một giờ, và ở 5 giờ thì
- * một buổi làm liền tay từ 9h tới 17h ăn trọn cả khay — mở popover lúc tan việc là lúc nào
- * cũng thấy con vật đang đói lả. Một chỉ số chạm đáy MỖI NGÀY thì nó thôi không còn là chỉ
- * số, nó thành một cái đèn đỏ luôn sáng.
+ * Người dùng: *"Tôi muốn nâng thời gian đói lên gấp đôi vì tôi thấy nó không quan trọng
+ * lắm"*. Đây là một quyết định về ĐỘ ƯU TIÊN, không phải một phép đo hỏng. Cái bụng là chỉ
+ * số duy nhất trong dự án đòi người dùng phải LÀM một việc, và khi việc ấy không đáng làm
+ * hai lần một ngày thì chỗ phải giãn ra là cái nhịp, chứ không phải trí nhớ của người ngồi
+ * trước máy.
  *
- * 8 giờ là trọn một buổi làm: cho ăn lúc bắt đầu ngồi vào bàn thì con vật vừa hết no lúc
- * đứng dậy. Đó là một CÂU đọc được, khác hẳn "cứ 5 tiếng lại phải nhớ".
+ * 16 giờ đọc thành một câu: cho ăn lúc ngồi vào bàn buổi sáng thì tới lúc đi ngủ con vật
+ * vẫn còn no, và bữa kế rơi vào sáng hôm sau. Một bữa một ngày thay vì hai, mà vẫn không
+ * chạm cái bậc 20 giờ đã bị loại một lần rồi.
  *
- * Nó vẫn không phá cái trần dưới đã dựng ra bậc 5 giờ: 12,5%/giờ, tức hai lần mở popover
- * cách nhau nửa tiếng là thanh đã tụt 6% — vẫn thấy. Bậc 20 giờ hỏng ở 5%/giờ, còn bậc này
- * hơn gấp đôi mức ấy.
+ * ## Cái ĐÁNH ĐỔI, viết ra chứ không giấu
+ *
+ * Trần dưới của mọi bậc ở đây là tốc độ tụt, và bậc này ăn đúng vào nó: 6,25%/giờ, một nửa
+ * của nhịp 8 giờ. Hai lần mở popover cách nhau nửa tiếng thì thanh tụt 3% chứ không còn 6%
+ * — vẫn hơn bậc 20 giờ hỏng ở 5%/giờ, nhưng biên đã mỏng đi một nửa. Nếu lượt sau có người
+ * nói *"cái thanh này chẳng bao giờ nhúc nhích"* thì đây là chỗ đã hẹn trước, và đường lùi
+ * là 12 giờ (8,3%/giờ) chứ không phải quay về 8.
  *
  * Tiền có chịu nổi không — đây là ràng buộc thật, không phải chuyện thẩm mỹ, và bậc 5 giờ
  * từng phá nó: bảng giá đặt hồi còn 20 giờ đứng yên trong khi đồng hồ đói nhanh lên gấp
@@ -58,7 +66,7 @@ export const clamp01 = (v) => Math.max(0, Math.min(1, v));
  * trên khay và cả phép kiểm ngân sách tự đi theo, không còn hai con số phải nhớ chỉnh
  * cùng lúc.
  */
-export const FULL_MS = 8 * 3600 * 1000;
+export const FULL_MS = 16 * 3600 * 1000;
 
 /**
  * Tập trung cạn hẳn sau **90 phút NGỒI LIỀN**.

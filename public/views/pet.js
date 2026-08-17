@@ -29,9 +29,9 @@
 
 import { html } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
-import { CHEER_MS, artFit, itemArt, lifeClock, moveArt, doingArt, dressArt, nudgeOf, statCells, coinNum } from '../lib/pet.js';
+import { CHEER_MS, artFit, itemArt, lifeClock, moveArt, doingArt, dressArt, nudgeOf, stateTable, statCells, coinNum } from '../lib/pet.js';
 import { LOTS, PLACES, PLACE_IDS, ROADS, SCENE_SPOTS, STROLL, TOWN_BOX, WALKERS, butlerArt, lotArt, placeArt, sceneArt, sizeOf, strollLag, strolling, walkerArt } from '../lib/town.js';
-import { livePet, moveForHour, phaseOf, rampAt, stampPet, wakeOf } from '../lib/petmath.js';
+import { BREAK_MS, livePet, moveForHour, phaseOf, rampAt, stampPet, wakeOf } from '../lib/petmath.js';
 import { loadPet as cachedPet, savePet } from '../lib/petcache.js';
 // Lớp tiếng CHỈ được nhập ở đây, và đó là một hàng rào bằng kiến trúc chứ không phải một
 // chỗ đặt cho gọn: `menubar.js` không có đường nào tới file này, nên popover thanh menu
@@ -166,15 +166,6 @@ let arriving = false;
  */
 let cheerAt = 0;
 let cheerTimer = null;
-/**
- * Lúc bản sổ đang cầm được coi là ĐÚNG, theo đồng hồ máy này.
- *
- * Chỉ cái đếm ngược của quãng nghỉ cần nó, và nó cần vì server gửi số mili giây CÒN LẠI
- * chứ không gửi mốc kết thúc (xem `petView`): một hiệu số thì không lệch theo đồng hồ máy
- * nào, nhưng bù lại nó đứng yên giữa hai lượt hỏi, nên phía này phải tự trừ đi phần đã
- * trôi. `cachedPet()` đã trừ phần trôi trước khi trả về, nên bản nhớ cũng khớp mốc này.
- */
-let petAt = Date.now();
 /** Cái hẹn giờ 1 giây, chỉ sống khi có VIỆC đang chạy — ăn hoặc nghỉ. Xem `beat`. */
 let tick = null;
 
@@ -227,7 +218,6 @@ async function call(body) {
       // Đóng dấu mốc NHẬN ngay chỗ nhận — `leftMs` là một hiệu số và nó chỉ có nghĩa khi
       // biết trừ từ đâu, xem `stampPet`. Thiếu nó thì việc đang làm không bao giờ xong.
       pet = stampPet(d.pet);
-      petAt = Date.now();
       // Mua xong thì thôi thử: món ấy giờ là món ĐANG BÀY thật (server tự bày món vừa mua),
       // và giữ nó ở trạng thái "đang thử" là bức tranh vẫn đúng nhưng cái nút dưới nó vẫn
       // mời mua một thứ đã mua rồi.
@@ -569,10 +559,24 @@ const mmss = (ms) => {
  * mấy cái nút bị khoá, tư thế quản gia, và cái hình đang vơi. Sáu chỗ tự trừ lấy là sáu
  * con số lệch nhau vài trăm mili giây, và trong đó có đúng một chỗ quyết định nút có bấm
  * được hay không.
+ *
+ * ## Trừ theo `pet.at`, KHÔNG theo một mốc riêng
+ *
+ * Chỗ này từng giữ mốc nhận trong biến `petAt` của riêng nó, và đó là đúng cho tới khi
+ * `livePet` vào `renderPet`: từ lượt ấy `pet.doing.leftMs` đã là con số ĐÃ TRỪ, còn `petAt`
+ * thì vẫn đứng ở mốc nhận, nên hàm này trừ chồng lên một phép trừ vừa xảy ra. Người dùng
+ * đo được ngay: *"cooldown thời gian cho ăn vẫn đang chạy 2s 1 lần"* — một phút ăn cạn
+ * trong ba mươi giây, và mọi nút mua mở khoá sớm gấp đôi trong khi server vẫn còn khoá.
+ *
+ * `pet.at` là mốc mà `leftMs` ĐANG ỨNG VÀO, và cả `stampPet` lẫn `livePet` đều duy trì
+ * đúng bất biến ấy — nên trừ theo nó thì đúng ở cả hai phía của dòng `pet = livePet(pet)`:
+ * `beat` gọi trước (mốc của lượt vẽ trước, trừ phần thật sự trôi), mọi chỗ vẽ gọi sau (mốc
+ * của chính lượt này, trừ gần bằng không). Một mốc thứ hai đặt cạnh nó là một bất biến thứ
+ * hai phải nhớ giữ đồng bộ bằng tay, và đây là lần nó đã trượt.
  */
 function doingNow() {
   if (!pet?.doing) return null;
-  const leftMs = pet.doing.leftMs - (Date.now() - petAt);
+  const leftMs = pet.doing.leftMs - (Date.now() - pet.at);
   return leftMs > 0 ? { ...pet.doing, leftMs } : null;
 }
 
@@ -1234,14 +1238,27 @@ function restSec() {
 
 /* ── Thư viện ─────────────────────────────────────────────────────────────────── */
 
-/** Chín khối, và bốn khối đầu có CÔNG THỨC vì bốn con số ấy hiện trên màn hình. Năm khối
- *  sau là mấy quyết định đằng sau chúng — chúng không có công thức, chúng có lý do. */
+/**
+ * Mười khối. Khối nào có CÔNG THỨC là khối nói về một con số đang hiện trên màn hình; khối
+ * không có công thức là một quyết định — nó không có phép tính, nó có lý do.
+ *
+ * Thứ tự đi theo THỨ TỰ NGƯỜI TA HỎI, không theo thứ tự viết ra. Hai khối cuối lượt 9/8
+ * chen vào giữa vì chúng trả lời đúng hai câu hỏi mà người dùng phải đi hỏi người khác mới
+ * có: *"ngồi lâu thế mà sao tập trung không tụt?"* (`rest`, đứng ngay dưới chính cái công
+ * thức tập trung mà nó là ngoại lệ) và *"'Đang vào nhịp' với 'Ổn' là sao?"* (`state`, đứng
+ * ngay sau đó, vì cái tên chỉ có nghĩa khi thấy được cả thang).
+ *
+ * `tbl` là một khối vẽ THÊM, chèn giữa công thức và đoạn văn — dành cho thứ mà một đoạn văn
+ * không nói được: bốn cái tên với bốn khoảng số thì phải bày thành bảng, kể lại bằng câu
+ * chữ là bắt người đọc tự dựng lại cái bảng ấy trong đầu.
+ */
 const HOW = [
   { k: 'coin', f: true },
   { k: 'full', f: true },
   { k: 'focus', f: true },
+  { k: 'rest', f: true },
+  { k: 'state', f: false, tbl: stateTable },
   { k: 'price', f: true },
-  { k: 'rest', f: false },
   { k: 'dip', f: false },
   { k: 'wake', f: false },
   { k: 'eat', f: false },
@@ -1279,7 +1296,9 @@ function howSec() {
   // Tỉ giá đọc từ SỔ, không viết cứng trong bảng chữ: nó là con số đang thật sự tính tiền
   // trong `priceOf` bên server, và một bản chép ở đây là bản sẽ nói dối sau lần chỉnh giá
   // đầu tiên. Server bản cũ không gửi thì rơi về 1, đúng giá trị nó vẫn luôn là.
-  const vars = { n: coinNum(pet.coinPerHour ?? 1) };
+  // `m` đi cùng nó và cùng một luật: mốc "im bao lâu thì coi như đã nghỉ" là `BREAK_MS` bên
+  // `petmath.js`, và một con số 10 gõ tay vào bảng chữ là con số sẽ ở lại sau lần nới mốc.
+  const vars = { n: coinNum(pet.coinPerHour ?? 1), m: Math.round(BREAK_MS / 60000) };
   // Tiêu đề là TÊN CHỖ, không phải tên nội dung — cùng luật với bốn khối kia, và từ lượt
   // này nó là một luật có hình: tấm biển của khối mượn đúng cặp sắc của tấm biển đang sáng
   // trên bản đồ, nên nó chỉ nói đúng nếu hai chỗ cùng một chữ. Câu "cách tính mấy con số
@@ -1290,6 +1309,7 @@ function howSec() {
       (h) => html`<div class="how-row">
         <h3>${t(`pet.how.${h.k}.t`)}</h3>
         ${h.f ? html`<code>${t(`pet.how.${h.k}.f`, vars)}</code>` : ''}
+        ${h.tbl ? h.tbl() : ''}
         <p>${t(`pet.how.${h.k}.p`, vars)}</p>
       </div>`,
     )}
