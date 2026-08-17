@@ -312,11 +312,15 @@ test('sổ đời cũ chưa có mốc nghỉ thì tập trung ĐẦY, không ph�
 });
 
 test('ba bậc tập trung cắt đúng chỗ pha trũng bắt đầu', () => {
+  // Pha trũng là 20 phút CUỐI, con số đo được trong BRAC — nó giữ nguyên khi nhịp đổi, còn
+  // TỶ LỆ thì đi theo: 0,22 ở nhịp 90 cũ, 1/3 ở nhịp 60 hôm nay. Phép so cuối ghim đúng
+  // chuyện đó, nên lần hạ nhịp sau mà ai giữ tỷ lệ thay vì giữ 20 phút thì nó đỏ.
   assert.equal(focusMoodOf(1), 'sharp');
-  assert.equal(focusMoodOf(0.23), 'sharp');
-  assert.equal(focusMoodOf(0.22), 'dip');
+  assert.equal(focusMoodOf(0.34), 'sharp');
+  assert.equal(focusMoodOf(1 / 3), 'dip');
   assert.equal(focusMoodOf(0.01), 'dip');
   assert.equal(focusMoodOf(0), 'spent');
+  assert.ok(Math.abs(FOCUS_DIP * FOCUS_MS - 20 * 60 * 1000) < 1, 'pha trũng phải đúng 20 phút');
 });
 
 test('đang làm thì KHÔNG đụng vào sổ — một mạch dài không sinh lượt ghi đĩa nào', () => {
@@ -386,9 +390,12 @@ test('món không phải cà phê thì không đụng vào mốc nghỉ', () => 
 
 test('bản gửi ra trình duyệt có đủ tập trung, bậc và số phút đã ngồi', () => {
   const l = emptyLedger([], '2026-08-05', T0);
-  const v = petView(l, T0 + 78 * 60_000);
-  assert.equal(v.satMin, 78);
-  assert.equal(v.focusMood, 'dip', '78 phút là đã vào pha trũng của nhịp 90 phút');
+  // Mốc SUY từ nhịp chứ không chép tay: điểm giữa của pha trũng (từ mốc `dip` tới hết
+  // chu kỳ), nên hạ nhịp 90 → 60 phút không làm vỡ bài này.
+  const min = Math.round((REST_STAGE_MIN.dip + REST_STAGE_MIN.spent) / 2);
+  const v = petView(l, T0 + min * 60_000);
+  assert.equal(v.satMin, min);
+  assert.equal(v.focusMood, 'dip', `phút ${min} là đã vào pha trũng của nhịp`);
   assert.equal(v.focusMs, FOCUS_MS);
 });
 
@@ -878,9 +885,8 @@ test('nghỉ thật thì tập trung hồi lại ĐÚNG phần động tác ấy
   // Đoạn hồi bắt đầu lúc CHỐT, không lúc bấm — xem `REST_RAMP_MS`. Trong lúc nghỉ thì
   // chưa ai biết nó có tính hay không, nên cái thanh không được bò lên trước.
   assert.ok(focusOf(done, at + span) < 0.05, 'giây chốt thì thanh mới bắt đầu bò');
-  // Vươn vai gỡ 45 phút khỏi một đồng hồ 90 phút, tức đúng một nửa thanh — không phải về
-  // đầy. Trừ đi hai mươi giây đoạn hồi vừa trôi — 0,37% của một chu kỳ, chưa tới một phần
-  // ba của một ô.
+  // Vươn vai gỡ nửa nhịp khỏi một đồng hồ dài đúng một nhịp, tức đúng một nửa thanh —
+  // không phải về đầy. Trừ đi hai mươi giây đoạn hồi vừa trôi, một phần nhỏ của một ô.
   const drift = REST_RAMP_MS / FOCUS_MS;
   const got = focusOf(done, at + span + REST_RAMP_MS);
   assert.ok(Math.abs(got - (wakeOf(MOVES.stretch) - drift)) < 0.005, `hồi ${got}`);
@@ -2240,15 +2246,17 @@ test('đói lả có nét riêng và có bậc báo động riêng', () => {
 
 /**
  * Thang ngồi-lâu của icon — ba mốc phải SUY từ chu kỳ, và ranh giới phải khớp cái vạch
- * trên thanh tập trung: huy hiệu nổ ở phút 70 mà vạch dip kẻ ở chỗ khác thì người đọc
+ * trên thanh tập trung: huy hiệu nổ ở một phút mà vạch dip kẻ ở chỗ khác thì người đọc
  * tin cái vạch (lý lẽ ở REST_STAGE_MIN bên petmath.js).
  */
 test('thang ngồi-lâu: mốc suy từ chu kỳ, biên đúng từng phút, rác thì im', () => {
-  // Ba mốc là 70/90/180 — nhưng kiểm bằng phép SUY chứ không bằng ba số chép lại:
-  // đổi FOCUS_MS hay FOCUS_DIP thì thang phải tự đi theo, và bài test này không được vỡ.
-  assert.equal(REST_STAGE_MIN.dip, Math.round((1 - FOCUS_DIP) * 90), 'mốc đầu là hết pha tỉnh');
-  assert.equal(REST_STAGE_MIN.spent, 90, 'mốc hai là trọn chu kỳ');
-  assert.equal(REST_STAGE_MIN.over, 180, 'mốc ba là hai chu kỳ liền');
+  // Với nhịp 60 phút, ba mốc ra 40/60/120 — nhưng kiểm bằng phép SUY chứ không bằng ba số
+  // chép lại: đổi FOCUS_MS hay FOCUS_DIP thì thang phải tự đi theo, và bài test này không
+  // được vỡ. (Đã đúng một lần: hạ nhịp 90 → 60 ngày 18/8, ba mốc tự trôi theo.)
+  const cycleMin = FOCUS_MS / 60_000;
+  assert.equal(REST_STAGE_MIN.dip, Math.round((1 - FOCUS_DIP) * cycleMin), 'mốc đầu là hết pha tỉnh');
+  assert.equal(REST_STAGE_MIN.spent, cycleMin, 'mốc hai là trọn chu kỳ');
+  assert.equal(REST_STAGE_MIN.over, 2 * cycleMin, 'mốc ba là hai chu kỳ liền');
 
   assert.equal(restStageOf(REST_STAGE_MIN.dip - 1), null, 'dưới mốc đầu một phút vẫn phải im');
   assert.equal(restStageOf(REST_STAGE_MIN.dip), 'dip');

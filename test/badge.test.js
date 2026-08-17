@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { badgeOf } from '../src/badge.js';
+// Ba mốc ngồi-lâu SUY từ FOCUS_MS. Bài test dưới lấy số phút từ đây chứ không chép tay,
+// nên hạ nhịp (90 → 60 phút, 18/8) không làm vỡ một bài nào.
+import { REST_STAGE_MIN } from '../public/lib/petmath.js';
 
 /**
  * Mục trên thanh menu là bề mặt DUY NHẤT chạy suốt ngày, nên nó phải nói được cả lúc
@@ -89,11 +92,13 @@ test('rest: không sổ hay trò chơi tắt thì null, không bịa số', () =
 
 test('rest: bậc theo số phút ngồi, và đang nghỉ dở thì icon phải im', () => {
   const at = (satMin, doing = null) => badgeOf(healthy(), NOW, { on: true, satMin, doing }).rest;
-  assert.deepEqual(at(40), { satMin: 40, stage: null }, 'dưới mốc đầu là im lặng');
-  assert.deepEqual(at(95), { satMin: 95, stage: 'spent' });
-  assert.equal(at(95, { kind: 'move', id: 'walk', ms: 6e4, leftMs: 3e4 }).stage, null, 'vừa bấm đi bộ mà icon vẫn đỏ là huy hiệu cãi cú bấm');
+  const hush = REST_STAGE_MIN.dip - 1; // ngay dưới mốc đầu
+  const sat = REST_STAGE_MIN.spent + 5; // qua trọn một chu kỳ, chưa tới hai
+  assert.deepEqual(at(hush), { satMin: hush, stage: null }, 'dưới mốc đầu là im lặng');
+  assert.deepEqual(at(sat), { satMin: sat, stage: 'spent' });
+  assert.equal(at(sat, { kind: 'move', id: 'walk', ms: 6e4, leftMs: 3e4 }).stage, null, 'vừa bấm đi bộ mà icon vẫn đỏ là huy hiệu cãi cú bấm');
   // Đang ĂN thì khác đang nghỉ: cái bát không cắt mạch ngồi, bậc phải giữ nguyên.
-  assert.equal(at(95, { kind: 'food', id: 'pho', ms: 6e4, leftMs: 3e4 }).stage, 'spent');
+  assert.equal(at(sat, { kind: 'food', id: 'pho', ms: 6e4, leftMs: 3e4 }).stage, 'spent');
 });
 
 /**
@@ -112,17 +117,21 @@ test('alert: đói lả lên đĩa đỏ dù đồng hồ ngồi mới 3 phút �
 });
 
 test('alert: đói THƯỜNG không lên icon — nổ mỗi ngày thì huy hiệu thành đèn luôn sáng', () => {
-  assert.equal(badgeOf(healthy(), NOW, { on: true, satMin: 40, mood: 'hungry', doing: null }).alert, null);
+  const hush = REST_STAGE_MIN.dip - 1; // chưa tới mốc nào, nên đói thường phải im hẳn
+  assert.equal(badgeOf(healthy(), NOW, { on: true, satMin: hush, mood: 'hungry', doing: null }).alert, null);
 });
 
 test('alert: ghép bậc — đói lả kéo chấm vàng lên đĩa đỏ, over vẫn mạnh nhất, tooltip đủ hai câu', () => {
   const mk = (satMin, mood) => badgeOf(healthy(), NOW, { on: true, satMin, mood, doing: null }).alert;
-  assert.equal(mk(75, 'fine').level, 'dot');
-  assert.equal(mk(75, 'starving').level, 'bang');
-  assert.equal(mk(200, 'starving').level, 'flood');
-  const both = mk(95, 'starving');
+  const dip = REST_STAGE_MIN.dip + 1; // trong pha trũng, chưa trọn chu kỳ
+  const spent = REST_STAGE_MIN.spent + 5; // trọn một chu kỳ
+  const over = REST_STAGE_MIN.over + 20; // hai chu kỳ liền
+  assert.equal(mk(dip, 'fine').level, 'dot');
+  assert.equal(mk(dip, 'starving').level, 'bang');
+  assert.equal(mk(over, 'starving').level, 'flood');
+  const both = mk(spent, 'starving');
   assert.match(both.say, /đói lả/i);
-  assert.match(both.say, /95 phút/);
+  assert.match(both.say, new RegExp(`${spent} phút`));
 });
 
 test('alert: đang làm gì đó thì im hết — kể cả đang ăn khi đói lả; tắt trò chơi cũng vậy', () => {

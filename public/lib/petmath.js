@@ -69,7 +69,7 @@ export const clamp01 = (v) => Math.max(0, Math.min(1, v));
 export const FULL_MS = 16 * 3600 * 1000;
 
 /**
- * Tập trung cạn hẳn sau **90 phút NGỒI LIỀN**.
+ * Tập trung cạn hẳn sau **60 phút NGỒI LIỀN**.
  *
  * ## Con số này lấy từ đâu
  *
@@ -78,10 +78,22 @@ export const FULL_MS = 16 * 3600 * 1000;
  * táo. Khoảng **60–70 phút đầu** mỗi chu kỳ là pha tỉnh — chú ý bền, điều hành tốt;
  * **~20 phút cuối** là pha trũng, sóng não đổi dạng và cơ thể đòi chuyển nhịp.
  *
- * Vì thế thanh này cạn tuyến tính trong 90 phút, và mốc nhắc rơi vào 0,22 — tức khoảng
- * phút thứ 70, đúng chỗ pha trũng bắt đầu. Yêu cầu gốc là "cạn dần trong 1 tiếng"; một
- * tiếng là đúng đoạn tỉnh táo, còn 90 phút là trọn chu kỳ, nên hai con số không mâu
- * thuẫn — lời nhắc vẫn xuất hiện ngay sau mốc một tiếng.
+ * ## Vì sao 90 → 60, và chỗ này phải nói thật
+ *
+ * Chủ dự án hạ xuống 60: *"nhịp hạ xuống 60 phút cho tôi"*. Nói thẳng cái mất — bậc 90 phút
+ * neo vào TRỌN một chu kỳ BRAC, còn 60 phút thì không neo vào mốc nào của mô hình ấy cả.
+ * Nó là **pha tỉnh** (60–70 phút đầu), không phải trọn chu kỳ. Nên từ lượt này thanh tập
+ * trung thôi không còn tự nhận là đo một chu kỳ; nó đo cái đoạn mà chú ý còn bền, và cạn
+ * đúng lúc đoạn ấy hết.
+ *
+ * Đọc theo nghĩa mới thì nó vẫn đứng được, và còn gần yêu cầu GỐC hơn bậc cũ: yêu cầu đầu
+ * tiên của dự án là *"cạn dần trong 1 tiếng"*, và bậc 90 phút khi ấy đã phải viết hẳn một
+ * đoạn để giải thích vì sao lệch khỏi con số ấy. Giờ thì hết chỗ phải giải thích.
+ *
+ * Cái phải canh: nhắc dày gấp rưỡi. Thanh quay hết một vòng sau 60 phút thay vì 90, nên
+ * `spent` nổ nhiều hơn trong ngày — mà một lời nhắc thường trực là một dòng chữ người ta
+ * học cách không nhìn. Nếu lượt sau thấy câu nhắc bị lờ đi, đây là chỗ đầu tiên phải ngờ,
+ * và đường lùi là 75 phút chứ không phải quay lại 90.
  *
  * ## Vì sao KHÔNG lấy 20-20-20
  *
@@ -90,7 +102,7 @@ export const FULL_MS = 16 * 3600 * 1000;
  * thấy khác biệt. Dự án này không dán nhãn khoa học lên một con số không có nền — cùng
  * luật đã gỡ thanh XP cũ.
  */
-export const FOCUS_MS = 90 * 60 * 1000;
+export const FOCUS_MS = 60 * 60 * 1000;
 
 /**
  * Vắng mặt ngần này thì tính là đã NGHỈ, và tập trung đầy lại.
@@ -196,12 +208,14 @@ export const REST_RAMP_MS = 20 * 1000;
  * Ba bậc, cắt theo chỗ bạn đứng lúc làm — và trong cùng một bậc thì bằng nhau, vì bằng
  * chứng không tách chúng ra:
  *
- * - **Ra khỏi phòng** (`walk`, `sun`) → trọn chu kỳ, **90 phút**. Đây là ca duy nhất bạn
+ * - **Ra khỏi phòng** (`walk`, `sun`) → trọn nhịp, tức **60 phút** ở bậc hôm nay. Đây là ca duy nhất bạn
  *   thật sự làm cái mà nghiên cứu ngồi lâu và nghiên cứu ánh sáng mạnh đã đo: rời ghế, đổi
  *   cả khung cảnh lẫn ánh sáng. Đồng hồ ngồi chạy lại từ đầu.
- * - **Rời ghế, vẫn trong phòng** (`stretch`) → **45 phút**, nửa chu kỳ. Nó làm được nửa
- *   đầu của can thiệp ấy — đổi tư thế — và không làm nửa sau — đổi chỗ. Một nửa là một lựa
- *   chọn, và nó được khai ra ở đây chứ không giấu trong một hệ số.
+ * - **Rời ghế, vẫn trong phòng** (`stretch`) → **nửa nhịp**. Nó làm được nửa đầu của can
+ *   thiệp ấy — đổi tư thế — và không làm nửa sau — đổi chỗ. Một nửa là một lựa chọn, và nó
+ *   được khai ra ở đây chứ không giấu trong một hệ số. Suy từ `FOCUS_MS` chứ không gõ tay
+ *   con số phút: lượt hạ nhịp 90 → 60 làm "45 phút" thành ba phần tư một nhịp, tức cái tên
+ *   "nửa chu kỳ" nói dối trong khi không phép kiểm nào đỏ.
  * - **Vẫn ngồi nguyên** (`water`, `eyes`) → **20 phút**, đúng bằng pha trũng. Cả hai đều có
  *   bằng chứng RIÊNG (thiếu nước làm giảm chú ý; đổi tiêu cự làm dịu mỏi mắt) nhưng không
  *   cái nào cắt được mạch ngồi, mà mạch ngồi mới là cơ chế của mọi bậc trên. Hai mươi phút
@@ -224,7 +238,7 @@ export const REST_RAMP_MS = 20 * 1000;
 export const MOVES = {
   water: { ms: EAT_MS, back: 20 * 60 * 1000, where: 'home' },
   eyes: { ms: EAT_MS, back: 20 * 60 * 1000, where: 'home' },
-  stretch: { ms: EAT_MS, back: 45 * 60 * 1000, where: 'home' },
+  stretch: { ms: EAT_MS, back: FOCUS_MS / 2, where: 'home' },
   walk: { ms: EAT_MS, back: FOCUS_MS, where: 'park' },
   sun: { ms: EAT_MS, back: FOCUS_MS, where: 'park' },
 };
@@ -235,8 +249,8 @@ export const MOVES = {
  *
  * Một hàm chứ không phải một trường thứ hai trong bảng trên: hai con số cho cùng một sự
  * thật là hai con số sẽ trôi khỏi nhau đúng lần đầu ai đó chỉnh một cái. Nó cũng là chỗ duy
- * nhất buộc phần trăm ấy vào trần 1 — `walk` gỡ trọn 90 phút khỏi một đồng hồ 90 phút, và
- * 90/90 phải ra đúng "về đầy", không ra "101% nếu làm tròn lệch".
+ * nhất buộc phần trăm ấy vào trần 1 — `walk` gỡ trọn một nhịp khỏi một đồng hồ dài đúng
+ * một nhịp, và phép chia ấy phải ra đúng "về đầy", không ra "101% nếu làm tròn lệch".
  */
 export const wakeOf = (move) =>
   // Nhánh `wake` là sổ ĐỜI CŨ, không phải một cách khai thứ hai: bản nhớ trong
@@ -519,14 +533,22 @@ export function moodOf(full) {
 }
 
 /**
- * Mốc vào PHA TRŨNG, đọc trên thanh tập trung — 20 phút cuối của một chu kỳ 90 phút.
+ * Mốc vào PHA TRŨNG, đọc trên thanh tập trung — **20 phút cuối**, dù nhịp dài bao nhiêu.
+ *
+ * Giữ 20 phút TUYỆT ĐỐI chứ không giữ tỷ lệ cũ (20/90 ≈ 22%), và đây là chỗ dễ chỉnh nhầm
+ * nhất khi hạ nhịp: độ dài pha trũng là một con số ĐO ĐƯỢC trong BRAC, không phải một phần
+ * của chu kỳ mà co giãn theo. Giữ tỷ lệ thì ở nhịp 60 phút pha trũng còn 13 phút — một
+ * quãng ngắn hơn hẳn thứ mà bằng chứng mô tả, và cái vạch trên thanh thôi không còn trỏ
+ * vào cái nó mang tên.
+ *
+ * Ở nhịp 60 phút hôm nay, mốc rơi vào phút 40. Ở nhịp 90 cũ nó rơi vào phút 70.
  *
  * Xuất ra chứ không nằm trơn trong `focusMoodOf`, vì từ lúc thanh tập trung tự chia ô theo
  * cấu trúc của chu kỳ (xem `focusBar`) thì cái vạch ngăn trên thanh và cái ngưỡng bật lời
  * nhắc phải là MỘT con số. Hai bản của nó là một cái thanh có vạch ở chỗ này còn lời nhắc
  * nổ ở chỗ kia — và người đọc sẽ tin cái vạch.
  */
-export const FOCUS_DIP = 20 / 90;
+export const FOCUS_DIP = (20 * 60 * 1000) / FOCUS_MS;
 
 /**
  * Ba bậc tập trung, cắt theo đúng hình dạng của BRAC chứ không chia đều.
@@ -544,14 +566,14 @@ export function focusMoodOf(focus) {
 /**
  * Thang BÁO NGỒI LÂU cho icon thanh menu — ba bậc, cả ba SUY từ chu kỳ chứ không đặt tay:
  *
- * - `dip`   — phút 70: hết pha tỉnh, đúng cái vạch `FOCUS_DIP` đang kẻ trên thanh.
- * - `spent` — phút 90: trọn một chu kỳ.
- * - `over`  — phút 180: HAI chu kỳ liền không một quãng nghỉ nào được tính.
+ * - `dip`   — phút 40: hết pha tỉnh, đúng cái vạch `FOCUS_DIP` đang kẻ trên thanh.
+ * - `spent` — phút 60: trọn một nhịp.
+ * - `over`  — phút 120: HAI nhịp liền không một quãng nghỉ nào được tính.
  *
- * Yêu cầu gốc là "tầm 60 phút thì bắt đầu nhắc". Phút 70 là mốc gần nhất CÓ NỀN (xem
- * `FOCUS_MS`), và thêm một hằng 60 đứng cạnh nó là hai con số phải giải thích cho cùng một
- * lời nhắc — vạch trên thanh ở chỗ này mà huy hiệu ngoài icon nổ ở chỗ kia thì người đọc
- * tin cái vạch, đúng lý lẽ đã ghi ở `FOCUS_DIP`.
+ * Ba số ấy là bậc HÔM NAY, không phải ba hằng gõ tay: cả ba suy từ `FOCUS_MS` nên lượt hạ
+ * nhịp 90 → 60 kéo chúng từ 70/90/180 xuống 40/60/120 mà không phải sửa dòng nào. Vạch trên
+ * thanh ở chỗ này mà huy hiệu ngoài icon nổ ở chỗ kia thì người đọc tin cái vạch, đúng lý lẽ
+ * đã ghi ở `FOCUS_DIP` — nên hai bề mặt buộc phải dùng chung một nguồn.
  *
  * Tính trên `satMin` chứ không trên `focus`, cố ý: hai thứ cùng suy từ `restedAt` nên
  * thường trùng nhau, nhưng `focus` còn bị đoạn hồi (`ramp`) trộn trong 20 giây và bị cà
@@ -592,8 +614,8 @@ export function restStageOf(satMin) {
  *    thúc trong một phút, và trong một phút ấy màn hình phải kể lại đúng việc vừa nhận. Một
  *    quản gia đang uống nước mà vẽ dáng đói lả là màn hình cãi lại chính cú bấm vừa xong.
  * 2. **`starving`** — đói lả đứng TRÊN kiệt tập trung, và đây là bậc đáng cãi nhất. Lý do là
- *    TẦN SUẤT: `focus` quay hết một vòng sau 90 phút nên `spent` nổ vài lần mỗi ngày, còn
- *    `full` là chu kỳ 5 giờ nên `starving` hoạ hoằn mới tới. Xếp cái hay nổ lên trên là chôn
+ *    TẦN SUẤT: `focus` quay hết một vòng sau 60 phút nên `spent` nổ vài lần mỗi ngày, còn
+ *    `full` là chu kỳ 16 giờ nên `starving` hoạ hoằn mới tới. Xếp cái hay nổ lên trên là chôn
  *    luôn cái hiếm — mà cái hiếm mới là cái đáng nhìn. Nó cũng là bậc duy nhất mà chính CON
  *    VẬT đang hỏng, không phải người ngồi trước máy.
  * 3. **`spent`** — quá một chu kỳ trọn vẹn. Vẫn giữ dáng ngủ gật như trước lượt này; cái đổi

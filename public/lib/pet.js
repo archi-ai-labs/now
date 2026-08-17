@@ -2090,7 +2090,7 @@ export const doingArt = (doing) =>
    ## Vì sao 12 ô 5×5 chứ không dùng lại vành 16 ô của mặt đồng hồ
 
    Hai vành cùng cỡ cùng số ô đứng trên một màn hình là mời người đọc nghĩ chúng đo cùng một
-   thứ — mà một cái đo nhịp 90 phút còn cái kia đo một phút uống nước. Nói thẳng chỗ chưa
+   thứ — mà một cái đo trọn nhịp tập trung còn cái kia đo một phút uống nước. Nói thẳng chỗ chưa
    sạch: chúng vẫn CÙNG DÁNG, và đó là cái giá của việc chiều đúng thứ người dùng xin. Ba
    chỗ tách chúng ra: cỡ (20px với 28px), số ô (12 với 16), và chỗ đứng — cái này bay cạnh
    đầu nhân vật trong bức tranh, cái kia nằm trong dải thông số ngoài bức tranh.
@@ -2385,7 +2385,7 @@ const rising = (pet, mark) => Boolean(pet?.ramp?.[mark]) && rampAt(pet.ramp, Dat
  *
  * ## Đời 5 · mặt đồng hồ tròn (lượt này, người dùng chọn)
  *
- * Cây nến không hỏng. Nó chỉ nói sai một chữ: **một chu kỳ 90 phút không cạn đi, nó QUAY
+ * Cây nến không hỏng. Nó chỉ nói sai một chữ: **một nhịp tập trung không cạn đi, nó QUAY
  * LẠI.** Sáp cháy hết là hết, còn nhịp thì nghỉ xong là đầy lại từ đầu — mà cái hình thì
  * đang kể chuyện tiêu hao một chiều. Một vòng tròn nói đúng chữ ấy mà không cần một câu chú
  * thích nào: nó là hình duy nhất trong bảng mà đi hết một vòng là về đúng chỗ xuất phát.

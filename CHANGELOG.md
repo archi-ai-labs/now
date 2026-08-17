@@ -80,6 +80,23 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **The focus rhythm drops 90 minutes → 60.** Owner's call (*"lower the rhythm to 60 minutes
+  for me"*), and the honest part is what it costs: the 90-minute step was anchored to a
+  *whole* BRAC cycle, and 60 is not a landmark of that model at all — it is the **alert
+  phase** (the first 60–70 minutes). So the bar stops claiming to measure a cycle and now
+  measures the stretch where attention holds, draining exactly when that stretch ends. Read
+  that way it stands up, and it lands closer to the project's *original* request ("drains
+  over 1 hour") than the step it replaces, which had needed a paragraph explaining the gap.
+  The thing to watch: nudges fire 1.5× more often now, and a permanent reminder is a line
+  people learn not to see — if the nudge starts getting ignored, this is the first place to
+  suspect, and the way back is 75 minutes, not 90. Nothing needed hand-editing downstream:
+  the trough stays 20 *real* minutes (`FOCUS_DIP` derives from it), `stretch` gives back half
+  a rhythm rather than a hardcoded 45, and the icon's three sit-too-long marks slid 70/90/180
+  → 40/60/120 on their own because they were always derived. Six tests that had copied
+  minute figures by hand now derive them too, so the next rhythm change breaks none of them.
+  Two price comments left over from the 16-hour hunger step were stale in the same way and
+  got corrected alongside.
+
 - **Hunger runs at half speed: 8 hours → 16 hours to empty.** Owner's call, and a call about
   PRIORITY rather than a broken measurement — feeding is the only gauge in the project that
   asks the person to *do* something, and if that chore isn't worth doing twice a day, the

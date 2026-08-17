@@ -69,8 +69,9 @@ export function badgeOf(s, now = Date.now(), pet = null) {
     // "câm đúng lúc cần lên tiếng nhất" đã ghi ở chú thích PET_MS bên server.js: mốc nghỉ
     // được ĐO đều đặn rồi, nhưng chưa có đường BÁO nào.
     //
-    // `stage` là quyết định đã tính xong (thang ở restStageOf — ba bậc suy từ chu kỳ 90
-    // phút), app Swift chỉ in lại — cùng ranh giới "app không biết luật nào" đã khai ở đầu
+    // `stage` là quyết định đã tính xong (thang ở restStageOf — ba bậc SUY từ FOCUS_MS,
+    // hạ nhịp là ba mốc tự đi theo), app Swift chỉ in lại — cùng ranh giới "app không
+    // biết luật nào" đã khai ở đầu
     // NowMenuBar.swift. Đang giữa một động tác nghỉ thì bậc về null: người vừa bấm "đi bộ"
     // mà icon vẫn giục là cái huy hiệu cãi lại chính cú bấm nó vừa xin. Trò chơi tắt
     // (`on: false`) thì cả trường về null — tắt trò chơi là tắt mọi bề mặt của nó, không
@@ -94,7 +95,7 @@ export function badgeOf(s, now = Date.now(), pet = null) {
     //
     // Ghép bậc: `starving` đứng ngang `spent` (đĩa đỏ) theo đúng thứ hạng của `stateOf`
     // — nó là bậc duy nhất mà chính CON VẬT đang hỏng; `over` vẫn là mức mạnh nhất. ĐÓI
-    // THƯỜNG thì không bao giờ lên icon: chu kỳ no là 8 giờ nên "đang đói" là chuyện mỗi
+    // THƯỜNG thì không bao giờ lên icon: chu kỳ no dài hàng chục giờ nên "đang đói" là chuyện mỗi
     // ngày một lần — một huy hiệu nổ hằng ngày là cái đèn đỏ luôn sáng, đúng thứ mà chú
     // thích FULL_MS đã gỡ một lần. Đang làm gì đó (`doing`) thì im hết: ăn dở là cơn đói
     // đang được chữa, nghỉ dở mà icon vẫn giục là cãi lại chính cú bấm vừa xong.

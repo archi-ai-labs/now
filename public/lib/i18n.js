@@ -276,9 +276,9 @@ const DICT = {
     'pet.satRested': 'vừa nghỉ xong',
     // Nhãn phải nói đúng nó ĐO GÌ. Nó không biết bạn có rời ghế hay không, nó chỉ biết
     // máy im — giấu chỗ đó đi là dán nhãn đo lường lên một phép đoán.
-    'pet.focusNote': 'Đếm từ quãng lặng gần nhất của Claude Code; im trên 10 phút là đầy lại. Một nhịp 90 phút (chu kỳ nghỉ-hoạt động cơ bản).',
+    'pet.focusNote': 'Đếm từ quãng lặng gần nhất của Claude Code; im trên 10 phút là đầy lại. Một nhịp 60 phút — đúng pha tỉnh của chu kỳ nghỉ-hoạt động cơ bản.',
     'pet.nudge.starving': 'Đói lả rồi — anh ta buông bàn phím, màn hình tắt ngóm, đầu chỉ còn nghĩ đến đồ ăn. Một xu là xong.',
-    'pet.nudge.dip': (o) => `Đã ${o.n} phút ngồi liền — hết pha tỉnh của một nhịp 90 phút. Đứng dậy đi lại 3 phút.`,
+    'pet.nudge.dip': (o) => `Đã ${o.n} phút ngồi liền — sắp hết một nhịp 60 phút. Đứng dậy đi lại 3 phút.`,
     'pet.nudge.spent': (o) => `${o.n} phút rồi. Não đang ở đáy chu kỳ — nghỉ 10 phút rồi quay lại còn nhanh hơn cố ngồi.`,
     'pet.nudge.afternoon': (o) => `${o.n} phút, mà đầu giờ chiều lại đúng đáy nhịp ngày. Ra chỗ có nắng đi bộ 5 phút — với cú trũng này, ánh sáng ăn đứt cà phê.`,
     'pet.nudge.night': (o) => `Quá 22h và đã ${o.n} phút ngồi liền. Cái này để mai; ngủ mới là thứ dọn được cái đầu.`,
@@ -503,9 +503,9 @@ const DICT = {
     'pet.how.full.p':
       '16 giờ là trọn một ngày thức: cho ăn lúc ngồi vào bàn buổi sáng thì tới lúc đi ngủ con vật vẫn còn no, và bữa kế rơi vào sáng hôm sau — một bữa một ngày. Hai bậc trước đều hụt về cùng một phía: 5 giờ thì một buổi 9h–17h ăn trọn cả thanh, mở popover lúc tan việc là lần nào cũng gặp đói lả; 8 giờ đỡ hơn nhưng vẫn là hai bữa một ngày, mà cho ăn không đáng là việc phải nhớ hai lần mỗi ngày. Cái giá của bậc này nằm ở tốc độ tụt: 6,25% mỗi giờ thay vì 12,5%, nên nhìn hai lần cách nhau nửa tiếng thì mức tụt 3% đã sát ngưỡng mắt còn thấy. Cho ăn thì mốc được đẩy về trước sao cho độ no tăng đúng phần của món và không vượt quá no căng; cộng thẳng vào mốc thì ăn lúc đang no sẽ khoá thanh ở mức đầy nhiều giờ liền.',
     'pet.how.focus.t': 'Tập trung',
-    'pet.how.focus.f': 'tập trung = 1 − (bây giờ − mốc nghỉ cuối) ÷ 90 phút',
+    'pet.how.focus.f': 'tập trung = 1 − (bây giờ − mốc nghỉ cuối) ÷ 60 phút',
     'pet.how.focus.p':
-      'Chu kỳ nghỉ-hoạt động cơ bản (Kleitman, 1963): nhịp ~90 phút của giấc ngủ không tắt khi ta thức, nó chạy tiếp cả ngày thành một sóng tỉnh táo. 60–70 phút đầu là pha tỉnh, ~20 phút cuối là pha trũng. Lời nhắc rơi ở mức 22%, tức khoảng phút thứ 70 — đúng chỗ pha trũng bắt đầu.',
+      'Chu kỳ nghỉ-hoạt động cơ bản (Kleitman, 1963): nhịp ~90 phút của giấc ngủ không tắt khi ta thức, nó chạy tiếp cả ngày thành một sóng tỉnh táo, trong đó 60–70 phút đầu là pha tỉnh còn ~20 phút cuối là pha trũng. Thanh này đo đúng cái PHA TỈNH ấy, chứ không đo trọn chu kỳ, nên nó dài 60 phút. Lời nhắc rơi ở mức 33%, tức khoảng phút thứ 40 — chỗ còn đúng 20 phút nữa là hết nhịp.',
     'pet.how.price.t': 'Giá đồ ăn',
     'pet.how.price.f': (o) => `giá = số GIỜ món ấy mua cho bạn × ${o.n} xu/giờ`,
     'pet.how.price.p':
@@ -2053,9 +2053,9 @@ const DICT = {
     'pet.focusMood.spent': 'Past the cycle',
     'pet.satMin': (o) => `${o.n} min at the desk`,
     'pet.satRested': 'just back from a break',
-    'pet.focusNote': 'Counted from the last quiet spell in Claude Code; over 10 minutes quiet refills it. One 90-minute basic rest–activity cycle.',
+    'pet.focusNote': 'Counted from the last quiet spell in Claude Code; over 10 minutes quiet refills it. A 60-minute run — the alert phase of the basic rest–activity cycle.',
     'pet.nudge.starving': 'He is starving — hands off the keyboard, screen dark, food the only thing on his mind. One coin fixes it.',
-    'pet.nudge.dip': (o) => `${o.n} minutes straight — that is the alert phase of a 90-minute cycle used up. Stand up and move for 3 minutes.`,
+    'pet.nudge.dip': (o) => `${o.n} minutes straight — a 60-minute run is nearly up. Stand up and move for 3 minutes.`,
     'pet.nudge.spent': (o) => `${o.n} minutes. Your brain is at the bottom of the cycle — a 10-minute break beats pushing through.`,
     'pet.nudge.afternoon': (o) => `${o.n} minutes, and early afternoon is the daily trough. Walk outside for 5 minutes — for this dip, bright light beats coffee.`,
     'pet.nudge.night': (o) => `Past 10pm and ${o.n} minutes straight. Leave it for tomorrow; sleep is what actually clears your head.`,
@@ -2198,9 +2198,9 @@ const DICT = {
     'pet.how.full.p':
       'Sixteen hours is one full waking day: feed it when you sit down in the morning and it is still fed when you go to bed, with the next meal landing the following morning — one meal a day. Both earlier steps fell short the same way: at 5 hours a single 9-to-5 stretch ate the whole bar, so opening the popover at the end of the day always met a starving pet; 8 hours fixed that but still asked for two meals a day, and feeding is not worth remembering twice a day. The price of this step is the drain rate: 6.25% an hour instead of 12.5%, so two looks half an hour apart move the bar 3% — close to the edge of what the eye catches. Feeding moves the mark forward so fullness rises by exactly the item and never past stuffed; adding to the mark directly would pin the bar at full for hours if you ate while already fed.',
     'pet.how.focus.t': 'Focus',
-    'pet.how.focus.f': 'focus = 1 − (now − last rest) ÷ 90 minutes',
+    'pet.how.focus.f': 'focus = 1 − (now − last rest) ÷ 60 minutes',
     'pet.how.focus.p':
-      'The basic rest–activity cycle (Kleitman, 1963): the ~90-minute rhythm of sleep does not switch off when you wake, it keeps running all day as a wave of alertness. The first 60–70 minutes are the alert phase, the last ~20 are the trough. The nudge fires at 22%, roughly minute 70 — right where the trough begins.',
+      'The basic rest–activity cycle (Kleitman, 1963): the ~90-minute rhythm of sleep does not switch off when you wake, it keeps running all day as a wave of alertness, the first 60–70 minutes being the alert phase and the last ~20 the trough. This bar measures that ALERT PHASE rather than the whole cycle, which is why it runs 60 minutes. The nudge fires at 33%, roughly minute 40 — with 20 minutes of the run left.',
     'pet.how.price.t': 'What food costs',
     'pet.how.price.f': (o) => `price = the HOURS it buys you × ${o.n} coin/hour`,
     'pet.how.price.p':

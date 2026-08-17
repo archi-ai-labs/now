@@ -116,7 +116,7 @@ export const floor2 = (n) => at2(n, Math.floor);
  *
  * ## Tỉ giá
  *
- * **0,2 xu một giờ no.** Một thanh no đầy (8 giờ) giá 1,6 xu; ghép với `RATE` (1 xu = $1)
+ * **0,2 xu một giờ no.** Một thanh no đầy (16 giờ) giá 3,2 xu; ghép với `RATE` (1 xu = $1)
  * thì cả cửa hàng vẫn rút về một câu: *20 cent token đổi được một giờ no.* Vẫn chỉ có một
  * con số phải nhớ — nó chỉ không còn là 1.
  *
@@ -124,8 +124,8 @@ export const floor2 = (n) => at2(n, Math.floor);
  * hơn đúng cùng tỉ lệ — bằng chứng cho luật lượt 15, không cơ chế nào được chạm vào ví),
  * còn đổi HỆ SỐ này là đổi ví một cách công khai, ở đúng một chỗ.
  *
- * Tập trung tính cùng tỉ giá ấy trên `FOCUS_MS` — một chu kỳ 90 phút là 1,5 giờ, nên phần
- * tỉnh táo của một món cộng thêm tối đa 0,3 xu. Nó RẺ HƠN thanh no và đúng là phải thế: thứ
+ * Tập trung tính cùng tỉ giá ấy trên `FOCUS_MS` — một nhịp 60 phút là một giờ, nên phần
+ * tỉnh táo của một món cộng thêm tối đa 0,2 xu. Nó RẺ HƠN thanh no và đúng là phải thế: thứ
  * đắt tiền là cái bụng, còn sự tỉnh táo thì có một đường miễn phí về đầy (xem `MOVES`), nên
  * không món bán nào được định giá như thể nó là đường duy nhất.
  *
