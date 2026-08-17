@@ -483,12 +483,19 @@ export function phaseOf(hour) {
 }
 
 /**
- * Hai mốc ĐÓI, xuất ra vì từ lượt này chúng có người dùng thứ hai: `hungerText` đếm
- * ngược tới ĐÚNG mốc mà chữ trạng thái sẽ đổi. Trước đó nó đếm tới 0%, nên màn Cửa hàng
- * từng bày "Đói lả · còn 43 phút nữa thì đói" — chữ nói đã lả, đồng hồ hứa sắp đói.
- * Người dùng chụp đúng màn ấy (9/8). Hai bản của hai con số này là hai câu cãi nhau.
+ * BA mốc đói, xuất ra vì chúng có nhiều hơn một người đọc.
+ *
+ * Người thứ hai (9/8): `hungerText` đếm ngược tới ĐÚNG mốc mà chữ trạng thái sẽ đổi. Trước
+ * đó nó đếm tới 0%, nên màn Cửa hàng từng bày "Đói lả · còn 43 phút nữa thì đói" — chữ nói
+ * đã lả, đồng hồ hứa sắp đói. Người dùng chụp đúng màn ấy. Hai bản của hai con số này là
+ * hai câu cãi nhau.
+ *
+ * Người thứ ba (9/8, muộn hơn): bảng trạng thái trong thư viện (`stateTable` bên
+ * `lib/pet.js`) bày ra khoảng số của TỪNG cái tên. `stuffed` vào đây cùng lượt ấy — nó vốn
+ * là số 0,85 nằm trơn trong `moodOf`, mà một cái bảng đi giải thích mấy con số bằng một bản
+ * chép của chúng thì chính nó là chỗ sẽ nói dối sau lần chỉnh mốc đầu tiên.
  */
-export const HUNGER_MARKS = { hungry: 0.35, starving: 0.12 };
+export const HUNGER_MARKS = { hungry: 0.35, starving: 0.12, stuffed: 0.85 };
 
 /**
  * Tâm trạng — suy từ độ no, và nó phải nói được bằng HÌNH chứ không chỉ bằng màu.
@@ -499,7 +506,7 @@ export const HUNGER_MARKS = { hungry: 0.35, starving: 0.12 };
 export function moodOf(full) {
   if (full <= HUNGER_MARKS.starving) return 'starving';
   if (full <= HUNGER_MARKS.hungry) return 'hungry';
-  if (full >= 0.85) return 'stuffed';
+  if (full >= HUNGER_MARKS.stuffed) return 'stuffed';
   return 'fine';
 }
 

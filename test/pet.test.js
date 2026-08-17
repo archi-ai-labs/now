@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-// Đọc thẳng `styles.css`: từ lượt 23 có ba phép kiểm bắc cầu sang bên ấy, vì một cái tên nhịp
-// gõ sai là lỗi DUY NHẤT trong lớp trò chơi không gây ra triệu chứng nào — xem chúng ở dưới.
+// Đọc thẳng `styles.css`: từ lượt 23 có mấy phép kiểm bắc cầu sang bên ấy (ba lúc đầu, thêm
+// một cho bảng trạng thái ngày 9/8), vì một cái tên gõ sai bên CSS là lỗi DUY NHẤT trong lớp
+// trò chơi không gây ra triệu chứng nào — xem chúng ở dưới.
 import fs from 'node:fs';
 import {
   accrue, buy, cancelBreak, emptyLedger, fullnessOf, moodOf, normWorn, petView,
@@ -9,13 +10,13 @@ import {
   FULL_MS, FOCUS_MS, BREAK_MS, COIN_PER_HOUR, EAT_MS, FOODS, ITEMS, MOVES, RATE,
   REST_RAMP_MS, SLOTS, doingOf,
 } from '../src/pet.js';
-import { ART, DISHES, FACE_NAMES, MOVE_ART, TIP_KEYS, TIP_KINDS, butlerFace, butlerLook, butlerRows, butlerSays, butlerTalk, butlerThinks, coinNum, dialRows, doingRing, faceRows, focusDial, hungerText, hungerTray, markArt, nudgeOf, speaking, statCells, statWords, tipArt, trayRows } from '../public/lib/pet.js';
+import { ART, DISHES, FACE_NAMES, MOVE_ART, STATE_SCALES, TIP_KEYS, TIP_KINDS, butlerFace, butlerLook, butlerRows, butlerSays, butlerTalk, butlerThinks, coinNum, dialRows, doingRing, faceRows, focusDial, hungerText, hungerTray, markArt, nudgeOf, speaking, statCells, stateTable, statWords, tipArt, trayRows } from '../public/lib/pet.js';
 import { rawText } from '../public/lib/dom.js';
 import { FOCUS_DIP, HUNGER_MARKS, MOVE_HOME, MOVE_IDS, MOVE_PARK, REST_STAGE_MIN, livePet, moveForHour, restStageOf, stateOf, wakeOf, whereOf } from '../public/lib/petmath.js';
 import { LOTS, PLACE_IDS, PLACES, ROADS, SCENE_SPOTS, STEP, TOWN_BOX, WALKERS, WELL, butlerArt, cellPos, onRoad, sizeOf } from '../public/lib/town.js';
 import { outlineRows } from '../public/lib/pixel.js';
 import { lastHumanIn } from '../src/collect/sessions.js';
-import { tableOf } from '../public/lib/i18n.js';
+import { t, tableOf } from '../public/lib/i18n.js';
 
 const DAY = 86400000;
 const T0 = Date.parse('2026-08-05T09:00:00Z');
@@ -1114,8 +1115,9 @@ test('mọi chữ của khối "cách tính" và chỗ đứng có đủ ở c�
     'pet.slotEmpty', 'pet.wear', 'pet.wearOff', 'pet.moveMin', 'pet.moveBest',
     'pet.breakWatch', 'pet.breakStop', 'pet.breakOk', 'pet.breakBusy',
     ...SLOTS.map((s) => `pet.slot.${s}`),
-    ...['coin', 'full', 'focus', 'price'].flatMap((k) => [`pet.how.${k}.t`, `pet.how.${k}.f`, `pet.how.${k}.p`]),
-    ...['rest', 'dip', 'wake', 'eat', 'no'].flatMap((k) => [`pet.how.${k}.t`, `pet.how.${k}.p`]),
+    ...['coin', 'full', 'focus', 'price', 'rest'].flatMap((k) => [`pet.how.${k}.t`, `pet.how.${k}.f`, `pet.how.${k}.p`]),
+    ...['state', 'dip', 'wake', 'eat', 'no'].flatMap((k) => [`pet.how.${k}.t`, `pet.how.${k}.p`]),
+    ...['byFull', 'bySat', 'underMin', 'rangeMin', 'overMin'].map((k) => `pet.how.state.${k}`),
     'pet.free', 'pet.wakesFull', 'pet.oneAtATime', 'pet.eatingNote',
   ];
   for (const k of keys) {
@@ -1124,6 +1126,61 @@ test('mọi chữ của khối "cách tính" và chỗ đứng có đủ ở c�
   }
 });
 
+
+/**
+ * Bảng CHÚ GIẢI trạng thái trong thư viện — sinh 9/8 từ một câu hỏi của người dùng:
+ * *"'Đang vào nhịp' với 'Ổn' là sao?"*
+ *
+ * Một bảng chú giải hỏng theo cách riêng của nó, và cả hai kiểu đều KHÔNG có triệu chứng:
+ * chữ lệch khỏi chữ đang hiện trên dải thông số (thành ra nó giải thích cho một màn hình
+ * khác), hoặc số lệch khỏi mốc thật trong mã (thành ra nó giải thích sai chính cái nó đi
+ * giải thích). Hai phép kiểm dưới đây canh đúng hai chỗ đó, và cả hai đều đọc NGƯỢC từ
+ * bảng ra — không dựng lại một danh sách tên hợp lệ ở đây, vì một danh sách như thế là bản
+ * thứ hai của cùng một sự thật.
+ */
+test('bảng trạng thái nói ĐÚNG mấy chữ dải thông số đang in ra', () => {
+  const [full, sat] = STATE_SCALES();
+  // Cùng khoá i18n mà `statCells` đọc — xem `wordRows`/`statCells` bên `lib/pet.js`.
+  assert.deepEqual(
+    full.rows.map((r) => r[0]),
+    ['stuffed', 'fine', 'hungry', 'starving'].map((m) => t(`pet.mood.${m}`)),
+  );
+  assert.deepEqual(
+    sat.rows.map((r) => r[0]),
+    ['sharp', 'dip', 'spent'].map((m) => t(`pet.focusMood.${m}`)),
+  );
+});
+
+test('mọi con số trong bảng trạng thái đều là một mốc CÓ THẬT trong mã', () => {
+  const raw = rawText(stateTable());
+  // Phần trăm: đúng ba mốc đói, không hơn không kém. Một con số chép tay vào bảng chữ —
+  // "≥ 80%" chẳng hạn — lọt qua mọi phép kiểm khác, nhưng không lọt qua phép so tập hợp này.
+  const pcts = [...new Set([...raw.matchAll(/(\d+)%/g)].map((m) => Number(m[1])))].sort((a, b) => a - b);
+  const marks = [HUNGER_MARKS.starving, HUNGER_MARKS.hungry, HUNGER_MARKS.stuffed]
+    .map((v) => Math.round(v * 100))
+    .sort((a, b) => a - b);
+  assert.deepEqual(pcts, marks);
+  // Và mấy cái mốc ấy phải là mốc mà `moodOf` thật sự đổi chữ ở đó, không phải ba con số
+  // đẹp đứng cạnh nhau: bảng nói "≤ 12% là đói lả" thì ở 12% `moodOf` phải trả về đúng thế.
+  assert.equal(moodOf(HUNGER_MARKS.stuffed), 'stuffed');
+  assert.equal(moodOf(HUNGER_MARKS.hungry), 'hungry');
+  assert.equal(moodOf(HUNGER_MARKS.starving), 'starving');
+  // Phút: hai mốc của thang ngồi, cùng hai mốc mà huy hiệu ngoài icon nổ (`REST_STAGE_MIN`).
+  const [, sat] = STATE_SCALES();
+  const mins = [...new Set([...sat.rows.map((r) => r[1]).join(' ').matchAll(/(\d+)/g)].map((m) => Number(m[1])))].sort(
+    (a, b) => a - b,
+  );
+  assert.deepEqual(mins, [REST_STAGE_MIN.dip, REST_STAGE_MIN.spent].sort((a, b) => a - b));
+});
+
+test('mọi lớp CSS bảng trạng thái vẽ ra đều có luật thật trong styles.css', () => {
+  // Cùng lý lẽ với phép kiểm nhịp ở trên: một cái tên lớp gõ sai không ném lỗi, không ghi
+  // console, chỉ lặng lẽ bày ra một cột chữ không có gạch nối và không thẳng hàng.
+  const css = cssNoComments();
+  const cls = [...new Set([...rawText(stateTable()).matchAll(/class="([^"]+)"/g)].flatMap((m) => m[1].split(/\s+/)))];
+  assert.ok(cls.length >= 4, `mới thấy ${cls.length} lớp — bảng phải có vỏ, cột, tít và dòng`);
+  for (const c of cls) assert.ok(css.includes(`.${c}`), `bảng vẽ ra .${c} mà styles.css không có luật nào`);
+});
 
 /* ── Bảng giá suy ra ────────────────────────────────────────────────────────── */
 

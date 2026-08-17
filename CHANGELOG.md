@@ -59,6 +59,25 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   pulled-yesterday-but-never-restarted service by comparing its start time against the
   newest server-side commit.
 
+- **The library answers the two questions people were asking a human instead.** Both
+  arrived within a minute of each other (9 Aug): *"I've been sitting here for ages — how
+  come focus isn't dropping?"* and *"'In the groove', 'Fine' — what are the states?"*.
+  Neither was answerable from the screen, and one of them was already half-buried in a
+  block titled "Where the rest mark comes from". That block is now **"Why the sitting
+  clock keeps resetting itself"**, it has a formula line like the four measured blocks
+  above it (`rest mark ← now, whenever Claude Code goes quiet for ≥ 10 min`, the 10 read
+  from `BREAK_MS`), and it leads with the consequence rather than the mechanism: the
+  clock counts silence in *Claude Code*, so reading a long answer resets it while you
+  never leave the chair. It also stops claiming both failure modes under-nudge — they run
+  in opposite directions, and the one that thinks you are still sitting nags an empty
+  chair. Next to it, a new **"The states, and what each word means"** block renders the
+  two scales as a table: four hunger words against their fullness ranges, three focus
+  words against their minute ranges, every number derived from `HUNGER_MARKS` and
+  `REST_STAGE_MIN` and every word read from the same i18n keys the stat strip prints, so
+  a glossary that describes some other screen cannot compile. `stuffed` joined
+  `HUNGER_MARKS` on the way — it had been a bare `0.85` inside `moodOf`, and a table that
+  explains the marks by keeping a copy of them is the first thing that goes stale.
+
 ### Changed
 
 - **The service sheds its author's name: `dev.hoanluu.now-dash` → `io.github.archi-ai-labs.now-dash`**

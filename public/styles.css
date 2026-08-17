@@ -4400,6 +4400,23 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
   background: var(--surface-2); border: 1px solid var(--line-soft);
 }
 .how-row p { margin: 0; font: 400 12.5px/1.62 var(--sans); color: var(--text-2); }
+
+/* Bảng chú giải trạng thái — hai thang cạnh nhau, mỗi thang một cột.
+
+   `auto-fit` chứ không phải hai cột cứng: ở màn hẹp hai thang xếp chồng, và chúng ĐƯỢC PHÉP
+   xếp chồng vì chúng rời nhau (xem `stateTable` bên `lib/pet.js`) — cái tên đứng cạnh khoảng
+   số của nó là toàn bộ thứ phải giữ, còn hai thang đứng cạnh nhau chỉ là chỗ nào rộng thì
+   tiện. Ngược lại với một bảng hai cột thật, thứ mà tách dòng là mất nghĩa.
+
+   Chữ và số ĐẨY VỀ HAI ĐẦU một dòng, có nét đứt nối: cột số thẳng hàng thì mắt so được bốn
+   khoảng với nhau, mà đó đúng là việc người ta mở cái bảng này ra để làm. */
+.how-scales { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 9px 18px; margin: 1px 0 9px; }
+.how-scale { display: flex; flex-direction: column; gap: 2px; }
+.how-cap { font: 700 10.5px/1.5 var(--sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); }
+.how-state { display: flex; align-items: baseline; gap: 6px; font: 400 12.5px/1.7 var(--sans); }
+.how-state b { font-weight: 600; color: var(--text); }
+.how-state::after { content: ''; flex: 1; border-bottom: 1px dotted var(--line); transform: translateY(-3px); }
+.how-state i { order: 3; font-style: normal; font: 600 11.5px var(--mono); color: var(--text-2); }
 .how-src { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; padding: 11px 15px 13px; border-top: 1px solid var(--line-soft); font: 400 11.5px/1.6 var(--sans); color: var(--text-3); }
 .how-src b { font-weight: 700; color: var(--text-2); }
 .how-src a { color: var(--text-3); }

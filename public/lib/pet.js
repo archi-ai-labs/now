@@ -18,7 +18,7 @@
 import { html } from './dom.js';
 import { pixels } from './pixel.js';
 import { t } from './i18n.js';
-import { FULL_MS, HUNGER_MARKS, MOVES, rampAt, stateOf } from './petmath.js';
+import { FULL_MS, HUNGER_MARKS, MOVES, REST_STAGE_MIN, rampAt, stateOf } from './petmath.js';
 
 /* ── Quản gia ─────────────────────────────────────────────────────────────────
 
@@ -3009,4 +3009,58 @@ export function statCells(pet, { bump = 0 } = {}) {
         </span>`
       : ''}
     <span class="hud-cell hud-coin">${k('pet.wallet')}${wallet(pet, bump)}</span>`;
+}
+
+/**
+ * Bảng CHÚ GIẢI trạng thái — mỗi cái tên đứng cạnh khoảng số làm nó bật ra.
+ *
+ * Sinh 9/8, từ một câu hỏi không trả lời được bằng màn hình đang có: *"Đang vào nhịp đã
+ * ngồi 10 phút liền + Ổn còn 3 giờ nữa thì đói — có những trạng thái gì?"* Dải thông số in
+ * ra một CÁI TÊN và một con số, nhưng cái tên thì không nói nó nằm ở đâu trong thang, và
+ * không có thang thì "Ổn" đọc thành lời khen còn "Đang vào nhịp" đọc thành lời giục.
+ *
+ * Hai thang RỜI NHAU, và bảng phải bày ra đúng chỗ ấy: một thang đọc cái bụng, một thang
+ * đọc số phút ngồi. Gộp chúng thành một cột "trạng thái" là dựng lại đúng hiểu nhầm mà
+ * `stateOf` sinh ra để gỡ — hai nguồn, một thứ hạng, và thứ hạng chỉ có việc chọn CÂU NÀO
+ * được nói ra trước.
+ *
+ * Ở `lib/` chứ không ở khối thư viện bên `views/pet.js`, vì hai lý do đo được: khối kia
+ * chạm DOM nên test không nhập được, và mấy cái tên ở đây phải là ĐÚNG mấy cái tên
+ * `statCells` ngay trên in ra — hai bảng chú giải cho hai bộ chữ là một quyển từ điển của
+ * một thứ tiếng khác.
+ *
+ * Mọi con số suy từ `HUNGER_MARKS` và `REST_STAGE_MIN`. Gõ tay vào bảng chữ thì lần chỉnh
+ * mốc sau, thứ sai đầu tiên là chính cái trang đi giải thích mấy cái mốc.
+ */
+const pct = (v) => `${Math.round(v * 100)}%`;
+
+export const STATE_SCALES = () => [
+  {
+    cap: t('pet.how.state.byFull'),
+    rows: [
+      [t('pet.mood.stuffed'), `≥ ${pct(HUNGER_MARKS.stuffed)}`],
+      [t('pet.mood.fine'), `${pct(HUNGER_MARKS.hungry)} – ${pct(HUNGER_MARKS.stuffed)}`],
+      [t('pet.mood.hungry'), `≤ ${pct(HUNGER_MARKS.hungry)}`],
+      [t('pet.mood.starving'), `≤ ${pct(HUNGER_MARKS.starving)}`],
+    ],
+  },
+  {
+    cap: t('pet.how.state.bySat'),
+    rows: [
+      [t('pet.focusMood.sharp'), t('pet.how.state.underMin', { n: REST_STAGE_MIN.dip })],
+      [t('pet.focusMood.dip'), t('pet.how.state.rangeMin', { a: REST_STAGE_MIN.dip, b: REST_STAGE_MIN.spent })],
+      [t('pet.focusMood.spent'), t('pet.how.state.overMin', { n: REST_STAGE_MIN.spent })],
+    ],
+  },
+];
+
+export function stateTable() {
+  return html`<div class="how-scales">
+    ${STATE_SCALES().map(
+      (s) => html`<div class="how-scale">
+        <b class="how-cap">${s.cap}</b>
+        ${s.rows.map(([word, when]) => html`<span class="how-state"><b>${word}</b><i>${when}</i></span>`)}
+      </div>`,
+    )}
+  </div>`;
 }
