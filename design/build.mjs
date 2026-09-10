@@ -228,8 +228,8 @@ const type = page(
 <div class="stack" style="margin-top:var(--s5)">
   <div><div class="label">Tiêu đề màn · 18px/600</div><div style="font-size:18px;font-weight:600">Dự án</div></div>
   <div><div class="label">Câu dẫn · 19px/1.5/500 — khối chính, cỡ lớn nhất trang</div>
-       <div style="font-size:19px;line-height:1.5;font-weight:500;max-width:60ch">Có 1 quyết định đang chặn tronsave/services — treo 7 ngày.</div></div>
-  <div><div class="label">Tiêu đề thẻ · 15px/600</div><div style="font-size:15px;font-weight:600">tronsave/services</div></div>
+       <div style="font-size:19px;line-height:1.5;font-weight:500;max-width:60ch">Có 1 quyết định đang chặn northwind/services — treo 7 ngày.</div></div>
+  <div><div class="label">Tiêu đề thẻ · 15px/600</div><div style="font-size:15px;font-weight:600">northwind/services</div></div>
   <div><div class="label">Chữ đọc · 14px/1.6</div>
        <div style="max-width:62ch">Vận hành ADR 021 buy-dual-resource trên dev, sau đó tắt DRY_RUN cron-refund.</div></div>
   <div><div class="label">Chữ phụ · 12.5px</div><div style="font-size:12.5px;color:var(--text-2)">Cập nhật 4 giờ trước · 16 commit sau mốc</div></div>
@@ -248,7 +248,7 @@ const summary = page(
   `<h2 style="font-size:15px;margin-bottom:var(--s3)">Khối tóm tắt</h2>
 <section class="lead">
   <div class="lead-top"><span class="st crit">Đang chặn</span><span class="lead-time">10:14</span></div>
-  <p class="lead-say">Có 1 quyết định đang chặn tronsave/services — treo 7 ngày.</p>
+  <p class="lead-say">Có 1 quyết định đang chặn northwind/services — treo 7 ngày.</p>
   <p class="lead-why">ops_* soak đủ 7 ngày, còn mismatch không? Cho flip enforce theo runbook §5 chưa?</p>
   <div class="lead-act">
     <button class="btn primary">Chép “chốt enforce-flip”</button>
@@ -257,7 +257,7 @@ const summary = page(
 </section>
 <section class="lead" style="margin-top:var(--s3)">
   <div class="lead-top"><span class="st ok">Không có gì chặn</span><span class="lead-time">10:14</span></div>
-  <p class="lead-say">Việc kế tiếp ở longwavefinder.</p>
+  <p class="lead-say">Việc kế tiếp ở tidechart.</p>
   <p class="lead-why">Sáng mai sau 7:20 mở data/daily.log kiểm tra release có chạy trong launchd không.</p>
   <div class="lead-act"><button class="btn primary">Chép câu làm tiếp</button></div>
 </section>
@@ -283,7 +283,7 @@ const projectCard = page(
   `<h2 style="font-size:15px;margin-bottom:var(--s3)">Thẻ dự án</h2>
 <div class="grid">
   <article class="pc">
-    <header><h3>tronsave/services</h3><span class="st crit">Đang chặn</span></header>
+    <header><h3>northwind/services</h3><span class="st crit">Đang chặn</span></header>
     <div class="meta mono">dev-ready · 16 commit sau mốc · 3 file chưa commit</div>
     <div class="body">
       <div class="label">Đang làm</div>
@@ -295,7 +295,7 @@ const projectCard = page(
   </article>
 
   <article class="pc">
-    <header><h3>longwavefinder</h3><span class="st ok">Ổn</span></header>
+    <header><h3>tidechart</h3><span class="st ok">Ổn</span></header>
     <div class="meta mono">main · sạch</div>
     <div class="body">
       <div class="label">Đang làm</div>
@@ -370,13 +370,13 @@ const table = page(
 <table class="t">
   <thead><tr><th>Độ gấp</th><th>Dự án</th><th>Quyết gì</th><th>Đang khoá</th><th>Treo</th></tr></thead>
   <tbody>
-    <tr><td class="num crit">82</td><td>tronsave/services</td>
+    <tr><td class="num crit">82</td><td>northwind/services</td>
         <td><b>ADR 019: flip shadow → enforce sau soak</b><div class="q">ops_* soak đủ 7 ngày, còn mismatch không?</div></td>
         <td>Khép phần vận hành ADR 019</td><td class="num">7 ngày</td></tr>
-    <tr><td class="num warn">44</td><td>tronsave/services</td>
+    <tr><td class="num warn">44</td><td>northwind/services</td>
         <td><b>MIN codegen api-service: PA1 pin cũ vs PA2 scalars</b></td>
         <td>Mọi lần npm run generate/compile</td><td class="num">4 ngày</td></tr>
-    <tr><td class="num">32</td><td>savefee-be</td>
+    <tr><td class="num">32</td><td>ledgerly-api</td>
         <td><b>Owner-binding cho broadcast</b></td>
         <td>Attribution/billing broadcast</td><td class="num">2 ngày</td></tr>
   </tbody>
@@ -418,11 +418,11 @@ const charts = page(
   <div class="card p">
     <div class="ct">Hàng đợi theo dự án</div><div class="cs">21 mục đang xếp hàng</div>
     <div class="rows">
-      <div class="r"><span class="l">tronsave/services</span><span class="tr"><i style="width:100%"></i></span><b>6</b></div>
-      <div class="r"><span class="l">savefee-be</span><span class="tr"><i style="width:83.3%"></i></span><b>5</b></div>
-      <div class="r"><span class="l">longwavefinder</span><span class="tr"><i style="width:66.6%"></i></span><b>4</b></div>
-      <div class="r"><span class="l">game-ai-evolution</span><span class="tr"><i style="width:66.6%"></i></span><b>4</b></div>
-      <div class="r"><span class="l">Bé Chơi &amp; Học</span><span class="tr"><i style="width:33.3%"></i></span><b>2</b></div>
+      <div class="r"><span class="l">northwind/services</span><span class="tr"><i style="width:100%"></i></span><b>6</b></div>
+      <div class="r"><span class="l">ledgerly-api</span><span class="tr"><i style="width:83.3%"></i></span><b>5</b></div>
+      <div class="r"><span class="l">tidechart</span><span class="tr"><i style="width:66.6%"></i></span><b>4</b></div>
+      <div class="r"><span class="l">maze-runner-ai</span><span class="tr"><i style="width:66.6%"></i></span><b>4</b></div>
+      <div class="r"><span class="l">Kids Play &amp; Learn</span><span class="tr"><i style="width:33.3%"></i></span><b>2</b></div>
     </div>
   </div>
 </div>
@@ -473,24 +473,24 @@ const screen = page(
     <div class="scroll">
       <section class="lead">
         <div class="lead-top"><span class="st crit">Đang chặn</span><span class="lead-time">10:14</span></div>
-        <p class="lead-say">Có 1 quyết định đang chặn tronsave/services — treo 7 ngày.</p>
+        <p class="lead-say">Có 1 quyết định đang chặn northwind/services — treo 7 ngày.</p>
         <p class="lead-why">ops_* soak đủ 7 ngày, còn mismatch không? Cho flip enforce theo runbook §5 chưa?</p>
         <div class="lead-act"><button class="btn primary">Chép “chốt enforce-flip”</button><button class="btn quiet">Xem tất cả quyết định →</button></div>
       </section>
       <div class="grid">
-        <article class="pc"><header><h3>tronsave/services</h3><span class="st crit">Đang chặn</span></header>
+        <article class="pc"><header><h3>northwind/services</h3><span class="st crit">Đang chặn</span></header>
           <div class="meta mono">dev-ready · 16 commit sau mốc</div>
           <div class="body"><div class="label">Đang làm</div>
             <p class="focus">Vận hành ADR 021 buy-dual-resource trên dev → tắt DRY_RUN</p>
             <p class="next"><span class="ar">→</span>Chạy script Task 8 trong Compass shell</p></div>
           <footer><span>1 quyết định · 6 hàng đợi</span><span class="sess">0/22 thức</span></footer></article>
-        <article class="pc"><header><h3>longwavefinder</h3><span class="st ok">Ổn</span></header>
+        <article class="pc"><header><h3>tidechart</h3><span class="st ok">Ổn</span></header>
           <div class="meta mono">main · sạch</div>
           <div class="body"><div class="label">Đang làm</div>
             <p class="focus">Dashboard đã lên web — chờ buổi sáng tự động đầu tiên</p>
             <p class="next"><span class="ar">→</span>Sáng mai sau 7:20 mở data/daily.log</p></div>
           <footer><span>4 hàng đợi</span><span class="sess">1/3 thức</span></footer></article>
-        <article class="pc"><header><h3>savefee-be</h3><span class="st warn">Cần cập nhật</span></header>
+        <article class="pc"><header><h3>ledgerly-api</h3><span class="st warn">Cần cập nhật</span></header>
           <div class="meta mono">feat/adr011 · 8 ngày trước</div>
           <div class="body"><div class="label">Đang làm</div>
             <p class="focus">PR #91 — metrics &amp; observability ADR 011, chờ merge</p>

@@ -294,7 +294,7 @@ code { font: 11px var(--mono); background: var(--surface-2); border: 1px solid v
 <script>
 const money = null;
 const PROJECTS = [
-  { id:'tronsave', name:'tronsave/services', group:'backend', state:{label:'Đang chặn',c:'var(--crit)'}, hp:58, hpc:'var(--warn)', locked:true,
+  { id:'northwind', name:'northwind/services', group:'backend', state:{label:'Đang chặn',c:'var(--crit)'}, hp:58, hpc:'var(--warn)', locked:true,
     flags:[['dev-ready',''],['Δ16','bad'],['✗3',''],['↑2','']], inferred:false,
     focus:'Vận hành ADR 021 buy-dual-resource trên dev → tắt DRY_RUN cron-refund',
     next:'Chạy script Task 8 trong Compass shell, dán kết quả cho Claude', blocked:false,
@@ -305,21 +305,21 @@ const PROJECTS = [
     blockedBy:[['d-enforce','flip shadow → enforce sau soak — mismatch còn không?']],
     decisions:[['now','ADR 019: flip shadow → enforce sau soak','ops_* soak đủ 7 ngày, còn mismatch không?','khoá: khép phần vận hành ADR 019','chốt d-enforce: ']],
     queue:['Owner-binding cho broadcast','Dọn 3 file chưa commit trên dev','Rà lại pin PA1 vs PA2 scalars'] },
-  { id:'longwave', name:'longwavefinder', group:'nghiên cứu', state:{label:'Ổn',c:'var(--ok)'}, hp:96, hpc:'var(--ok)', locked:false,
+  { id:'longwave', name:'tidechart', group:'nghiên cứu', state:{label:'Ổn',c:'var(--ok)'}, hp:96, hpc:'var(--ok)', locked:false,
     flags:[['main',''],['sạch','']], inferred:false,
     focus:'Dashboard đã lên web — chờ buổi sáng tự động đầu tiên',
     next:'Sáng mai sau 7:20 mở data/daily.log kiểm tra release có chạy không', blocked:false,
     resume:'nói với Claude: "kiểm data/daily.log xem release 7:20 có chạy trong launchd không"',
-    badges:[['','▤',4]], sessions:[1,0,0], awake:1, path:'~/Projects/longwavefinder',
+    badges:[['','▤',4]], sessions:[1,0,0], awake:1, path:'~/Projects/tidechart',
     context:'Pipeline sáng chạy qua launchd. Lần chạy đầu vào 7:20 sáng mai là mốc kiểm.',
     later:['Nếu log trống: kiểm launchd plist đã load chưa','Thêm cảnh báo Slack khi release fail'],
     blockedBy:[], decisions:[], queue:['Thêm test cho parser daily.log','Dọn thư mục data/ cũ > 30 ngày','Viết README cho pipeline sáng','Gắn badge build vào repo'] },
-  { id:'savefee', name:'savefee-be', group:'backend', state:{label:'Cần cập nhật',c:'var(--warn)'}, hp:40, hpc:'var(--warn)', locked:false,
+  { id:'ledgerly', name:'ledgerly-api', group:'backend', state:{label:'Cần cập nhật',c:'var(--warn)'}, hp:40, hpc:'var(--warn)', locked:false,
     flags:[['feat/adr011',''],['8 ngày trước','bad'],['✗1','']], inferred:true,
     focus:'PR #91 — metrics & observability ADR 011, chờ merge',
     next:'chốt owner-binding cho broadcast trước khi review + merge PR #91', blocked:true,
     resume:'nói với Claude: "review PR #91 metrics/observability rồi merge nếu CI xanh"',
-    badges:[['','◇',3],['','▤',5]], sessions:[0,0,0,0,0], awake:0, path:'~/Projects/savefee-be',
+    badges:[['','◇',3],['','▤',5]], sessions:[0,0,0,0,0], awake:0, path:'~/Projects/ledgerly-api',
     context:'Board 8 ngày chưa cập nhật — mục Đang làm do Claude suy ra từ nhánh + PR mở.',
     later:['Merge PR #91 khi CI xanh','Xoá nhánh feat/adr011 sau merge','Cập nhật board bằng /now update'],
     blockedBy:[['d-owner','owner-binding cho broadcast — attribution/billing ra sao?']],
@@ -335,22 +335,22 @@ const PROJECTS = [
     later:['Vòng 3 backlog: B10 a11y bàn phím (nav/thẻ/chip là div/span)','B13 run() trả lý do lỗi; B14 cắt payload SSE 119KB','Đẩy design system gấp ngược lên claude.ai/design'],
     blockedBy:[], decisions:[['later','now_dashboard có vào git không','git init kèm .gitignore, hay để thư mục local?','khoá: chưa chặn — nhưng không đo được drift','chốt d-git: ']],
     queue:['B10 a11y bàn phím cho nav/thẻ/chip','B13 run() nuốt lỗi → trả lý do','B14 cắt payload SSE xuống phần dùng thật','Chạy /now update ở 9 repo chưa có board','Cho now-dash tự chạy khi mở máy (launchd)'] },
-  { id:'gameai', name:'game-ai-evolution', group:'thử nghiệm', state:{label:'Ổn',c:'var(--ok)'}, hp:88, hpc:'var(--ok)', locked:false,
+  { id:'gameai', name:'maze-runner-ai', group:'thử nghiệm', state:{label:'Ổn',c:'var(--ok)'}, hp:88, hpc:'var(--ok)', locked:false,
     flags:[['main',''],['Δ3','']], inferred:false,
     focus:'Vòng huấn luyện đêm 42 — chờ checkpoint hội tụ',
     next:'Xem run/metrics.json, nếu reward > 0.7 thì mở rộng population', blocked:false,
     resume:'nói với Claude: "đọc run/metrics.json vòng 42, reward>0.7 thì tăng population"',
-    badges:[['','▤',4]], sessions:[0,0], awake:0, path:'~/Projects/game-ai-evolution',
+    badges:[['','▤',4]], sessions:[0,0], awake:0, path:'~/Projects/maze-runner-ai',
     context:'Huấn luyện chạy nền qua đêm. Checkpoint 42 dự kiến hội tụ trước sáng.',
     later:['Nếu reward < 0.5: giảm learning rate','Lưu checkpoint tốt nhất ra models/'],
     blockedBy:[], decisions:[], queue:['Thêm early-stop khi reward chững','Vẽ biểu đồ reward theo vòng','Dọn checkpoint cũ > 20 vòng','So sánh 2 kiến trúc mạng'] },
 ];
 const SESSIONS = [
-  { p:'longwavefinder', title:'claude · pipeline sáng', entry:'~/Projects/longwavefinder', short:'a3f1', todos:'2/4', awake:true, right:'hoạt động 3 phút trước' },
+  { p:'tidechart', title:'claude · pipeline sáng', entry:'~/Projects/tidechart', short:'a3f1', todos:'2/4', awake:true, right:'hoạt động 3 phút trước' },
   { p:'now_dashboard', title:'claude · vòng 3 backlog', entry:'~/Projects/now_dashboard', short:'dd5b', todos:'0/5', awake:true, right:'hoạt động vừa xong' },
-  { p:'tronsave/services', title:'claude · ADR 021 dev', entry:'~/Projects/archimonde92/services', short:'7c02', todos:'3/22', awake:false, right:'ngủ 2 giờ' },
-  { p:'savefee-be', title:'claude · PR #91', entry:'~/Projects/savefee-be', short:'19bd', todos:'1/5', awake:false, right:'ngủ 8 ngày' },
-  { p:'game-ai-evolution', title:'trainer · đêm 42', entry:'~/Projects/game-ai-evolution', short:'f4e0', todos:'—', awake:false, right:'ngủ 6 giờ' },
+  { p:'northwind/services', title:'claude · ADR 021 dev', entry:'~/Projects/archimonde92/services', short:'7c02', todos:'3/22', awake:false, right:'ngủ 2 giờ' },
+  { p:'ledgerly-api', title:'claude · PR #91', entry:'~/Projects/ledgerly-api', short:'19bd', todos:'1/5', awake:false, right:'ngủ 8 ngày' },
+  { p:'maze-runner-ai', title:'trainer · đêm 42', entry:'~/Projects/maze-runner-ai', short:'f4e0', todos:'—', awake:false, right:'ngủ 6 giờ' },
 ];
 const DONE = [
   { date:'23/7', sub:'hôm nay', items:[
@@ -360,9 +360,9 @@ const DONE = [
     ['B1 B2 B3 B5 B7 B12: hết sập vì URL hỏng, chart hết vỡ, bắt board lồng repo cha','BACKLOG.md'] ] },
   { date:'22/7', sub:'hôm qua', items:[
     ['Đọc hết 4.255 dòng + đo thật rồi dựng BACKLOG.md 14 mục có bằng chứng','BACKLOG.md'],
-    ['Dashboard longwavefinder lên web, chờ sáng tự động đầu','longwavefinder'] ] },
+    ['Dashboard tidechart lên web, chờ sáng tự động đầu','tidechart'] ] },
 ];
-const CHART = [['tronsave/services',6],['savefee-be',5],['longwavefinder',4],['game-ai-evolution',4],['Bé Chơi & Học',2]];
+const CHART = [['northwind/services',6],['ledgerly-api',5],['tidechart',4],['maze-runner-ai',4],['Kids Play & Learn',2]];
 const DAYS = [['17/7',1,1],['18/7',2],['19/7',2],['20/7',1,1],['21/7',2],['22/7',6],['23/7',4]];
 // Nhịp theo giờ — ƯỚC TÍNH từ nhịp phiên (chưa có timestamp sự kiện thật để đếm chính xác)
 const HOURS = [0,0,0,0,0,0,0,1,2,4,6,5,2,1,3,4,4,3,2,2,3,5,6,3];
@@ -509,8 +509,8 @@ function renderStats(){
 }
 function renderHealth(){
   const items = [
-    ['⚠','savefee-be · board 8 ngày chưa cập nhật','Mục Đang làm đang do Claude suy ra. Chạy /now update để board tự nói.'],
-    ['⚠','tronsave/services · 3 file chưa commit trên dev','Worktree dev-ready còn thay đổi chưa lưu — commit hoặc stash trước khi flip enforce.'],
+    ['⚠','ledgerly-api · board 8 ngày chưa cập nhật','Mục Đang làm đang do Claude suy ra. Chạy /now update để board tự nói.'],
+    ['⚠','northwind/services · 3 file chưa commit trên dev','Worktree dev-ready còn thay đổi chưa lưu — commit hoặc stash trước khi flip enforce.'],
     ['◇','now_dashboard · chưa git init','Không đo được drift; dashboard tự chấm sức khoẻ chính nó sẽ thiếu dữ liệu git.'],
   ];
   return `<div class="sec"><div class="sec-h"><span class="ulabel">Cần chú ý · ${items.length}</span></div>
@@ -523,7 +523,7 @@ function renderButler(){
   box.hidden = !on; if(!on) return;
   box.classList.add('alert');
   $('#bclock').textContent = new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
-  $('#btxt').textContent = 'Có 1 quyết định đang chặn tronsave/services — treo 7 ngày.';
+  $('#btxt').textContent = 'Có 1 quyết định đang chặn northwind/services — treo 7 ngày.';
   $('#bwhy').textContent = 'ops_* soak đủ 7 ngày, còn mismatch không? Cho flip enforce theo runbook §5 chưa?';
   $('#bact').innerHTML = `<span class="go" data-copy="chốt d-enforce: ">chép “chốt d-enforce: ”</span><span class="jump" data-view="decisions">xem tất cả quyết định →</span>`;
 }
