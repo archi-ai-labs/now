@@ -7,18 +7,25 @@ own history in [`plugin/CHANGELOG.md`](plugin/CHANGELOG.md) and its own tags
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.0] — 2026-09-10
+
+The sit-too-long ladder reaches the menu-bar icon, the focus rhythm drops to an hour, and
+the suite learns to render. Most of the Fixed section below comes out of a review pass that
+read the whole working tree twice: once to find the defects and once to check the fixes, so
+several entries are corrections to work done earlier in this same release.
 
 ### Added
 
 - **The sit-too-long ladder now reaches the menu-bar icon.** Until now every part of the
   break system — the focus bar, the nudge line, the five verified moves — lived *behind*
   the click that opens the popover, which means it only ever reminded people who had
-  already asked. Three stages, every threshold derived from the 90-minute cycle rather
-  than invented: minute 70 (alert phase over — the same boundary the focus bar draws) puts
-  an amber dot on the icon, minute 90 (a full cycle) turns it into a red disc with an
-  exclamation mark, minute 180 (two cycles without one counted break) tints the whole
-  badge red. The stage is decided server-side (`rest` on `/api/badge`); the Swift app
+  already asked. Three stages, every threshold **derived** from the focus cycle rather than
+  invented: the end of the alert phase (the same boundary the focus bar draws) puts an
+  amber dot on the icon, a full cycle turns it into a red disc with an exclamation mark,
+  and two cycles without one counted break tint the whole badge red. Written against a
+  90-minute cycle, those read 70 / 90 / 180; the cycle dropped to 60 minutes later in this
+  same release (see below) and the three marks slid to **40 / 60 / 120** without a line
+  being edited, which is the whole argument for deriving them. The stage is decided server-side (`rest` on `/api/badge`); the Swift app
   keeps its no-rules boundary and just paints. Clears the moment a verified break lands,
   ten silent minutes pass, or the game is off; while a move is running the icon stays
   quiet instead of nagging the person who just obeyed it. Colored stages leave template
@@ -27,14 +34,23 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   paint time against the app's appearance (a bare binary resolves to Aqua and the text
   vanishes on a dark bar; measured, reverted, documented in place).
 
-  A day later the pet's **starving** state joined the ladder at the red-disc rung — the
-  user sat hungry and tired at a silent icon (screenshot, 9 Aug): the ladder read only
-  the sitting clock, so the icon could show `stateOf`'s #3 state (spent) while staying
-  mute on #2 (starving). The server now resolves the final *picture* (`alert.level`:
-  dot / bang / flood) plus the tooltip sentence; the Swift side dropped its one
+  A day later the pet's **starving** state was given its own rung at the red disc, and a
+  month after that it was taken back off, which is worth writing down because the second
+  measurement is the useful one. The case for adding it was real: the user sat hungry and
+  tired at a silent icon (screenshot, 9 Aug), because the ladder read only the sitting
+  clock and could show `stateOf`'s #3 state (spent) while staying mute on #2 (starving).
+  The case for removing it is that `fedAt` in the pet ledger had stood still since 7 Sep,
+  so the icon carried a red disc for over two days on account of a game state the owner
+  simply was not feeding (measured 10 Sep). The red disc is the channel the token quota and
+  the sitting ladder use to say "something really needs doing", and a red mark ignored for
+  two days teaches the eye to skip the whole channel. So **only the `rest` ladder lights the
+  icon**, and hunger is still *said* rather than shown: once a real rest stage has fired,
+  the tooltip carries the `badge.starve` sentence alongside it. What did survive the
+  reversal is the split it forced: the server resolves the final *picture* (`alert.level`:
+  dot / bang / flood) plus the tooltip sentence, and the Swift side dropped its one
   hardcoded sentence and paints three named shapes, so a third cause someday costs no
   app rebuild (the `rest` data field stays for older builds). Ordinary hunger never
-  reaches the icon — a 16-hour cycle still comes around about once a day, and a daily
+  reaches the icon either — a 16-hour cycle still comes around about once a day, and a daily
   badge is a light that is always on. Anything in progress (eating, resting) silences it: busy tops `stateOf`,
   and the icon does not argue with its own model's ranking. And the stale-dim never
   stacks with a badge — dimmed text beside a red disc read as a broken icon on a light
@@ -255,7 +271,78 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   proxy's absolute-form; `/%` keeps its own 400 further in, where the code knows it is
   serving a file. Same rule as that older branch: a client typo gets a client error, and
   a 500 is a statement about *this* server that had better be true.
-- Tests: 510 → 530.
+- **A repo the dashboard could not read no longer gets invented git numbers.** `unreadable()`
+  returned the same shape as a successful scan, so `integrity()` scored a board it had never
+  measured at 93/100, the Δ column printed `0` and the Dirty cell came out blank, all three
+  indistinguishable from a clean repo with nothing to report. An unreadable repo now carries
+  `unknownCommit`, which is the one flag `integrity()` listens to: the same one-day-old board
+  scores **25/100** with the flag set against 93/100 without it, and the two cells print `?`
+  and `—` instead of a number and a blank. A project card that throws while being built now
+  gets its own bilingual label rather than borrowing "NOW.json couldn't be read", which named
+  the wrong cause.
+
+- **Turning the pet game off now actually stops it.** The `on === false` gate sat only on the
+  30-second background tick, while `/api/badge` — the endpoint the menu-bar app polls every
+  30 seconds — went straight past it and kept accruing coins, observing rest and writing the
+  ledger. The gate moved into `withPet`, so every read-only path is covered by the same rule
+  rather than by each caller remembering it. Switching the game back on loses no coins,
+  because accrual is keyed by calendar day and reconciled against the series.
+
+- **The Antigravity cycle ledger repairs itself on every write instead of growing one row per
+  snapshot**: 512 rows / 158 KB fold back to 35 rows / 46 KB. Two overlapping writes no longer
+  lose a snapshot to `ENOENT` either, now that each write gets its own PID-tagged temp filename
+  instead of all of them racing for one `.tmp`.
+
+- **An Antigravity chart that parses nothing now says so instead of leaving a blank rectangle.**
+  A scan that opens every conversation and extracts zero calls used to set `ok: false` on a
+  signal nothing read, so the chart block simply vanished. It now renders a titled notice
+  carrying the file count. The scan payload also reports `parsed` next to `rows`, so partial
+  breakage is countable rather than inferred (measured 10 Sep: 226 files, 11,477 rows, 11,477
+  parsed, 11,204 calls inside the 14-day window).
+
+- **The data-directory ownership warning now fires on the `now-dash` bin entry too.** The
+  startup guard compared the entry *filename* against `server.js`, which is exactly the check
+  that fails on the symlink an npm install creates, so the guard switched itself off on the
+  one path a packaged install takes. It compares entry realpaths now. Measured end to end by
+  launching the real server through a `now-dash` symlink: 0 `owner.json` written before, 1
+  after.
+
+- **The local-day test now goes red at UTC, so the whole CI matrix can catch the timezone bug
+  it was written for.** Its expected value was a line-for-line copy of `localDay` (same `Date`
+  getters, same `padStart`) and its only `notEqual` was skipped at offset 0, so replacing the
+  function with `iso.slice(0, 10)` left every test green on all four Node versions CI runs. It
+  builds the expected day through `Intl.formatToParts` now, compares one instant written two
+  ways (`2026-07-25T20:30Z` against `2026-07-26T03:30+07:00`), and rejects `2026-07-32T10:00Z`,
+  which slicing would happily accept. The slice mutant is red in all 12 zones measured, UTC
+  included.
+
+- **The suite now renders every screen instead of only importing it.** `modules.test.js` had
+  imported the view modules without calling them, which is the "288 tests green and `#view`
+  is empty" hole this project had already written down once. `test/views.test.js` walks all
+  ten render functions in both languages against a real state snapshot. The snapshot is
+  anonymised on purpose, since this repo is public: it is checked for machine paths and the
+  author's org name on every run, and the key list it asserts covers every branch a view
+  *reads*, not merely the ones that used to throw.
+
+- **The session-host ledger stops losing writes, and the test that went red about one run in
+  six stops doing that.** `syncHosts` deliberately does not await its write, so two writes
+  issued close together were in flight at once. They shared one temp filename, so whichever
+  renamed second hit `ENOENT` and vanished; and even once each write got its own name, they
+  could still land in the order the disk chose rather than the order they were issued, which
+  let an older snapshot overwrite a newer one with nothing thrown anywhere. Writes are queued
+  now, each taking its snapshot when it is issued, so the last caller wins. Measured by
+  forcing two writes back to back: the parallel version loses the newer one in roughly 2% of
+  rounds, the queued version in 0 of 1,200. A 40-round ordering test locks it, and it is red
+  on the parallel version in 6 of 10 runs.
+
+- **CI now runs the suite in three timezones rather than one.** Los Angeles was already there;
+  Pacific/Kiritimati (UTC+14) is the far-east mirror that breaks the same day-boundary
+  assumption in the opposite direction, and Pacific/Chatham (UTC+12:45) catches anything that
+  assumes offsets land on a whole hour. All three were run by hand at 635/635 first, because a
+  zone that arrives red teaches people to ignore the job.
+
+- Tests: 510 → 636, and the suite passes in all six timezones measured (Asia/Ho_Chi_Minh, UTC,
+  America/Los_Angeles, Europe/Berlin, Pacific/Kiritimati, Pacific/Chatham).
 
 ## [1.1.1] — 2026-08-08
 
@@ -388,7 +475,8 @@ rounds, all recorded in [`design/README.md`](design/README.md).
 First tagged release. `bin/install-app` installs the LaunchAgent itself, and the
 README carries the install / uninstall / troubleshooting handbook.
 
-[Unreleased]: https://github.com/archi-ai-labs/now/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/archi-ai-labs/now/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/archi-ai-labs/now/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/archi-ai-labs/now/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/archi-ai-labs/now/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/archi-ai-labs/now/compare/v1.0.0...v1.0.1
