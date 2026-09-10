@@ -76,9 +76,15 @@ board tự nhắc cập nhật mà không cần ai nhớ.
 
 Mỗi mục trả lời được trong một câu. Chốt xong thì chuyển sang `BACKLOG.md` kèm ngày.
 
+Ba mục cuối phát sinh trong đợt 10/09/2026 và cần quyền hoặc quyết định mà một phiên làm việc
+không tự có: viết lại lịch sử công khai, đổi cấu hình repo trên GitHub, và sửa nội dung đã công bố.
+
 | Mã | Câu hỏi | Đang khoá gì |
 |---|---|---|
 | `d-game` | Lớp trò chơi: đóng băng, cắt về badge cộng thang ngồi lâu, hay tách thành package riêng? | Mọi mục lớp trò chơi ở chân trời 3 |
 | `d-readonly` | Có mở một skill chỉ đọc cho Claude tự gọi và trả always-on cost khoảng 700 byte mô tả không? | Mục `now-status` ở chân trời 2 |
 | `d-maxitems` | Vượt `maxItems` trong schema là lỗi cứng hay cảnh báo? | Hình dạng của validator dùng chung |
 | `d-push` | Còn cần đẩy `design/dist` lên project claude.ai không? Treo từ 26/7 | Vòng thiết kế; nếu 46 ngày qua không ai cần thì đóng luôn |
+| `d-lichsu` | Năm tên dự án nội bộ đã bị gỡ khỏi bản hiện tại, nhưng vẫn nằm trong mọi commit từ commit đầu. Viết lại lịch sử và force-push lần nữa, hay để nguyên? | Không khoá việc nào, nhưng repo công khai nên càng để lâu càng nhiều bản clone giữ chúng |
+| `d-branchprot` | Bật branch protection cho `main` và đánh dấu bắt buộc cả `test` lẫn `test-tz`? Cần quyền admin nên chỉ chủ repo làm được | Một hồi quy chỉ lộ ra ngoài UTC vẫn đi qua `test` xanh trơn |
+| `d-release-cu` | Hai trang release v1.0.0 và v1.0.1 còn viết tiếng Việt và còn trỏ vào URL clone đã chết `archimonde12/now_dashboard`. Sửa hay để nguyên? | Không khoá gì, nhưng là hai trang đầu tiên người lạ mở |
