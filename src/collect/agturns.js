@@ -117,12 +117,19 @@ function runSqlite(uri, sql) {
  * vừa xảy ra và còn nằm trong `-wal` chưa checkpoint.
  *
  * Lượt hai mới dùng, và chỉ khi `-wal` vắng mặt hoặc dài 0 byte. Lý do: một `.db` ở chế độ
- * WAL mà mất CẢ `-wal` lẫn `-shm` bên cạnh thì `mode=ro` trả SQLITE_CANTOPEN(14), vì mở WAL
- * là phải dựng lại hai file ấy, mà chế độ chỉ đọc thì không được phép tạo file. Thiếu mỗi
- * `-shm` thôi thì vẫn mở được, vì SQLite tự dựng lại nó. Đo 2026-09-10: 3/547 file rơi vào
- * ca này, và con số ấy trôi theo thời gian, vì mỗi lượt mở đọc-ghi lại sinh ra hai file kia.
- * Khi WAL vắng hoặc rỗng thì không có hàng nào để bỏ sót, nên `immutable=1` đọc ra đúng cùng
- * một tập hàng; còn WAL có byte thì thà báo không đọc được, chứ đọc thiếu mà im lặng thì tệ hơn.
+ * WAL mà mất CẢ `-wal` lẫn `-shm` bên cạnh thì trên MỘT SỐ bản SQLite, `mode=ro` trả
+ * SQLITE_CANTOPEN(14), vì mở WAL là phải dựng lại hai file ấy. Thiếu mỗi `-shm` thôi thì bản
+ * nào cũng mở được, vì SQLite tự dựng lại nó.
+ *
+ * "Một số bản" chứ không phải "mọi bản", và đây là chỗ bản trước nói quá: sqlite3 3.43.2 (bản
+ * Apple) trả CANTOPEN rồi rơi xuống nhánh dưới, còn bản trên ubuntu-latest mở thẳng được và
+ * dựng lại `-wal`. Nhánh dưới vì vậy là lưới đỡ chứ không phải đường đi bắt buộc, và một bài
+ * test khẳng định `-wal` không được dựng lại sẽ đỏ ở đúng nửa số máy — nó đã đỏ thật trên CI.
+ *
+ * Đo 2026-09-10: 3/547 file rơi vào ca này, và con số ấy trôi theo thời gian, vì mỗi lượt mở
+ * đọc-ghi lại sinh ra hai file kia. Khi WAL vắng hoặc rỗng thì không có hàng nào để bỏ sót,
+ * nên `immutable=1` đọc ra đúng cùng một tập hàng; còn WAL có byte thì thà báo không đọc
+ * được, chứ đọc thiếu mà im lặng thì tệ hơn.
  */
 async function query(file, sql) {
   const out = await runSqlite(`file:${file}?mode=ro`, sql);

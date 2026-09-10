@@ -477,18 +477,32 @@ test('file mở được, có hàng, mà bóc ra 0 lượt → cả lượt qué
 
 test('`.db` mất cả `-wal` lẫn `-shm` vẫn đọc được, không bị khai là hỏng', { skip: SQLITE }, async () => {
   // Đo 2026-09-10: 3/547 file trong thư mục hội thoại đang ở đúng ca này, `.db` còn nguyên
-  // mà hai file bên cạnh đã bị dọn. `mode=ro` trả SQLITE_CANTOPEN(14) vì mở WAL là phải dựng
-  // lại chúng, nên bỏ nhánh dự phòng `immutable=1` đi là ba hội thoại ấy bị khai không đọc
-  // được, dù chẳng có gì hỏng cả.
+  // mà hai file bên cạnh đã bị dọn. Bỏ nhánh dự phòng `immutable=1` đi là ba hội thoại ấy bị
+  // khai không đọc được, dù chẳng có gì hỏng cả.
+  //
+  // Ca này KHÔNG khẳng định `-wal` không được dựng lại, dù bản trước có. Việc `mode=ro` mở
+  // được một `.db` WAL trụi hai file bên cạnh hay trả SQLITE_CANTOPEN(14) là tuỳ bản SQLite
+  // chứ không tuỳ code ở đây: sqlite3 3.43.2 (bản Apple, máy người viết) trả CANTOPEN rồi
+  // rơi xuống `immutable=1`, còn bản trên ubuntu-latest mở thẳng được và dựng lại `-wal`.
+  // Khẳng định theo bản này thì bản kia đỏ, và nó đã đỏ thật trên CI.
+  //
+  // Thứ code ở đây bảo đảm, và cũng là thứ đáng khoá, chỉ có hai điều: hội thoại vẫn đọc ra
+  // đủ lượt, và `.db` không bị đổi lấy một byte. Lượt quét được phép dựng lại file phụ, nó
+  // KHÔNG được phép sửa dữ liệu của người dùng.
   const home = fakeHome();
   try {
     const file = await makeConvo(home, 'c-tron-trui', { keepWal: false });
-    assert.equal(fs.existsSync(`${file}-wal`), false, 'dựng hỏng: còn `-wal` thì `mode=ro` mở được và ca này không xảy ra');
+    assert.equal(fs.existsSync(`${file}-wal`), false, 'dựng hỏng: còn `-wal` thì ca này không xảy ra');
+    const trướcKhiĐọc = crypto.createHash('md5').update(fs.readFileSync(file)).digest('hex');
 
     const r = collectIn(home, [{ id: 'c-tron-trui' }], REAL_TS + 1000);
     assert.equal(r.unreadable, 0, 'hội thoại lành bị khai là không đọc được');
     assert.equal(r.turns, 1);
-    assert.equal(fs.existsSync(`${file}-wal`), false, 'lượt đọc đã dựng lại `-wal`, tức là nó không còn chỉ đọc');
+    assert.equal(
+      crypto.createHash('md5').update(fs.readFileSync(file)).digest('hex'),
+      trướcKhiĐọc,
+      'lượt quét đã sửa chính `.db`, không còn là lượt đọc nữa',
+    );
   } finally {
     fs.rmSync(home, { recursive: true, force: true });
   }
