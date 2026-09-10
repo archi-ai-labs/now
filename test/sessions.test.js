@@ -43,8 +43,8 @@ test('ngưỡng lệch 2 giây: ps làm tròn tới giây nên phải cho phép 
 
 test('encodeCwd khớp cách Claude Code đặt tên thư mục transcript', () => {
   assert.equal(
-    encodeCwd('/Users/hoanluu/Projects/local/now_dashboard'),
-    '-Users-hoanluu-Projects-local-now-dashboard',
+    encodeCwd('/Users/dev/Projects/local/now_dashboard'),
+    '-Users-dev-Projects-local-now-dashboard',
     'gạch dưới trong tên thư mục cũng thành gạch ngang — sai chỗ này là mất tên phiên',
   );
 });

@@ -11,7 +11,7 @@ import { parseStoreHead } from '../src/collect/ccd.js';
 
 const HEAD = `{"sessionId":"local_8451e587-458f-4835-81df-354d3e915e68",
   "cliSessionId":"0e1a124b-c0b5-4ae1-998e-6c99cac5c621",
-  "cwd":"/Users/hoanluu/Projects/local/now_dashboard","isArchived":false,"title":"Now update"`;
+  "cwd":"/Users/dev/Projects/local/now_dashboard","isArchived":false,"title":"Now update"`;
 
 test('bóc đúng cặp id, không lẫn hai không gian tên', () => {
   const r = parseStoreHead(HEAD);

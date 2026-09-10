@@ -22,7 +22,7 @@ import { mapLimit, git, drainRunFailures } from './lib/sh.js';
 
 const HEAT_RANK = { now: 0, soon: 1, later: 2 };
 
-/** Nhãn ngắn cho nhóm dự án — thư mục cha ngay dưới root (vd `archimonde12`, `local`). */
+/** Nhãn ngắn cho nhóm dự án — thư mục cha ngay dưới root (vd `archi-ai-labs`, `local`). */
 function groupOf(dir) {
   for (const root of PROJECT_ROOTS) {
     if (dir.startsWith(root + path.sep)) {

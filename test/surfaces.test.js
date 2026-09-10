@@ -107,7 +107,7 @@ const book = () =>
       id: '2141d7e4-2790-43d3-b755-6cdb03736d00',
       title: 'Refactor Fact Check Script',
       steps: 27,
-      uri: 'file:///Users/hoanluu/Projects/local/researcher/antigravity',
+      uri: 'file:///Users/dev/Projects/local/scout/antigravity',
       created: SEC('2026-07-26T08:00:00+07:00'),
       updated: SEC('2026-07-26T08:50:00+07:00'),
     }),
@@ -115,7 +115,7 @@ const book = () =>
       id: 'ec83d83a-ef86-4364-9612-ef858fb50a2b',
       title: 'Tối Ưu Prompt Trích Xuất',
       steps: 18,
-      uri: 'file:///Users/hoanluu/Projects/archimonde12/ai-agency',
+      uri: 'file:///Users/dev/Projects/northwind/ai-agency',
       created: SEC('2026-07-20T10:00:00+07:00'),
       updated: SEC('2026-07-20T11:00:00+07:00'),
     }),
@@ -128,7 +128,7 @@ test('bóc đủ id, tiêu đề, workspace, số bước và hai mốc thời g
   const [a] = r.rows;
   assert.equal(a.title, 'Refactor Fact Check Script');
   assert.equal(a.steps, 27);
-  assert.equal(a.cwd, '/Users/hoanluu/Projects/local/researcher/antigravity', 'URI phải thành đường dẫn thật');
+  assert.equal(a.cwd, '/Users/dev/Projects/local/scout/antigravity', 'URI phải thành đường dẫn thật');
   assert.ok(a.updatedAt > a.createdAt, 'trường 3 là cập nhật, trường 7 là tạo');
 });
 
@@ -137,11 +137,11 @@ test('workspace có dấu cách được giải mã đúng — không thì gán 
     id: 'x',
     title: 'y',
     steps: 1,
-    uri: 'file:///Users/hoanluu/my%20work/dự%20án',
+    uri: 'file:///Users/dev/my%20work/dự%20án',
     created: SEC('2026-07-26T08:00:00+07:00'),
     updated: SEC('2026-07-26T08:00:00+07:00'),
   });
-  assert.equal(parseSummaries(buf, NOW).rows[0].cwd, '/Users/hoanluu/my work/dự án');
+  assert.equal(parseSummaries(buf, NOW).rows[0].cwd, '/Users/dev/my work/dự án');
 });
 
 test('hội thoại thiếu trường vẫn hiện ra với những gì còn đọc được', () => {
@@ -164,12 +164,12 @@ test('phân biệt "chưa dùng bao giờ" với "hình dạng đã đổi"', ()
 test('đọc đúng các thư mục đang mở từ backupWorkspaces', () => {
   const r = parseEditorStorage({
     backupWorkspaces: {
-      folders: [{ folderUri: 'file:///Users/hoanluu/Projects/a' }, { folderUri: 'file:///Users/hoanluu/Projects/b' }],
+      folders: [{ folderUri: 'file:///Users/dev/Projects/a' }, { folderUri: 'file:///Users/dev/Projects/b' }],
       workspaces: [],
       emptyWindows: [{ backupFolder: '1785033576824' }],
     },
   });
-  assert.deepEqual(r.folders, ['/Users/hoanluu/Projects/a', '/Users/hoanluu/Projects/b']);
+  assert.deepEqual(r.folders, ['/Users/dev/Projects/a', '/Users/dev/Projects/b']);
   assert.equal(r.empty, 1, 'cửa sổ trống đếm được nhưng không gọi tên được — đó là giới hạn của nguồn');
 });
 
