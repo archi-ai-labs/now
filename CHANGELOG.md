@@ -7,6 +7,24 @@ own history in [`plugin/CHANGELOG.md`](plugin/CHANGELOG.md) and its own tags
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] — 2026-09-10
+
+One test, red on every CI job at 1.2.0 and green on the author's machine, because it
+asserted a property of the SQLite build rather than of this code.
+
+### Fixed
+
+- **The orphaned-WAL test no longer asserts which SQLite build is installed.** Whether
+  `mode=ro` can open a WAL-mode `.db` whose `-wal` and `-shm` have both been cleaned up is
+  decided by the build: 3.43.2, the Apple build, returns `SQLITE_CANTOPEN(14)` and falls
+  through to the `immutable=1` branch, while the build on ubuntu-latest opens it directly and
+  recreates `-wal`. The test asserted the first, so it could only ever be green on half the
+  machines that run it. What the scan actually promises is narrower and is what the test
+  checks now: the conversation still yields its turns, and the `.db` is not changed by a byte,
+  verified by md5 across the read. Recreating a sidecar file is allowed; touching the user's
+  data is not. The docblock above `query()` made the same overstatement and now says "some
+  builds", with both measurements written down.
+
 ## [1.2.0] — 2026-09-10
 
 The sit-too-long ladder reaches the menu-bar icon, the focus rhythm drops to an hour, and
@@ -475,7 +493,8 @@ rounds, all recorded in [`design/README.md`](design/README.md).
 First tagged release. `bin/install-app` installs the LaunchAgent itself, and the
 README carries the install / uninstall / troubleshooting handbook.
 
-[Unreleased]: https://github.com/archi-ai-labs/now/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/archi-ai-labs/now/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/archi-ai-labs/now/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/archi-ai-labs/now/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/archi-ai-labs/now/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/archi-ai-labs/now/compare/v1.0.1...v1.1.0
