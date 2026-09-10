@@ -125,6 +125,7 @@ After that, all you need is:
 | Stop | `launchctl bootout gui/$(id -u)/io.github.archi-ai-labs.now-dash` |
 | Restart | `launchctl kickstart -k gui/$(id -u)/io.github.archi-ai-labs.now-dash` |
 | Read the log | `tail -f ~/.now-dashboard/service.err.log` |
+| Read the ordinary log | `tail -f ~/.now-dashboard/service.log` |
 
 `upgrade` pulls (`--ff-only`; refuses a dirty tree or a detached HEAD), works out whether
 the pull needs the compiler (`app/`, `launchd/`, `bin/`, the icon, a real menu-bar tone
@@ -340,6 +341,35 @@ The gradient is scoped to `.mb-wrap`, so the 15 bars on the web Token screen sta
 
 </details>
 
+### The game layer — a butler you can feed
+
+The character above has a second, optional life, and it writes to disk, so it belongs in
+the README rather than only in the design log. **Coins come from money you already spent:**
+one coin per estimated dollar of token spend, credited per calendar day so refreshing the
+page mints nothing. You feed the butler with them (nine foods, 0.51 to 2.88 coins) and buy
+decorations for the isometric town on the Shop screen (forty items, up to 1,420 coins). It
+gets hungry on a 16-hour clock and its focus meter runs on a 60-minute cycle.
+
+Three things worth knowing before you install rather than after:
+
+- **It writes one file: `~/.now-dashboard/pet.json`** — the coin ledger, what you own,
+  when you last fed it, when you last took a counted break. Nothing goes into your repos
+  and nothing goes into `~/.claude`.
+- **A background tick runs while the server does**, keeping the hunger and focus clocks
+  honest whether or not anyone has the page open. That is the point of it: a focus meter
+  that only advances while you are looking at it cannot tell you that you have been
+  sitting for two hours.
+- **What reaches the menu-bar icon is the sitting clock, not the game.** At 40, 60 and 120
+  minutes without a counted break the icon picks up an amber dot, then a red disc, then a
+  red tint. Being hungry never lights the icon; it only shows in the tooltip and the
+  popover. That boundary is deliberate and it has been crossed once already: for two days
+  in September the icon sat at its loudest state because a pixel character was hungry,
+  which is exactly how an alert channel gets trained out of a person.
+
+Not interested? **Turn it off in the popover** and it stops: the popover goes back to the
+plain version, the background work stops with it, and your coins and purchases stay in the
+ledger for whenever you turn it back on.
+
 ### The popover tuning bench
 
 **Last screen on the rail — key `9`.** Also opens standalone, with nothing else in sight:
@@ -395,14 +425,17 @@ dimensions to Swift.
 
 | | |
 |---|---|
-| [`app/NowMenuBar.swift`](app/NowMenuBar.swift) | ~290 lines, and it **knows no quota rule**: the text comes from `/api/badge`, the popover is the web page below |
+| [`app/NowMenuBar.swift`](app/NowMenuBar.swift) | 633 lines, and it **knows no quota rule**: the text comes from `/api/badge`, the popover is the web page below |
 | [`public/menubar.html`](public/menubar.html) · [`menubar.js`](public/menubar.js) | the popover's guts. Calls `lib/quota.js` directly — same `quotaBar`, same sentences as the Token screen, so it cannot contradict the dashboard |
 | `/api/badge` in [`src/badge.js`](src/badge.js) | settles text and color band in one place, and — when the reading is broken — the `note` saying why and what to do. The server imports `public/lib/quota.js` and `i18n.js` (browser modules) on purpose: the waste scale and that sentence get exactly one copy each. Out here, not in `server.js`, because `server.js` calls `listen` on import: anything living in it can't be tested, and the branch nobody can test is the one that only runs on the day everything is broken |
-| [`app/make-tones.py`](app/make-tones.py) | lifts the five color codes out of `styles.css` at build time into `Tones.swift`. **Currently unused** — the bar text is an `isTemplate` image, which keeps alpha but not color. Still built alongside the app so turning color back on costs one line |
+| [`app/make-tones.py`](app/make-tones.py) | lifts the five color codes out of `styles.css` at build time into `Tones.swift`. **In use since the alert badge landed** (Aug 9): the bar *text* is still an `isTemplate` image, which keeps alpha but not color, so the badge disc is drawn as a separate colored layer using `Tones.warn` and `Tones.crit`. That is the one place the app leaves template mode, and it is why the colors must resolve inside the button's own draw pass rather than at paint time |
 | [`bin/install-app`](bin/install-app) | generates `Tones.swift`, compiles with `swiftc`, cuts the `.icns` from `public/icon-1024.png`, then brings the service and the app back up. Re-runnable; refuses to overwrite if something else is sitting there |
 
-Needs a working Swift compiler — Command Line Tools or Xcode, whichever `xcode-select`
-points at (the script checks first and says what to do) — and macOS 13+. The repo path is baked into the
+Needs a working Swift compiler, either Command Line Tools or Xcode, whichever
+`xcode-select` points at (the script checks first and says what to do), plus macOS 13+.
+The optional Safari web app that the menu bar prefers when opening the dashboard is
+created by Safari, so it carries whatever minimum your Safari does; on this machine that
+is 14.0, and without it the dashboard simply opens in your default browser. The repo path is baked into the
 bundle as an absolute path at build time, and into the LaunchAgent in the same run
 (see [§The dashboard](#the-dashboard)) — same reason: launchd/LaunchServices don't
 expand `~`/`$HOME`. **Move the repo, re-run `./bin/install-app`.**
@@ -472,6 +505,7 @@ command to fix it. Only want the background server, no menu-bar icon → use the
 | Icon doesn't come back after logging in | The switch is off — i.e. `~/Library/LaunchAgents/io.github.archi-ai-labs.now-dash.menu.plist` isn't there | `./bin/now-menu on`. Read the state with `./bin/now-menu status`. On and the icon still not coming up → System Settings → General → Login Items → **Allow in the Background**, where macOS lets you switch an agent off behind launchd's back |
 | Turned the icon off and can't find where to turn it back on | The right-click menu disappears along with the icon, and `NOW Dashboard.app` is `LSUIElement` — double-clicking it opens no window to click in | Open the dashboard (`./bin/now-dash`) → the **▤ menu bar** button in the top bar. Or `./bin/now-menu on` |
 | No logs anywhere despite a clear error | The service's logs live under `~/.now-dashboard/`, not the terminal (launchd has no stdout) | `tail -f ~/.now-dashboard/service.err.log` |
+| The error log is silent but something still looks wrong | The two streams are split: `service.err.log` carries failures, `service.log` carries the ordinary running commentary, such as the line the cycle ledger prints when it folds a rolling window back into one record | `tail -f ~/.now-dashboard/service.log` |
 
 </details>
 
@@ -541,5 +575,6 @@ Per-tab details (Cursor/Antigravity), keybindings, and day-to-day usage →
 | What's in progress / decisions pending | [NOW.md](NOW.md) *(Vietnamese only)* |
 | Open technical work (backlog) | [BACKLOG.md](BACKLOG.md) *(Vietnamese only)* |
 
-Configuring the port/scan roots (`NOW_PORT`, `NOW_ROOTS`) and health thresholds →
+Configuring the port, the scan roots and the data directory (`NOW_PORT`, `NOW_ROOTS`,
+`NOW_DATA_DIR`) plus health thresholds →
 [docs/ARCHITECTURE.md#configuring](docs/ARCHITECTURE.md).

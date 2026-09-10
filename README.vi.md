@@ -123,6 +123,7 @@ Từ đó trở đi chỉ cần:
 | Dừng | `launchctl bootout gui/$(id -u)/io.github.archi-ai-labs.now-dash` |
 | Chạy lại | `launchctl kickstart -k gui/$(id -u)/io.github.archi-ai-labs.now-dash` |
 | Xem log | `tail -f ~/.now-dashboard/service.err.log` |
+| Xem log thường | `tail -f ~/.now-dashboard/service.log` |
 
 `upgrade` pull (`--ff-only`; cây bẩn hay HEAD detached thì dừng nói rõ chứ không đoán),
 tự biết lượt pull này cần bộ biên dịch (`app/`, `launchd/`, `bin/`, icon, hay tiếng của
@@ -327,6 +328,33 @@ web vẫn phẳng như cũ.
 
 </details>
 
+### Lớp trò chơi — một quản gia nuôi được
+
+Nhân vật ở trên còn một đời sống thứ hai, tuỳ chọn, và nó có ghi file xuống đĩa nên chỗ
+của nó là README chứ không phải chỉ nằm trong design log. **Xu đến từ tiền bạn đã tiêu
+thật:** một xu cho mỗi đô-la token ước tính, cộng theo NGÀY để việc tải lại trang không đẻ
+ra xu. Bạn dùng xu cho quản gia ăn (chín món, 0,51 đến 2,88 xu) và mua đồ trang trí cho
+thị trấn đẳng cự ở màn Cửa hàng (bốn mươi món, món đắt nhất 1.420 xu). Quản gia đói theo
+chu kỳ 16 giờ, còn thanh tập trung chạy theo nhịp 60 phút.
+
+Ba điều nên biết trước khi cài chứ không phải sau:
+
+- **Nó ghi đúng một file là `~/.now-dashboard/pet.json`**, gồm sổ xu, đồ đã mua, lần cho
+  ăn gần nhất và lần nghỉ có tính gần nhất. Không có gì đi vào repo của bạn và không có gì
+  đi vào `~/.claude`.
+- **Một nhịp nền chạy cùng với server**, giữ cho đồng hồ đói và đồng hồ tập trung đúng dù
+  có ai mở trang hay không. Đó chính là lý do nó tồn tại: một thanh tập trung chỉ nhích khi
+  bạn đang nhìn nó thì không bao giờ nói được rằng bạn đã ngồi liền hai tiếng.
+- **Thứ lên tới icon thanh menu là đồng hồ ngồi, không phải trò chơi.** Ngồi 40, 60 rồi
+  120 phút không có quãng nghỉ nào được tính thì icon lần lượt mọc chấm vàng, đĩa đỏ, rồi
+  nhuộm đỏ cả chữ. Đói thì không bao giờ bật đèn icon, nó chỉ hiện trong tooltip và trong
+  popover. Ranh giới ấy là chủ đích và đã bị vượt qua một lần: hai ngày liền trong tháng 9
+  icon ở mức đỏ nhất chỉ vì một nhân vật pixel đang đói, và đó đúng là cách một kênh cảnh
+  báo bị mắt người học cách bỏ qua.
+
+Không thích? **Tắt nó trong popover** là xong: popover trở về bản nghiêm túc, phần chạy
+nền dừng theo, còn xu và đồ đã mua vẫn nằm nguyên trong sổ chờ lúc bạn bật lại.
+
 ### Bàn chỉnh popover
 
 **Màn cuối trên thanh rail — phím `9`.** Cũng mở được thành trang lẻ, không có gì khác
@@ -455,6 +483,7 @@ dịch → script dừng **trước** khi đụng vào app lẫn LaunchAgent, v�
 | Đăng nhập lại thì icon không tự lên | Công tắc đang tắt, tức là không có `~/Library/LaunchAgents/io.github.archi-ai-labs.now-dash.menu.plist` | `./bin/now-menu on`. Đọc trạng thái bằng `./bin/now-menu status`. Bật rồi mà icon vẫn không lên → System Settings → General → Login Items → **Allow in the Background**, chỗ macOS cho tắt một agent sau lưng launchd |
 | Lỡ tắt icon rồi, giờ không biết bật lại ở đâu | Menu chuột phải biến mất cùng cái icon, mà `NOW Dashboard.app` thì `LSUIElement` — double-click vào không hiện cửa sổ nào để mà bấm | Mở dashboard (`./bin/now-dash`) → nút **▤ thanh menu** ở thanh trên cùng. Hoặc `./bin/now-menu on` |
 | Không thấy log gì dù chắc chắn có lỗi | Log của service nằm ở `~/.now-dashboard/`, không phải terminal (launchd không có stdout) | `tail -f ~/.now-dashboard/service.err.log` |
+| Log lỗi im lặng mà vẫn thấy có gì đó không ổn | Hai kênh log được tách riêng, vì vậy `service.err.log` chỉ chứa lỗi còn `service.log` chứa các dòng tường thuật lúc chạy bình thường, ví dụ dòng sổ chu kỳ in ra khi nó gộp một cửa sổ lăn về lại một bản ghi | `tail -f ~/.now-dashboard/service.log` |
 
 </details>
 
@@ -521,5 +550,6 @@ Chi tiết từng tab (Cursor/Antigravity), phím tắt, và cách dùng hàng n
 | Việc đang làm / quyết định đang treo | [NOW.md](NOW.md) |
 | Việc kỹ thuật còn tồn (backlog) | [BACKLOG.md](BACKLOG.md) |
 
-Chỉnh cổng/đường quét (`NOW_PORT`, `NOW_ROOTS`) và ngưỡng sức khoẻ →
+Chỉnh cổng, đường quét và thư mục dữ liệu (`NOW_PORT`, `NOW_ROOTS`, `NOW_DATA_DIR`) cùng
+ngưỡng sức khoẻ →
 [docs/ARCHITECTURE.vi.md#chỉnh](docs/ARCHITECTURE.vi.md).

@@ -152,6 +152,19 @@ file mình tự sinh; nội dung được escape trước rồi mới nhận di�
 NOW_PORT=5000 NOW_ROOTS=~/Projects,~/work ./bin/now-dash
 ```
 
+| Biến | Mặc định | Làm gì |
+|---|---|---|
+| `NOW_PORT` | `4400` | Cổng server lắng nghe, chỉ trên loopback |
+| `NOW_ROOTS` | `~/Projects` | Danh sách gốc quét `NOW.json`, ngăn bằng dấu phẩy. Chế độ `all` của plugin `now` đọc đúng biến này, nên board nằm ngoài các gốc ấy là vô hình với cả hai nửa chứ không phải chỉ một |
+| `NOW_DATA_DIR` | `~/.now-dashboard` | Nơi dashboard giữ sổ riêng của nó: sổ chu kỳ hạn mức, sổ token gộp, sổ app chủ, sổ quản gia |
+
+**Chạy bản thứ hai thì phải đặt `NOW_DATA_DIR` trước.** Hai dashboard dùng chung một thư
+mục dữ liệu sẽ ghi đè sổ của nhau: mỗi tiến trình giữ memo riêng trong bộ nhớ rồi ghi trọn
+file, nên bản ghi sau thắng bản ghi trước và chu kỳ nào chỉ một bên nhìn thấy thì mất hẳn.
+`quota-cycles.json` là file duy nhất trong đó mà chính codebase này khai là không dựng lại
+được, và đó là lý do va chạm này đáng một dòng cấu hình. Chạy bản thứ hai là việc hợp lệ,
+ví dụ một bản preview chạy cạnh LaunchAgent, miễn là nó có thư mục riêng và cổng riêng.
+
 Ngưỡng "board còn tin được không" nằm ở `HEALTH` trong
 [`src/config.js`](../src/config.js) — mặc định: lệch từ 3 ngày / 5 commit, hết hạn từ
 7 ngày / 15 commit.

@@ -12,5 +12,6 @@ Bốn chỗ tìm, theo câu hỏi:
 | Khối hạn mức tính/vẽ thế nào | [QUOTA.vi.md](QUOTA.vi.md) |
 | Đổi màu/layout qua Claude Design | [../design/README.vi.md](../design/README.vi.md) |
 | Việc đang làm / quyết định đang treo | [../NOW.md](../NOW.md) |
+| Việc còn lại đi theo thứ tự nào, và vì sao | [ROADMAP.md](ROADMAP.md) *(kế hoạch sống)* |
 | Việc kỹ thuật còn tồn (backlog) | [../BACKLOG.md](../BACKLOG.md) |
 | Luật đã từng bị sửa lưng (cho Claude) | [../CLAUDE.md](../CLAUDE.md) |

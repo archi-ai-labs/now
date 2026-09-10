@@ -175,6 +175,20 @@ Set environment variables before running:
 NOW_PORT=5000 NOW_ROOTS=~/Projects,~/work ./bin/now-dash
 ```
 
+| Variable | Default | What it does |
+|---|---|---|
+| `NOW_PORT` | `4400` | Port the server listens on, loopback only |
+| `NOW_ROOTS` | `~/Projects` | Comma-separated roots scanned for `NOW.json`. The `now` plugin's `all` mode reads the same variable, so a board outside these roots is invisible to both halves rather than to one |
+| `NOW_DATA_DIR` | `~/.now-dashboard` | Where the dashboard keeps its own notebook: the quota cycle ledgers, the token rollup, the host log, the butler's ledger |
+
+**Set `NOW_DATA_DIR` before running a second copy.** Two dashboards sharing one data
+directory overwrite each other's ledgers: each process keeps its own memo in memory and
+writes the whole file, so whichever writes last wins and any cycle only the other one saw
+is gone. `quota-cycles.json` is the one file in there this codebase calls unrecoverable,
+which makes this the one collision worth spending a line of config on. A second copy is a
+normal thing to run (a preview alongside the LaunchAgent, for instance) as long as it gets
+its own directory and its own port.
+
 The "can this board still be trusted" thresholds live in `HEALTH` in
 [`src/config.js`](../src/config.js) — defaults: drifting from 3 days / 5 commits,
 expired from 7 days / 15 commits.

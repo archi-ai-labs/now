@@ -117,8 +117,13 @@ final class Delegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSP
     // ── Server ───────────────────────────────────────────────────────────────
 
     /// Dựng server qua đúng một đường: `bin/now-dash --no-open` (ping → launchd →
-    /// chờ). Không gọi thẳng launchctl ở đây — hai bản của cùng một logic khởi động
-    /// là hai bản sẽ trôi khỏi nhau.
+    /// chờ). Không gọi thẳng launchctl trong hàm này, vì hai bản của cùng một logic
+    /// KHỞI ĐỘNG là hai bản sẽ trôi khỏi nhau: script còn phải ping trước, dựng plist
+    /// nếu thiếu, rồi chờ cổng mở.
+    ///
+    /// `restartServer` bên dưới thì có gọi `launchctl kickstart` thẳng, và đó không phải
+    /// ngoại lệ bị quên: nó là một lệnh ĐÁ một job đã tồn tại, không phải một đường khởi
+    /// động thứ hai. Ranh giới nằm ở chỗ ấy chứ không ở tên nhị phân được gọi.
     private func ensureServer(then done: (() -> Void)? = nil) {
         DispatchQueue.global(qos: .utility).async {
             let p = Process()

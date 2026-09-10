@@ -7,10 +7,22 @@ trên máy này**, không phải đọc lướt rồi đoán. Mỗi mục dướ
 Xếp theo **cái gì hỏng nếu để nguyên**, không theo loại kỹ thuật: sập → nói dối → chậm →
 khó tin về lâu dài.
 
-> **Trạng thái 2026-07-23, cuối ngày.** Vòng 1 và vòng 2 đã làm xong và kiểm trên app
-> thật: `B1` `B2` `B3` `B4` `B5` `B7` `B8` `B9` `B11` `B12`. Còn lại: `B6` `B10` `B13`
-> `B14`, cộng `B15` mới phát hiện trong lúc kiểm — xem "Còn lại làm gì" ở cuối file. Mỗi mục đã xong giữ nguyên phần bằng chứng
-> gốc và thêm dòng **✅ Đã làm** kèm số đo SAU, để lần sau còn so được.
+> **Trạng thái 2026-09-10.** Khối này đứng ở mốc 23/7 suốt bảy tuần trong khi phần thân
+> file đã đi tiếp, nên ai đọc mười hai dòng đầu cũng kết luận `B13` và `B14` còn mở và có
+> thể làm lại việc đã xong. Viết lại theo mốc thật:
+>
+> - **Đã xong và đã kiểm trên app thật:** `B1` `B2` `B3` `B4` `B5` `B7` `B8` `B9` `B10`
+>   `B11` `B12` `B15` `B16` `B17` `B19`, và `B13` `B14` `B18` xong trong một phiên ngày
+>   8/8 (xem khối "Cập nhật 2026-08-08" ở cuối file).
+> - **Còn mở:** đúng một mục là `B6`, vẫn hoãn vô thời hạn với nguyên lý do cũ.
+> - **Hai mục xong một nửa,** phát hiện trong lượt khảo sát 10/9 và đã sửa nốt trong cùng
+>   lượt: `B13` mới làm được phần "ghi lý do vào sổ", còn thẻ dự án vẫn in `detached, 0
+>   file bẩn` khi `git status` timeout; `B18` bị vô hiệu vì tick 30 giây của lớp trò chơi
+>   gọi `getState` nên vẫn dựng lại state 2-3 lần mỗi phút ở ca 0 client.
+>
+> Mỗi mục đã xong giữ nguyên phần bằng chứng gốc và thêm dòng **✅ Đã làm** kèm số đo SAU,
+> để lần sau còn so được. Quy ước ấy là thứ khiến file này còn dùng được sau bảy tuần, và
+> cũng là thứ khối trạng thái này vừa vi phạm: **sửa mốc ở đây mỗi lần đóng một mục.**
 
 ---
 
@@ -76,7 +88,7 @@ URIError: URI malformed
     at serveStatic (server.js:99:48)
 ```
 
-Tiến trình **chết hẳn**, không phải trả 400. Handler ở [server.js:149](server.js:149) là
+Tiến trình **chết hẳn**, không phải trả 400. Handler ở [server.js:149](server.js#L149) là
 `async` nhưng không ai bắt promise bị reject → Node thoát. Mọi đường lỗi khác trong handler
 (`getState()` ném, `serveNowMd` ném) đều đi ra cùng một cửa này.
 
@@ -93,7 +105,7 @@ Tiến trình **chết hẳn**, không phải trả 400. Handler ở [server.js:
 
 ### `B2` — Một ngày gõ sai trong **bất kỳ** NOW.json nào là hỏng màn Thống kê
 
-**Bằng chứng:** vòng lặp lấp ngày ở [public/views/stats.js:59](public/views/stats.js:59)
+**Bằng chứng:** vòng lặp lấp ngày ở [public/views/stats.js:59](public/views/stats.js#L59)
 chạy từ ngày `recentlyDone` sớm nhất tới ngày mới nhất, **không có trần**. Chạy lại đúng
 vòng đó:
 
@@ -120,7 +132,7 @@ khoá lại, gồm cả ca `2016` và ca năm tương lai.
 
 ### `B3` — Board nằm trong repo cha sẽ khoe git của **người khác**
 
-**Bằng chứng:** [src/collect/git.js:56](src/collect/git.js:56) hỏi
+**Bằng chứng:** [src/collect/git.js:56](src/collect/git.js#L56) hỏi
 `git rev-parse --is-inside-work-tree` với `cwd` là thư mục board. Lệnh này trả `true` cho
 **mọi thư mục con** của một repo, nên một board đặt trong `monorepo/packages/api/` sẽ hiện
 nhánh, số file bẩn và độ lệch của **cả monorepo**. Không có chỗ nào so lại với
@@ -148,7 +160,7 @@ gắn cờ lồng oan.
 
 **Bằng chứng:** đếm bằng shim `git` trong `PATH` — 63 lần spawn, ~54 ms mỗi lần. Riêng
 tiền spawn đã là ~3,4 giây. Tệ hơn số lượng là **hình dạng**: mỗi repo đi qua 4 tầng nối
-đuôi nhau ở [src/collect/git.js:55](src/collect/git.js:55) — `is-inside-work-tree` → chờ
+đuôi nhau ở [src/collect/git.js:55](src/collect/git.js#L55) — `is-inside-work-tree` → chờ
 xong mới `Promise.all` 5 lệnh → chờ xong mới `drift()` (2 lệnh) → chờ xong mới `worktree
 list` → rồi `status` từng worktree **trong vòng `for` tuần tự**.
 
@@ -183,13 +195,13 @@ Hai điều chỉnh so với kế hoạch, nói cho đúng:
 
 ### `B5` — 39 phiên đọc tuần tự từng cái một
 
-**Bằng chứng:** [src/collect/sessions.js:127](src/collect/sessions.js:127) là vòng
+**Bằng chứng:** [src/collect/sessions.js:127](src/collect/sessions.js#L127) là vòng
 `for (const f of files)` với `await` bên trong: mỗi phiên lần lượt `stat` transcript → đọc
 đuôi file lấy tiêu đề → `readdir` + đọc từng file todo. 39 phiên, 90 file todo, tổng
 556–868 ms — gần như toàn bộ là ngồi chờ đĩa.
 
 **Sửa:** thay bằng `mapLimit(files, 8, …)` — hàm này **đã có sẵn** trong
-[src/lib/sh.js:27](src/lib/sh.js:27), chỉ là chưa dùng ở đây.
+[src/lib/sh.js:27](src/lib/sh.js#L27), chỉ là chưa dùng ở đây.
 
 **Ước lượng:** 20 phút. **Chặn bởi:** không gì. Rẻ nhất trên mỗi mili-giây tiết kiệm được.
 
@@ -200,7 +212,7 @@ chạy song song bằng `Promise.all`.
 
 ### `B6` — Một file đổi là dựng lại **toàn bộ** mọi dự án
 
-**Bằng chứng:** mọi watcher ở [server.js:82](server.js:82) đều đổ vào cùng một
+**Bằng chứng:** mọi watcher ở [server.js:82](server.js#L82) đều đổ vào cùng một
 `scheduleRefresh()` → `buildState()` đầy đủ. Sửa một dòng trong `NOW.json` của *một* dự án
 cũng khiến 7 dự án bị quét lại và 63 tiến trình git chạy lại.
 
@@ -218,7 +230,7 @@ xuống dưới 1 giây thì mục này có thể không còn đáng làm nữa.
 
 ### `B7` — Debounce không có trần chờ
 
-**Bằng chứng:** [server.js:57](server.js:57) `clearTimeout` mỗi sự kiện. Một chuỗi sự kiện
+**Bằng chứng:** [server.js:57](server.js#L57) `clearTimeout` mỗi sự kiện. Một chuỗi sự kiện
 cách nhau dưới 500 ms sẽ đẩy lùi lượt dựng **vô hạn** — `npm install` trong một repo đang
 được theo dõi, hoặc một lượt `/now update` ghi cả `NOW.json` lẫn `NOW.md`, là dồn đúng
 kiểu đó.
@@ -234,9 +246,9 @@ kiểu đó.
 ### `B17` — `USAGE_TTL_MS = 15 s` ngắn hơn nhịp quét 30 s: memo đắt nhất không bao giờ trúng 🎯 lãi/công tốt nhất còn lại
 
 **Bằng chứng — đo 28/7:** lối thoát sớm của `collectUsage`
-([src/collect/usage.js:399](src/collect/usage.js:399)) so `Date.now() − scannedAt` với
-`USAGE_TTL_MS = 15_000` ([src/config.js:280](src/config.js:280)), còn nhịp quét nền là 30
-giây ([server.js:339](server.js:339)) — nên chỉ những lượt dựng dồn dập dưới 15 giây (sự
+([src/collect/usage.js:399](src/collect/usage.js#L399)) so `Date.now() − scannedAt` với
+`USAGE_TTL_MS = 15_000` ([src/config.js:280](src/config.js#L280)), còn nhịp quét nền là 30
+giây ([server.js:339](server.js#L339)) — nên chỉ những lượt dựng dồn dập dưới 15 giây (sự
 kiện fs, người bấm ép quét) mới trúng memo, còn nhịp nền thì trượt **mọi lượt**. Giá một
 lần trượt, đo cô lập: **568 ms** — khử trùng lặp ~28 nghìn hàng rồi dựng lại bảng
 ngày/model/dự án/entrypoint + `efficiencyOf` — **kể cả khi không transcript nào đổi một
@@ -296,7 +308,7 @@ nhìn. Giãn nhịp KHÔNG làm sổ chu kỳ hạn mức mất mảnh nào — 
 cho `trackQuota` ghi.
 
 **Sửa:** 0 client SSE → giãn nhịp nền 30 giây → 5 phút (watcher fs giữ nguyên); tab đầu
-quay lại đã có sẵn `scheduleRefresh(0)` ở [server.js:267](server.js:267) kéo số tươi ngay,
+quay lại đã có sẵn `scheduleRefresh(0)` ở [server.js:267](server.js#L267) kéo số tươi ngay,
 người dùng chờ nhiều nhất ~1–2 giây.
 
 **Ước lượng:** 1–2 giờ. **Ưu tiên:** tuỳ khẩu vị — 1,6% không nóng máy được; chỉ đáng nếu
@@ -335,7 +347,7 @@ xong — cổng mở TRƯỚC lượt quét đầu, nên request tới trong 5 g
 
 ### `B8` — Cứ 30 giây vẽ lại toàn trang, kể cả khi không có gì đổi
 
-**Bằng chứng:** `render()` ở [public/app.js:156](public/app.js:156) chạy mỗi lượt SSE, và
+**Bằng chứng:** `render()` ở [public/app.js:156](public/app.js#L156) chạy mỗi lượt SSE, và
 `mount()` thay sạch `innerHTML`. `keepUI()` giữ được vị trí cuộn và các `<details>` đang mở
 — nhưng thay `innerHTML` thì **vệt bôi đen và focus bàn phím chắc chắn mất**, cả hai đều
 không được chụp lại.
@@ -360,7 +372,7 @@ vệt bôi đen sống sót qua lượt vẽ.
 
 ### `B9` — Gõ một phím trong ô tìm là vẽ lại cả trang
 
-**Bằng chứng:** [public/app.js:379](public/app.js:379) — `input` gọi thẳng `render()`, kéo
+**Bằng chứng:** [public/app.js:379](public/app.js#L379) — `input` gọi thẳng `render()`, kéo
 theo cả `renderNav()` và khối quản gia, dù chúng không phụ thuộc ô tìm.
 
 **Sửa:** debounce 120 ms; hoặc chỉ vẽ lại `#view`.
@@ -375,7 +387,7 @@ không nó nổ sau đó và dựng lại đúng bộ lọc vừa bị xoá). Đ
 
 ### `B10` — Mọi thứ bấm được đều là `div`/`span`
 
-**Bằng chứng:** nav item ([app.js:98](public/app.js:98)), thẻ dự án, `.qa`, `.orphan`,
+**Bằng chứng:** nav item ([app.js:98](public/app.js#L98)), thẻ dự án, `.qa`, `.orphan`,
 `.sst` — tất cả bắt click bằng uỷ quyền trên `document`, không cái nào là `<button>`, không
 `role`, không `tabindex`. Bàn phím chỉ tới được qua phím tắt số; trình đọc màn hình không
 thấy chúng là thứ bấm được.
@@ -392,15 +404,15 @@ sửa thì thấy nav, `.qa`, `.orphan`, `.sst`, nút chép, nút phong cách đ
 `<button type="button">` có `aria-label`; tab đã theo đúng khuôn ARIA với roving
 `tabindex` ([lib/tabs.js](public/lib/tabs.js)); mọi cột chart và ô có tooltip đều
 `tabindex="0"` kèm `aria-label`. Phần còn thiếu thật chỉ là hai nút trong ngăn kéo
-([views/overview.js:268](public/views/overview.js:268) và
-[:392](public/views/overview.js:392)) chưa ghi `type="button"` — đã thêm.
+([views/overview.js:268](public/views/overview.js#L268) và
+[:392](public/views/overview.js#L392)) chưa ghi `type="button"` — đã thêm.
 
 Đo trên trang thật, quét cả bảy màn bằng script trong trình duyệt: **316 thứ bấm được /
 647 chỗ Tab dừng · 0 thứ bấm được mà bàn phím không tới · 0 chỗ Tab dừng mà không có
 tên.** Ngoại lệ DUY NHẤT là `article.quest` — bấm cả thẻ để mở board, cố ý không phải
 `role=button` vì trong thẻ đã có ba nút, mà nút lồng nút thì trình đọc màn hình đọc ra
 một mớ vô nghĩa; lối vào cho bàn phím là nút "xem board đầy đủ" ở cuối thẻ. Lý do đầy đủ
-nằm ngay trên chỗ dựng thẻ, [views/overview.js:97](public/views/overview.js:97).
+nằm ngay trên chỗ dựng thẻ, [views/overview.js:97](public/views/overview.js#L97).
 
 ---
 
@@ -416,7 +428,7 @@ Node có sẵn `node:test`, giữ nguyên được lời hứa zero-dep. Thứ t
 
 1. `doneByDay()` / `coverage()` — chính là `B2`, và là chỗ dễ nói dối nhất.
 2. Phát hiện phiên sống — `procStart` (UTC) đối `ps lstart` (giờ máy), cái bẫy **đã sập một
-   lần rồi** ([src/collect/sessions.js:31](src/collect/sessions.js:31)).
+   lần rồi** ([src/collect/sessions.js:31](src/collect/sessions.js#L31)).
 3. `validateNow()` — đang chép tay luật của `now.schema.json`; hai bên lệch nhau lúc nào
    không ai biết.
 4. `scaleFor()`, `integrity()`, `streak()` — thuần hàm, test rẻ.
@@ -498,7 +510,7 @@ còn nằm trong cây tiến trình của Claude.app nữa.
 
 ### `B13` — `run()` nuốt mọi lỗi, nên "không phải repo" và "git hỏng" trông y hệt nhau
 
-**Bằng chứng:** [src/lib/sh.js:7](src/lib/sh.js:7) trả chuỗi rỗng cho **mọi** thất bại —
+**Bằng chứng:** [src/lib/sh.js:7](src/lib/sh.js#L7) trả chuỗi rỗng cho **mọi** thất bại —
 timeout 4 giây, không có `git`, không đủ quyền, repo hỏng. Lên tới giao diện tất cả thành
 một dòng "chưa phải repo git". Đúng tinh thần "một repo hỏng không được làm sập cả trang",
 nhưng khi thật sự có gì đó hỏng thì không có đường nào lần ra.
@@ -552,8 +564,8 @@ mới cần.
 **322,6 KB**. Mổ theo khoá: `projects` 76,5 · `usage` 56,2 · `antigravity` 42,5 ·
 `unassignedConvos` 35,8 KB. Phát hiện mới: phiên và hội thoại bị serialize **hai lần** —
 cùng object nằm ở `state.sessions` *và* `projects[].sessions`
-([src/state.js:249](src/state.js:249)), hội thoại nằm ở `antigravity.convos` *và*
-`projects[].convos`/`unassignedConvos` ([src/state.js:264](src/state.js:264)) — cỡ ~11%
+([src/state.js:249](src/state.js#L249)), hội thoại nằm ở `antigravity.convos` *và*
+`projects[].convos`/`unassignedConvos` ([src/state.js:264](src/state.js#L264)) — cỡ ~11%
 payload là hàng đúp. Phía nhận vẫn khoẻ (parse 2,4 ms) nên giữ nguyên ưu tiên thấp; nhưng
 nếu đụng tới thì bước một rẻ nhất là bỏ hàng đúp bằng tham chiếu id (ước −15% payload),
 TRƯỚC khi nghĩ tới `/api/project/<id>` như đặc tả gốc.
@@ -611,7 +623,7 @@ quét lần đầu…" ở chỗ khối tóm tắt, và bỏ chữ `đang nói..
 thứ còn lại đúng là khung rỗng.
 
 Làm rồi mới lộ ra ca nặng hơn cả cái đã ghi: `setPulse` **giấu dải cảnh báo mất kết nối
-khi chưa có `app.state`** ([app.js:132](public/app.js:132) — `hidden = ok || !app.state`).
+khi chưa có `app.state`** ([app.js:132](public/app.js#L132) — `hidden = ok || !app.state`).
 Nghĩa là server không chạy thì trang đứng **trắng vĩnh viễn**, không một chữ nào, không
 phải chỉ trống 4 giây. Nên có ba câu chứ không phải một, phân biệt bằng `/api/ping`:
 

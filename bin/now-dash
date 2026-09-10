@@ -6,10 +6,11 @@
 # cái cửa sổ đã đẻ ra nó. Giờ chỉ có MỘT nơi được phép dựng server: LaunchAgent
 # io.github.archi-ai-labs.now-dash — nó treo thẳng dưới launchd, không dưới ai khác.
 #
-# `--no-open` chỉ dựng server rồi thoát, không mở gì cả. Đó là chế độ dành cho
-# `app/launcher.sh` (thân của app trên Dock): nó phải mở WEB APP chứ không phải tab
-# trình duyệt mặc định, nhưng phần dựng server thì phải dùng lại đúng bản này — hai
-# bản của cùng một logic là hai bản sẽ trôi khỏi nhau.
+# `--no-open` chỉ dựng server rồi thoát, không mở gì cả. Đó là chế độ dành cho app trên
+# thanh menu (`ensureServer` trong app/NowMenuBar.swift gọi đúng cờ này): nó phải mở WEB
+# APP chứ không phải tab trình duyệt mặc định, nhưng phần dựng server thì phải dùng lại
+# đúng bản này, vì hai bản của cùng một logic là hai bản sẽ trôi khỏi nhau. Chú thích cũ
+# ở đây trỏ vào `app/launcher.sh`, một file đã bị bỏ từ lượt dựng app native.
 #
 # `upgrade` nâng bản ĐÃ CÀI lên bản mới nhất: pull rồi tự biết lượt pull này đòi gì —
 # dựng lại app (swiftc) hay chỉ restart service. Xem khối của nó ở dưới.
