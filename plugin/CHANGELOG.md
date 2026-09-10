@@ -7,11 +7,60 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-09-10
+
+The read path stops writing, and three rules that only worked on one machine
+were corrected against what the machine actually does.
+
+### Fixed
+
+- **`/now-board:now` no longer writes anything.** It used to run `update` on your
+  behalf whenever the board had drifted past five commits or three days, and
+  create a board from scratch in a repo that had none, which meant the command
+  documented as read-only rewrote `NOW.json`, re-rendered `NOW.md` and appended to
+  `.gitignore`. On a real machine that was not an edge case: eight of nine boards
+  measured were over the threshold, so the read path was the write path. It now
+  prints one stale line and stops. This is also what unblocks a Claude-invocable
+  read-only skill, which could never have been split out while the read path wrote.
+- **Drift is measured with the marker checked first.** `git log <sha>..HEAD | wc -l`
+  answers confidently when it should not: a marker no longer in history (a rebase,
+  a `filter-repo`) counts the entire branch, and a marker that is not a SHA at all
+  sends `git` to stderr and leaves `wc -l` counting an empty stdout as zero, which
+  reads as "not drifted". Three of nine boards on the author's machine hit one of
+  those two. The skill now runs `git cat-file -e` and `git merge-base --is-ancestor`
+  before counting, and falls back to the date alone under the same name the
+  dashboard already uses for it, `unknownCommit`.
+- **The transcript directory is resolved the way Claude Code names it.** Session
+  names for `sideTracks` were looked up under `$(pwd | sed 's|/|-|g')`, but Claude
+  Code replaces *every* non-alphanumeric character, not just the slash. A repo
+  called `now_dashboard` therefore looked in a directory that does not exist, the
+  `cd` failed, and the whole "two ways back into that session" block came out empty
+  with nothing said. It now substitutes `[^A-Za-z0-9]` and prints the path it tried.
+- **Nothing is installed on your machine.** "Use `jsonschema` if available" was
+  loose enough that one run resolved it by shelling out to `pip3 install jsonschema`
+  mid-update, which contradicts the promise that the skill only writes inside your
+  repo. The check is now one fixed probe with a documented built-in fallback, and
+  exceeding a `maxItems` ceiling warns instead of refusing to write: a long board is
+  a real board, but a board that fails to save is twenty minutes gone.
+
 ### Changed
 
 - `/now-dash` finds the installed dashboard by the LaunchAgent's new public label
   `io.github.archi-ai-labs.now-dash` (renamed from the author-personal
   `dev.hoanluu.now-dash`; the dashboard's `install-app` migrates old installs).
+  Shipped in the repo on 8 Aug but never released, so every installed copy kept
+  probing the old label, concluded nothing was installed, and would have offered to
+  clone a second one right next to the first.
+- **The claim that a project-local skill overrides the plugin was wrong**, and wrong
+  in the most expensive direction: it sent people to edit a copy that never loads.
+  Measured on a repo carrying both, ten out of ten loads resolved to the personal
+  copy in `~/.claude/skills/now/`. The skill now says to keep exactly one copy and
+  to flag duplicates rather than guess which one wins.
+- `all` scans `NOW_ROOTS` (comma-separated, defaulting to `~/Projects`) instead of a
+  hard-coded `~/Projects`, which is the same variable the dashboard reads. A board
+  outside that path used to show up on the dashboard while staying invisible to the
+  skill that writes boards. Its "repos with recent commits and no board" step, which
+  was prose where every other step was a command, is now a command.
 
 ## [0.2.0] — 2026-08-05
 
@@ -62,6 +111,7 @@ First release. Extracted from a personal skill that lived in
 - The schema is resolved from `${CLAUDE_PLUGIN_ROOT}`, not from a hard-coded
   `~/.claude/skills/now/` path that does not exist for an installed plugin.
 
-[Unreleased]: https://github.com/archi-ai-labs/now/compare/now-board--v0.2.0...HEAD
+[Unreleased]: https://github.com/archi-ai-labs/now/compare/now-board--v0.2.1...HEAD
+[0.2.1]: https://github.com/archi-ai-labs/now/releases/tag/now-board--v0.2.1
 [0.2.0]: https://github.com/archi-ai-labs/now/releases/tag/now-board--v0.2.0
 [0.1.0]: https://github.com/archi-ai-labs/now-board/releases/tag/v0.1.0

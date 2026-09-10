@@ -140,9 +140,17 @@ One skill, three modes — the mode is the word you type after it:
 
 | Command | What it does | Writes files |
 |---|---|---|
-| `/now-board:now` | Print this repo's board, then measure how far it has drifted from `git` | No |
+| `/now-board:now` | Print this repo's board, then measure how far it has drifted from `git` | **No** |
 | `/now-board:now update` | Rewrite `NOW.json` and re-render `NOW.md` from what you're actually doing | Yes |
-| `/now-board:now all` | Scan every `NOW.json` under `~/Projects` and print one table across projects | No |
+| `/now-board:now all` | Scan every `NOW.json` under your project roots and print one table across projects | No |
+
+That **No** on the first row is now literally true. Until 0.2.1 the read path
+quietly ran `update` for you whenever the board had drifted more than five
+commits or three days, which on a real machine is almost always: eight of nine
+boards measured were over that line. So the command documented as read-only
+rewrote two files and appended to `.gitignore`. It now prints one line telling
+you the board is stale and stops, and a repo with no board gets a sentence
+rather than a board you did not ask for.
 
 **Typical flow:** `now` when you sit down → work → `now update` before you leave.
 
@@ -160,8 +168,12 @@ not thrift for its own sake — the skill writes files, and a plugin's frontmatt
 cannot be overridden by the person who installed it, so the write path stays
 behind an explicit ask.
 
-Nothing here reads a board that is not yours: `all` looks under `~/Projects` only,
-and every mode writes only inside the repo you ran it in.
+Nothing here reads a board that is not yours: `all` looks under `NOW_ROOTS`
+(defaulting to `~/Projects`, and the same variable the dashboard reads), and the
+only mode that writes anything is `update`, which writes only inside the repo you
+ran it in. It installs nothing on your machine: schema validation uses `jsonschema`
+if your Python already has it and a built-in check if not, and never `pip install`s
+its way there.
 
 ---
 
@@ -322,19 +334,34 @@ can get it and how a consumer finds the schema.
 
 ## 🗺️ Roadmap
 
-- **An English board.** The skill's prose and every heading it renders are
-  Vietnamese, which makes it useful to exactly one reader today. The blocker is
-  not translation effort — it is that several of the rules in `SKILL.md` are
-  phrased as much to rule out a specific past mistake as to state a rule, and a
-  literal translation would keep the sentence while losing the reason. That work
-  is a rewrite, and it should be done as one.
-- **A read-only mode Claude may reach for.** Today the whole skill is closed
-  because one of its three modes writes. Splitting the read path into a second
-  skill with `disallowed-tools: Write Edit` would let Claude answer "where was I"
-  without being asked — the same trade `trim-kit` makes between `status` and
-  `apply`. It costs the always-on measurement above, which is why it is a
-  decision rather than a cleanup.
-- **A schema a stranger can validate against.** `schemaVersion: 1` is stable and
-  documented, but nothing publishes it outside this repo. Anything that wants to
-  read boards has to vendor a copy, which is the exact problem this plugin was
-  extracted to end.
+These are in dependency order, and the order is the point: the first two were
+attempted in the wrong sequence once already.
+
+1. **Rules a stranger can actually follow.** `SKILL.md` still carries three rules
+   that only resolve on the author's machine: a session `heartbeat` file that
+   belongs to a private harness, an `.agent-harness.json` key two repos have, and
+   a couple of paragraphs that narrate a past incident instead of stating the
+   rule it produced. Installing the plugin today hands you instructions you cannot
+   execute, and a model asked to follow them will invent something plausible each
+   time. This has to go first, because it is also what makes the English rewrite
+   below a rewrite rather than a translation.
+2. **A schema a stranger can validate against.** `schemaVersion: 1` is stable and
+   documented, but nothing publishes it outside this repo, so anything that wants
+   to read boards vendors a copy. That is the exact problem this plugin was
+   extracted to end. The fix is a URL: publish the file, make `$id` that URL, and
+   point both the dashboard and the seed prompt at it. Worth doing together with a
+   zero-dependency validator shipped in the plugin, so the writer here and every
+   reader elsewhere agree on one implementation and not just one file.
+3. **A read-only mode Claude may reach for.** Splitting the read path into a
+   second skill with `disallowed-tools: Write Edit` lets Claude answer "where was
+   I" without being asked, the same trade `trim-kit` makes between `status` and
+   `apply`. This was blocked until 0.2.1 for a reason worth remembering: the read
+   path wrote files, so a skill declaring it could not write would have failed on
+   its first drifted board. It costs the 0-token measurement above, which is why
+   it stays a decision rather than a cleanup.
+4. **An English board.** The skill's prose and every heading it renders are
+   Vietnamese, which makes it useful to exactly one reader today. The blocker was
+   never translation effort. Several rules in `SKILL.md` are phrased as much to
+   rule out a specific past mistake as to state a rule, and a literal translation
+   keeps the sentence while losing the reason. After step 1 there is less of that
+   left to lose, which is why this comes last rather than first.

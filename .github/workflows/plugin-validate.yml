@@ -69,7 +69,14 @@ jobs:
       # If the file is ever moved or renamed, that instruction becomes a dead path
       # that only fails on a user's machine, at write time, after the board is gone.
       - name: Schema sits where SKILL.md says it does
-        run: test -f skills/now/now.schema.json
+        run: |
+          # Hai nửa của một câu, và bước cũ chỉ kiểm nửa sau. `test -f` khẳng định file có
+          # mặt, nhưng thứ hỏng trên máy người dùng là khi SKILL.md trỏ đi CHỖ KHÁC — đổi
+          # đường dẫn trong văn bản mà quên file, hoặc ngược lại, đều đi qua bước cũ.
+          test -f skills/now/now.schema.json
+          grep -q 'skills/now/now.schema.json' skills/now/SKILL.md \
+            || { echo "::error::SKILL.md không còn trỏ vào skills/now/now.schema.json"; exit 1; }
+          echo "OK — file có mặt và SKILL.md trỏ đúng vào nó"
 
       - name: Install Claude Code CLI
         run: npm install -g @anthropic-ai/claude-code

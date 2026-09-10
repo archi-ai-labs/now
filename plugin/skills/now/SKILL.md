@@ -6,9 +6,14 @@ disable-model-invocation: true
 
 # NOW board
 
-Chống "stun" khi context-switch giữa nhiều dự án. Repo nào có skill `now` riêng trong
-`.claude/skills/` thì bản đó **thắng** (project override) — bản plugin này là fallback
-cho repo chưa port harness, cộng thêm chế độ `all`.
+Chống "stun" khi context-switch giữa nhiều dự án.
+
+**Chỉ nên có MỘT bản skill `now` trên máy, và bản ấy nên là plugin này.** Đo trên máy tác
+giả 8/2026: một repo vừa có `.claude/skills/now/` riêng vừa có bản cá nhân ở
+`~/.claude/skills/now/` thì 10/10 lượt nạp đều rơi vào bản cá nhân, tức bản trong repo
+là mã chết mà ai đọc cũng tưởng đang chạy. Câu "project override thắng" ở bản trước là
+sai, và nó sai theo kiểu tốn công nhất: người ta sửa bản không được nạp. Thấy bản trùng
+thì báo user xoá bớt, đừng đoán bản nào đang thắng.
 
 ## Mô hình dữ liệu (contract chung mọi dự án)
 
@@ -28,7 +33,38 @@ sự thật.
 
 ## Không tham số — xem (repo hiện tại)
 
-Read `NOW.json` (thiếu → chạy `update` tạo lần đầu) → đo drift (`git log <updatedAtCommit>..HEAD`, `git status`, docs/journal mới hơn stamp) → quét worktree (dưới) → in dashboard đúng thứ tự section → drift đáng kể (≥5 commit / >3 ngày) thì tự update rồi in bản mới.
+**Chế độ này KHÔNG ghi file nào.** Không `NOW.json`, không `NOW.md`, không `.gitignore`.
+Đây là ranh giới của skill chứ không phải thói quen: người gõ một lệnh xem mà nhận về một
+lượt ghi là người mất quyền quyết định lúc nào board đổi. Muốn ghi thì gõ `update`.
+
+Read `NOW.json` → đo drift (dưới) → quét worktree (dưới) → in dashboard đúng thứ tự section.
+
+- **Thiếu `NOW.json`**: in đúng một câu "repo này chưa có board, chạy `update` để tạo" rồi
+  dừng. Không tự tạo.
+- **Drift đáng kể** (≥5 commit **HOẶC** >3 ngày, không phải cả hai): in một dòng
+  `⚠️ board lệch N commit / M ngày — chạy \`update\` để làm mới` ở ngay dưới stamp. In xong
+  là hết việc, không tự update.
+
+**Đo drift — kiểm mốc TRƯỚC khi đếm.** `git log <sha>..HEAD | wc -l` không có lưới đỡ sẽ
+trả số vô nghĩa mà trông vẫn như số thật: mốc không còn trong lịch sử (repo bị rebase hay
+filter-repo) cho ra **toàn bộ** số commit của nhánh, còn mốc không phải SHA làm `git` lỗi
+ra stderr và `wc -l` đọc stdout rỗng thành **0**, tức "không lệch". Đo trên 9 board thật
+9/2026: 3 board rơi vào hai ca này. Nên đi đúng ba bước:
+
+```bash
+sha=$(python3 -c 'import json;print(json.load(open("NOW.json")).get("updatedAtCommit",""))')
+case "$sha" in
+  *[!0-9a-fA-F]*|"") echo "unknown-commit: mốc không phải SHA" ;;
+  *) git cat-file -e "$sha^{commit}" 2>/dev/null \
+       && git merge-base --is-ancestor "$sha" HEAD 2>/dev/null \
+       && git rev-list --count "$sha..HEAD" \
+       || echo "unknown-commit: mốc không còn trong lịch sử" ;;
+esac
+```
+
+`unknown-commit` thì **chỉ dùng `updatedAt`** để nói tuổi board, và in thêm một dòng nói rõ
+mốc commit không dùng được. Dashboard gọi tình trạng này là `unknownCommit`; skill nói cùng
+một từ để hai bên không mô tả cùng một thứ bằng hai cái tên.
 
 **Quét worktree (luôn chạy, không lưu vào JSON — dữ liệu này stale rất nhanh):** `git worktree list --porcelain`. Có worktree phụ (ngoài cái đầu tiên = repo chính) → in ngay dưới `🗂 Hiện trạng repo` một dòng `🌳 Worktree phụ:` rồi mỗi cái một mục `<path> · <nhánh|detached> · N file chưa commit`, kèm cờ:
 - ⚠️ path nằm trong `/tmp` hoặc `/private/tmp` — **mất khi reboot máy**; gợi ý `git worktree move <cũ> <mới>`.
@@ -42,7 +78,21 @@ Entry mồ côi (thư mục không còn) → gợi ý `git worktree prune`. Khô
 - `waitingOn` giữ nguyên mục cũ trừ khi có bằng chứng xong. Đổi `focus.title` chỉ khi có bằng chứng rõ.
 - `sideTracks[].owner` = `"<tên phiên>" · <uuid đầy đủ>` (cách lấy + lý do: mục "Định danh phiên" dưới); phiên đã chết + việc đã xong thì bỏ khỏi `sideTracks`.
 - `resume.workingState` phải phản ánh **cả worktree phụ**, không chỉ nhánh repo chính — vd `dev-ready sạch · 2 worktree phụ: wt-b8 (detached, /tmp ⚠️), wt-b7split (sync/b7-crons, 3 file chưa commit)`. Đây là chỗ duy nhất worktree được ghi xuống file, để người đọc `NOW.md` mà không chạy Claude vẫn biết chúng tồn tại.
-- Ghi `NOW.json` → validate theo schema (đường dẫn ở "Tìm file schema" dưới; dùng `jsonschema` nếu có, fallback: check required + không key lạ + focus đủ title/nextAction/confidence) → render `NOW.md` cùng lượt.
+- Ghi `NOW.json` → validate theo schema (đường dẫn ở "Tìm file schema" dưới) → render
+  `NOW.md` cùng lượt.
+- **Validate: KHÔNG cài gói nào lên máy user.** Đã có lượt skill tự chạy `pip3 install
+  jsonschema` giữa chừng (27/7), trái với lời hứa "chỉ ghi trong repo bạn gõ lệnh". Dùng
+  đúng một lệnh thử, có thì dùng, không thì rơi về bản kiểm tay:
+
+  ```bash
+  python3 -c 'import jsonschema' 2>/dev/null && echo has-jsonschema || echo fallback
+  ```
+
+  Bản kiểm tay tối thiểu: đủ 7 field `required` ở gốc, `focus` đủ `title`/`context`/
+  `nextAction`/`resume`/`confidence`, không có key lạ ở gốc, `updatedAt` dạng `YYYY-MM-DD`,
+  `updatedAtCommit` khớp `^[0-9a-fA-F]{7,40}$`, và mọi field danh sách đúng là mảng. Vượt
+  `maxItems` thì **cảnh báo rồi vẫn ghi**, đừng chặn: một board dài là board thật, còn một
+  board không ghi được là hai mươi phút mất trắng.
 - Repo chưa có NOW: tạo 2 file + **append `NOW.json`/`NOW.md` vào `.gitignore`**; repo có `.agent-harness.json` thì thêm `"nowFile": "NOW.json"` + NOW vào `sharedStateFiles`.
 - **Bẫy: repo deploy bằng Vercel CLI trên macOS.** Filesystem không phân biệt hoa/thường nên `NOW.json` ở gốc bị CLI đọc thành `now.json` — file cấu hình đã khai tử — và nó **dừng deploy**: ``Error: The `now.json` file is deprecated``. `.vercelignore` KHÔNG cứu được (CLI dò config trước khi lọc file). Cách đã kiểm chứng (2026-07-23, repo `mix-color-game-app`): script deploy tạm `mv NOW.json .now-board-hidden.json` quanh lệnh `npx vercel`, trả lại bằng `trap … EXIT` kể cả khi lỗi. Tạo NOW board ở repo có thư mục `.vercel/` thì **vá script deploy ngay trong cùng lượt**, đừng để user gặp lỗi lúc đang phát hành.
 - User nói `chốt <id>: …` → ghi vào docs nguồn của repo trước, rồi bỏ mục khỏi `decisionsNeeded`.
@@ -62,10 +112,15 @@ Không có file schema thì **dừng lại hỏi user**, đừng tự chế sche
 
 Id 8 ký tự (thứ SessionStart hook in ra) **không quay lại phiên được**: picker và panel search theo **tên phiên**, `--resume` đòi **UUID đủ 36 ký tự**. Nên `sideTracks[].owner` phải chứa **cả hai**: `"<tên phiên>" · <uuid đầy đủ>`.
 
-Lấy hai thứ đó từ transcript — tên nằm ở `customTitle` (user đặt) hoặc `aiTitle` (Claude tự đặt), uuid là tên file:
+Lấy hai thứ đó từ transcript. Tên nằm ở `customTitle` (user đặt) hoặc `aiTitle` (Claude tự
+đặt), còn uuid là tên file. Claude Code đổi **mọi** ký tự không phải chữ và số trong đường
+dẫn thành `-` khi đặt tên thư mục transcript, nên phép thay phải là `[^A-Za-z0-9]` chứ
+không phải mỗi dấu `/`: repo tên `now_dashboard` từng rơi đúng bẫy này và cả khối
+`sideTracks` im lặng rỗng. `cd` thất bại thì in đường dẫn đã tính ra cho user thấy, đừng
+bỏ qua trong im lặng:
 
 ```bash
-cd ~/.claude/projects/$(pwd | sed 's|/|-|g') && python3 - <<'EOF'
+cd ~/.claude/projects/$(pwd | sed 's|[^A-Za-z0-9]|-|g') && python3 - <<'EOF'
 import json,glob
 for p in glob.glob("*.jsonl"):
     ai=cu=last=None
@@ -102,8 +157,22 @@ Header: `# NOW — <project>` → blockquote cách dùng (đọc từ trên xu�
 
 ## `all` — toàn cảnh mọi dự án
 
-1. `find ~/Projects -maxdepth 3 -name NOW.json -not -path "*/node_modules/*" 2>/dev/null`.
-2. Mỗi file: đọc JSON; staleness = `git -C <dir> log --oneline <updatedAtCommit>..HEAD | wc -l` (repo lỗi git → chỉ dùng `updatedAt`).
+0. Gốc quét lấy từ `NOW_ROOTS` (danh sách ngăn bằng dấu phẩy), mặc định `~/Projects` khi
+   biến vắng mặt. Dashboard đọc đúng biến này, nên board nằm ngoài `~/Projects` hiện trên
+   dashboard mà vô hình với `all` là một lệch không đáng có.
+1. `find "$root" -maxdepth 3 -name NOW.json -not -path "*/node_modules/*" 2>/dev/null` cho từng gốc.
+2. Mỗi file: đọc JSON; staleness đo bằng **đúng ba bước kiểm mốc** ở chế độ xem trên. Mốc
+   hỏng thì cột `Cập nhật` ghi `<ngày> · mốc ?`, đừng in một số đếm không có nghĩa.
 3. Bảng tổng, sort stale/nóng nhất lên đầu: | Dự án | Đang làm | → Next action | 🤔 | ⏳ | Cập nhật | — cột `Dự án` thêm hậu tố `+N wt` nếu `git -C <dir> worktree list` trả về worktree phụ (`+N wt ⚠️` khi có cái nằm trong `/tmp` hoặc còn file chưa commit).
 4. Dưới bảng: gom mọi `decisionsNeeded` các dự án (heat 🔥 trước) thành "Cần quyết xuyên dự án" — title + project + blocks.
-5. Repo trong `~/Projects` có commit 14 ngày gần đây mà không có `NOW.json` → liệt kê "(chưa có NOW board)" để user biết mà seed.
+5. Repo có commit trong 14 ngày gần đây mà không có `NOW.json` → liệt kê "(chưa có NOW
+   board)" để user biết mà seed. Dùng đúng lệnh này để lần nào cũng ra cùng một danh sách:
+
+   ```bash
+   for d in "$root"/*/*/; do
+     [ -d "$d/.git" ] || continue
+     [ -f "$d/NOW.json" ] && continue
+     n=$(git -C "$d" log --oneline --since='14 days ago' 2>/dev/null | wc -l | tr -d ' ')
+     [ "$n" -gt 0 ] && echo "$d ($n commit)"
+   done
+   ```
