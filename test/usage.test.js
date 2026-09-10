@@ -67,21 +67,82 @@ test('thiếu requestId thì lùi về uuid — nếu không là mất hẳn hà
 
 /* ── Ngày địa phương ──────────────────────────────────────────────────────── */
 
+/**
+ * Ngày địa phương của một mốc, dựng bằng bảng múi giờ của ICU thông qua `Intl`.
+ *
+ * Vế mong đợi phải được tính bằng một đường KHÁC với thân hàm đang kiểm. Nếu nó cũng đi
+ * qua `getFullYear`/`getMonth`/`getDate` rồi `padStart` y như `localDay` thì hai bên
+ * hỏng giống hệt nhau vẫn bằng nhau, và bài test chỉ còn là bản chép lại code.
+ * Dùng `formatToParts` chứ không dùng `format`, vì mẫu hiển thị đổi theo locale còn tên
+ * từng phần thì không, nhờ vậy máy nào cũng ghép ra đúng dạng YYYY-MM-DD.
+ */
+const dayByIntl = (iso) => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(Date.parse(iso)));
+  const part = (type) => parts.find((p) => p.type === type).value;
+  return `${part('year')}-${part('month')}-${part('day')}`;
+};
+
+/**
+ * Số phút mà múi giờ đang chạy đi TRƯỚC UTC, tính ngay tại mốc được hỏi.
+ *
+ * `getTimezoneOffset` trả về số phút phải cộng vào giờ địa phương để ra UTC, nên dấu
+ * của nó ngược với cách người ta đọc "UTC+7". Đảo dấu ở đây để phần dưới còn đọc được.
+ * Phải hỏi tại đúng mốc chứ không hỏi `new Date()`, vì máy có thể đang trong mùa hè
+ * còn mốc thì không, hoặc ngược lại ở nam bán cầu.
+ */
+const aheadOfUtcMinutes = (iso) => -new Date(Date.parse(iso)).getTimezoneOffset();
+
 test('timestamp UTC được quy về ngày ĐỊA PHƯƠNG, không cắt chuỗi', () => {
   // 2026-07-25T20:30Z ở UTC+7 đã là 26/07 lúc 03:30 sáng. Cắt mười ký tự đầu
-  // cho ra 25/07 — tức là dồn nhầm cả buổi sáng sang ngày hôm trước.
+  // cho ra 25/07, tức là dồn nhầm cả buổi sáng sang ngày hôm trước.
   const iso = '2026-07-25T20:30:00.000Z';
-  const expected = new Date(Date.parse(iso));
-  const want = `${expected.getFullYear()}-${String(expected.getMonth() + 1).padStart(2, '0')}-${String(expected.getDate()).padStart(2, '0')}`;
-  assert.equal(localDay(iso), want);
-  if (new Date().getTimezoneOffset() !== 0) {
-    assert.notEqual(localDay(iso), iso.slice(0, 10), 'ngoài UTC thì cắt chuỗi phải cho kết quả KHÁC — đó là cả lý do hàm này tồn tại');
+  assert.equal(localDay(iso), dayByIntl(iso));
+
+  // Cặp assert dưới đây là phần khoá được ở UTC, tức ở cả bốn phiên bản Node của job
+  // `test`. Hàm nhận vào một KHOẢNH KHẮC chứ không phải một chuỗi, nên cùng một khoảnh
+  // khắc viết theo hai offset phải cho ra cùng một ngày. Bản cắt chuỗi chỉ đọc phần chữ
+  // trước chữ T, vì vậy nó lệch đúng một ngày ở mọi múi giờ, kể cả UTC nơi hai mốc Z của
+  // nhánh dưới không tài nào lệch được.
+  const sameInstant = '2026-07-26T03:30:00+07:00';
+  assert.equal(
+    localDay(sameInstant),
+    localDay(iso),
+    'cùng một khoảnh khắc viết theo hai offset phải ra cùng một ngày, vì hàm quy đổi mốc chứ không cắt chuỗi',
+  );
+  assert.equal(localDay(sameInstant), dayByIntl(iso));
+
+  // Mốc 20:30Z chỉ rơi sang ngày khác khi máy chạy ở offset từ +3:30 trở lên, nên
+  // assert thẳng `notEqual` trên nó là ép cả châu Âu lẫn châu Mỹ phải đỏ. Repo đã
+  // public, người clone ở múi giờ nào cũng phải chạy được, vì vậy mốc chứng minh
+  // được dựng theo offset đang chạy: máy đi trước UTC thì lấy giờ cuối ngày UTC,
+  // máy đi sau thì lấy giờ đầu ngày UTC. Ở đúng UTC thì không mốc Z nào lệch được
+  // nên nhánh này nghỉ, và phần khoá cho UTC đã nằm ở assert ngay bên trên.
+  const lastMinute = '2026-07-25T23:59:00.000Z';
+  const firstMinute = '2026-07-25T00:00:00.000Z';
+  const probe =
+    aheadOfUtcMinutes(lastMinute) > 0 ? lastMinute : aheadOfUtcMinutes(firstMinute) < 0 ? firstMinute : null;
+
+  if (probe) {
+    assert.equal(localDay(probe), dayByIntl(probe));
+    assert.notEqual(
+      localDay(probe),
+      probe.slice(0, 10),
+      'ngoài UTC thì cắt chuỗi phải cho kết quả khác, vì đó là cả lý do hàm này tồn tại',
+    );
   }
 });
 
 test('mốc thời gian rác trả null chứ không NaN', () => {
   assert.equal(localDay('không phải ngày'), null);
   assert.equal(localDay(undefined), null);
+  // Ngày 32 tháng 7 không tồn tại nên `Date.parse` trả NaN, trong khi mười ký tự đầu
+  // vẫn đủ hình dạng một ngày. Ca này khoá rằng cửa vào là phép parse thật chứ không
+  // phải phép nhìn mặt chuỗi, vì bản cắt chuỗi sẽ trả ra "2026-07-32" thay cho null.
+  assert.equal(localDay('2026-07-32T10:00:00.000Z'), null);
 });
 
 /* ── Chữ ký đầu vào (điều kiện dùng lại cache) ────────────────────────────── */

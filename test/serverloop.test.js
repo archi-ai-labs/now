@@ -40,8 +40,8 @@ test('nhịp quét không đụng gì tới lớp trò chơi', () => {
 
 test('mốc nghỉ có hẹn giờ riêng, chu kỳ cố định', () => {
   const after = SRC.slice(SRC.indexOf('\nscheduleScan();'));
-  assert.ok(after.includes('withPet'), 'mốc nghỉ phải nằm NGOÀI nhịp quét');
-  assert.ok(/setInterval\([\s\S]{0,200}?withPet[\s\S]{0,200}?\}, PET_MS\)/.test(after), 'mốc nghỉ phải chạy theo PET_MS');
+  assert.ok(after.includes('petTick'), 'mốc nghỉ phải nằm NGOÀI nhịp quét');
+  assert.ok(/setInterval\([\s\S]{0,200}?petTick[\s\S]{0,200}?\}, PET_MS\)/.test(after), 'mốc nghỉ phải chạy theo PET_MS');
   assert.match(SRC, /const PET_MS = 30_000;/, 'mốc nghỉ giữ 30 giây — không giãn theo số tab');
 });
 
@@ -67,4 +67,73 @@ test('lúc vắng người xem thì nhịp thưa hơn, và cả hai số đều 
   assert.equal(watched, 30_000, 'có người xem thì giữ nhịp 30 giây như cũ');
   assert.equal(idle, 60_000, 'không ai xem thì 1 phút');
   assert.ok(idle > watched, 'giãn nhịp mà lại dày hơn thì cả mục này vô nghĩa');
+});
+
+/* ── Một lượt nền của lớp trò chơi ────────────────────────────────────────────
+   Mấy bài trên so chuỗi, và chuỗi thì không bắt được lỗi đắt nhất của nhịp này: `petTick`
+   gọi ĐÚNG những cửa nào. Bản trước đi `getState` nên mỗi 30 giây ép một `buildState`
+   325–1614 ms, mà `npm test` vẫn xanh y hệt.
+
+   Nên ở đây cắt lấy thân hàm rồi CHẠY THẬT nó với ba cửa giả, đếm số lượt gọi. Vẫn không
+   import `server.js` (nạp file đó là mở cổng và hẹn giờ thật), nhưng thứ chạy là đúng mã
+   đang ship chứ không phải một bản chép lại.
+
+   Hàm chỉ nhận đúng ba tên: `peekState`, `readLedger`, `withPet`. Chạm vào tên thứ tư —
+   `getState` chẳng hạn — là ReferenceError, và đó chính là phép kiểm. */
+
+/** Thân hàm `petTick` cắt từ mã nguồn, dựng lại thành một hàm gọi được. */
+function loadPetTick({ peekState, readLedger, withPet }) {
+  const from = SRC.indexOf('async function petTick()');
+  assert.ok(from > 0, 'không thấy `async function petTick()` — test này đã lạc khỏi mã');
+  const to = SRC.indexOf('\n}\n', from) + 2;
+  assert.ok(to > from, 'không thấy chỗ đóng của `petTick`');
+  const make = new Function('peekState', 'readLedger', 'withPet', `${SRC.slice(from, to)}\nreturn petTick;`);
+  return make(peekState, readLedger, withPet);
+}
+
+/** Ba cửa giả kèm bộ đếm. `cache` là bản trạng thái mà `peekState` sẽ trả. */
+function stubs({ cache = { usage: { ok: true, series: [] } }, ledger = { on: true } } = {}) {
+  const calls = { peek: [], ledger: 0, pet: [] };
+  return {
+    calls,
+    peekState: (opt) => (calls.peek.push(opt), cache),
+    readLedger: async () => (calls.ledger++, ledger),
+    withPet: async (action, opt) => (calls.pet.push(opt), { view: {}, error: null }),
+  };
+}
+
+test('nhịp nền đọc BẢN TRONG TAY, không châm thêm một lượt dựng nào', async () => {
+  const st = stubs();
+  await loadPetTick(st)();
+  assert.equal(st.calls.peek.length, 1, 'phải hỏi đúng một lượt bản cache');
+  assert.equal(st.calls.peek[0].refresh, false, 'thiếu `refresh: false` là peekState tự đi dựng nền');
+  assert.equal(st.calls.peek[0].watched, false, 'nhịp nền không phải người xem, không được kéo theo lượt hỏi hạn mức');
+  assert.equal(st.calls.pet.length, 1);
+  assert.ok(st.calls.pet[0]?.snap, 'phải đưa bản cache vào `withPet`, nếu không nó tự đi `getState`');
+});
+
+test('chưa dựng lượt nào thì bỏ lượt, không đụng tới sổ', async () => {
+  const st = stubs({ cache: null });
+  await loadPetTick(st)();
+  assert.equal(st.calls.ledger, 0, 'chưa có gì để quan sát mà vẫn đọc sổ là việc thừa');
+  assert.equal(st.calls.pet.length, 0);
+});
+
+test('trò chơi tắt: không cộng tiền, không quan sát nghỉ, không ghi đĩa', async () => {
+  const st = stubs({ ledger: { on: false } });
+  await loadPetTick(st)();
+  assert.equal(st.calls.pet.length, 0, 'công tắc tắt mà nhịp nền vẫn chạy thì nó chỉ tắt phần nhìn thấy');
+});
+
+test('sổ chưa có (lần chạy đầu) vẫn dựng được, đừng nhầm với công tắc tắt', async () => {
+  const st = stubs({ ledger: null });
+  await loadPetTick(st)();
+  assert.equal(st.calls.pet.length, 1, 'chưa có sổ là chưa có sổ, không phải đã tắt trò chơi');
+});
+
+test('lượt người dùng bấm vẫn dựng bản mới — chỉ nhịp nền mới đi bằng cache', () => {
+  // `snap` là cửa duy nhất bỏ qua lượt dựng, nên nó chỉ được xuất hiện ở đúng một chỗ gọi.
+  assert.match(SRC, /const state = snap \?\? \(await getState\(\{ watched: false \}\)\);/, 'withPet mặc định vẫn phải tự dựng');
+  const callers = SRC.match(/await withPet\([^)]*snap[^)]*\)/g) ?? [];
+  assert.equal(callers.length, 1, 'chỉ `petTick` được truyền `snap`; cửa nào khác đi bằng cache là mốc nghỉ chốt theo nhịp quét');
 });

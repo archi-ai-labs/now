@@ -38,8 +38,15 @@ function repoFlags(p) {
       : [html`<span class="deb">${t('repo.notRepo')}</span>`];
   }
 
-  out.push(html`<span class="deb">${g.branch}</span>`);
-  if (g.unknownCommit) out.push(html`<span class="deb crit" title="${t('repo.unknownCommitTitle')}">⚠ ${t('repo.unknownCommit')}</span>`);
+  // Repo không đọc được thì `branch` là null, và in thẳng nó ra một pill rỗng — người đọc
+  // thấy một ô trống mà không biết là nhánh không tên hay lượt quét câm.
+  out.push(html`<span class="deb">${g.branch ?? '—'}</span>`);
+  // `degraded` xét trước `unknownCommit` vì cờ sau bật ở cả hai ca, còn chữ thì khác hẳn:
+  // "mốc board mất" là một khẳng định về lịch sử git, chỉ nói được khi đã đọc được repo.
+  // Chưa đọc được thì câu đúng duy nhất là "không đo được" — đúng nhãn `hstatus.unknown`
+  // mà thanh sức khoẻ của chính thẻ này đang hiện.
+  if (g.degraded) out.push(html`<span class="deb crit">⌁ ${healthLabel('unknown')}</span>`);
+  else if (g.unknownCommit) out.push(html`<span class="deb crit" title="${t('repo.unknownCommitTitle')}">⚠ ${t('repo.unknownCommit')}</span>`);
   else if (g.driftCommits > 0) out.push(html`<span class="deb ${g.driftCommits >= 5 ? 'bad' : ''}" title="${t('repo.driftTitle')}">Δ${g.driftCommits}</span>`);
   if (g.dirty > 0) out.push(html`<span class="deb" title="${t('repo.dirtyTitle', { n: g.dirty })}">✗${g.dirty}</span>`);
   if (g.ahead) out.push(html`<span class="deb" title="${t('repo.aheadTitle')}">↑${g.ahead}</span>`);
@@ -272,7 +279,8 @@ export function overviewDrawer(p, thresholds) {
 
     ${p.parseError
       ? html`<div class="sec"><div class="hitem"><span class="ic">✖</span><div class="b">
-          <div class="t">${t('drawer.parseError')}</div><div class="d">${p.parseError}</div></div></div></div>`
+          <div class="t">${p.buildFailed ? t('health.buildFail', { name: p.name }) : t('drawer.parseError')}</div>
+          <div class="d">${p.parseError}</div></div></div></div>`
       : ''}
     ${p.schemaErrors.length
       ? html`<div class="sec">

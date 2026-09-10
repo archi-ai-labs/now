@@ -1,6 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { bumpCycles, bumpWindows, collapseRolling, cyclesOf, packCycles, trailOf, trimCycles, windowsIn } from '../src/collect/quotalog.js';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import {
+  bumpCycles,
+  bumpWindows,
+  collapseRolling,
+  cyclesOf,
+  cyclesTmpPath,
+  packCycles,
+  readCycles,
+  trailOf,
+  trimCycles,
+  windowsIn,
+  writeCycles,
+} from '../src/collect/quotalog.js';
 
 /**
  * Sổ hạn mức theo chu kỳ.
@@ -369,4 +384,94 @@ test('packCycles: bản ghi đã chốt rụng vệt, bản đang chạy và b�
   assert.equal(JSON.stringify(packed['đã chốt']).includes('trail'), false, 'chốt rồi thì vệt không còn việc');
   assert.equal(packed['đang chạy'].trail.length, 1);
   assert.equal(packed['lăn'].trail.length, 1, 'cửa sổ lăn không bao giờ chốt nên vệt phải ở lại');
+});
+
+/* ── Ảnh chụp lặp trên cửa sổ lăn ────────────────────────────────────────────── */
+
+test('cùng một ảnh chụp gấp nhiều lượt vào cửa sổ LĂN không đẻ thêm khoá', () => {
+  // Nhịp production: hạn mức AG fetch 5 phút một lần, sổ được gấp 30 giây một lần, và cả
+  // mười lượt gấp của một ảnh chụp mang đúng một `at`. Lượt đầu gộp vào cửa sổ lăn dưới
+  // khoá CŨ, nên khoá `kind|resetsAt` vẫn trống; lượt thứ hai không khớp `rollsWith` nữa
+  // (`elapsed` bằng 0) và trước khi sửa thì nó mở một khoá mới `samples: 1`. Sáu lượt fetch
+  // ra sáu khoá: một khoá gộp cộng năm khoá rác.
+  const WEEK = 7 * 86400_000;
+  let m = new Map();
+  for (let f = 0; f < 6; f++) {
+    const at = 1000 * H + f * 5 * 60_000;
+    for (let i = 0; i < 10; i++) m = bumpWindows(m, at, agWin('3p-weekly', at + WEEK, 40 + f, WEEK));
+  }
+  assert.equal(m.size, 1, 'sáu ảnh chụp của một cửa sổ đang lăn phải nằm chung một hàng');
+  const [c] = [...m.values()];
+  assert.equal(c.samples, 6, 'samples đếm ảnh chụp, không đếm lượt gấp sổ');
+  assert.equal(c.peak, 45);
+  assert.equal(c.rolling, true);
+});
+
+test('ảnh chụp lặp không đè lên bản ghi đã gộp — đỉnh và vệt giữ nguyên', () => {
+  const WEEK = 7 * 86400_000;
+  const t0 = 1000 * H;
+  const t1 = t0 + 5 * 60_000;
+  let m = bumpWindows(new Map(), t0, agWin('3p-weekly', t0 + WEEK, 70, WEEK));
+  m = bumpWindows(m, t1, agWin('3p-weekly', t1 + WEEK, 88, WEEK));
+  const after = bumpWindows(m, t1, agWin('3p-weekly', t1 + WEEK, 88, WEEK));
+  assert.equal(after, m, 'không có gì mới thì phải trả về CHÍNH map cũ, để khỏi ghi đĩa');
+  const [c] = [...m.values()];
+  assert.equal(c.peak, 88);
+  assert.equal(c.trail.length, 1, 'hai ảnh chụp cách nhau 5 phút nằm chung một ô vệt');
+});
+
+test('ảnh chụp mới thật vẫn mở chu kỳ mới dù lượt gấp trước đã lăn', () => {
+  // Chốt chống-lặp chỉ được ăn ca `at` KHÔNG tiến. Một reset thật tới cùng ảnh chụp mới,
+  // tức `at` lớn hơn, nên nó phải đi lọt.
+  const t0 = 1000 * H;
+  const t1 = t0 + 5 * 60_000;
+  const t2 = t1 + 5 * 60_000;
+  let m = bumpWindows(new Map(), t0, agWin('3p-5h', t0 + FIVE, 95, FIVE));
+  m = bumpWindows(m, t1, agWin('3p-5h', t1 + FIVE, 97, FIVE)); // lăn, gộp vào khoá cũ
+  m = bumpWindows(m, t1, agWin('3p-5h', t1 + FIVE, 97, FIVE)); // lượt gấp lặp, bị bỏ
+  m = bumpWindows(m, t2, agWin('3p-5h', t2 + FIVE + FIVE, 4, FIVE)); // reset thật
+  assert.equal(m.size, 2, 'mốc reset nhảy trọn một cửa sổ là chu kỳ mới, không được nuốt');
+});
+
+test('ảnh chụp về TRỄ kèm mốc reset lạ vẫn bị bỏ, không mở khoá mới', () => {
+  // `at` NHỎ HƠN hẳn `lastAt` là ca đồng hồ bị NTP kéo lùi, hoặc một lượt fetch cũ về sau
+  // lượt mới. Nó tới cùng một `resetsAt` chưa từng thấy, nên trông y hệt một chu kỳ mới.
+  // Hành vi muốn có là BỎ QUA: một ảnh chụp không mang thông tin mới thì không được đẻ ra
+  // một hàng, còn `peak` thật của cửa sổ đang chạy đã nằm sẵn trong hàng cũ.
+  const t0 = 1000 * H;
+  const t1 = t0 + 5 * 60_000;
+  const m = bumpWindows(new Map(), t1, agWin('3p-5h', t1 + FIVE, 60, FIVE));
+  const after = bumpWindows(m, t0, agWin('3p-5h', t0 + 2 * FIVE, 3, FIVE));
+  assert.equal(after, m, 'không có gì mới thì phải trả về CHÍNH map cũ, để khỏi ghi đĩa');
+  assert.equal(m.size, 1, 'ảnh chụp lùi giờ không được mở thêm khoá');
+  assert.equal([...m.values()][0].peak, 60, 'đỉnh của hàng cũ phải nguyên vẹn');
+});
+
+/* ── Ghi đĩa: hai lượt ghi chồng nhau ────────────────────────────────────────── */
+
+test('mỗi lượt ghi có tên file tạm riêng, mang theo pid', () => {
+  // Khoá đúng cái làm hỏng lượt ghi chồng: một tên tạm dùng chung. Hai lượt gọi liền nhau
+  // phải ra hai tên khác nhau, và tên phải mang pid để hai tiến trình cùng mở một sổ cũng
+  // không giẫm lên nhau.
+  const file = '/tmp/khong-ton-tai/ag-cycles.json';
+  const a = cyclesTmpPath(file);
+  const b = cyclesTmpPath(file);
+  assert.notEqual(a, b, 'hai lượt ghi trong cùng tiến trình phải có hai tên tạm khác nhau');
+  assert.ok(a.startsWith(`${file}.`), 'tên tạm phải nằm cạnh sổ, để rename không qua thiết bị khác');
+  assert.ok(a.includes(`.${process.pid}.`), 'thiếu pid thì hai tiến trình vẫn đụng nhau');
+});
+
+test('hai mươi lượt writeCycles chồng nhau đều xong, không để lại file tạm', async () => {
+  // `trackQuota` và `makeTracker` gọi `writeCycles` KHÔNG await, nên các lượt ghi thật sự
+  // chồng lên nhau. Với tên tạm dùng chung thì lượt sau `rename` vào cái file lượt trước
+  // vừa dời đi và ném `ENOENT`, mà lỗi ấy chỉ chui vào nhánh catch của chỗ gọi nên sổ lặng
+  // lẽ tụt lại một ảnh chụp.
+  const file = path.join(await fs.mkdtemp(path.join(os.tmpdir(), 'qlog-')), 'ag-cycles.json');
+  const at = 1000 * H;
+  const m = bumpWindows(new Map(), at, agWin('3p-5h', at + FIVE, 42, FIVE));
+  await Promise.all(Array.from({ length: 20 }, (_, i) => writeCycles(m, file, at + i)));
+  const back = await readCycles(file);
+  assert.equal(back.size, 1, 'sổ đọc lại phải nguyên vẹn sau hai mươi lượt ghi chồng');
+  assert.equal([...back.values()][0].peak, 42);
+  assert.deepEqual(await fs.readdir(path.dirname(file)), ['ag-cycles.json'], 'không được để lại file tạm');
 });

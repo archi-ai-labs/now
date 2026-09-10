@@ -1,7 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { PROJECT_ROOTS, ORPHAN_ACTIVE_DAYS, WAITING_NUDGE_DAYS, HEALTH } from './config.js';
-import { scanRoots, readBoard, healthOf, daysSince } from './collect/now.js';
+import { scanRoots, readBoard, healthOf, daysSince, isBoardCommit } from './collect/now.js';
 import { collectGit } from './collect/git.js';
 import { collectSessions } from './collect/sessions.js';
 import { collectUsage } from './collect/usage.js';
@@ -57,6 +57,132 @@ async function headBranch(dir) {
   } catch {
     return null;
   }
+}
+
+/** Đếm mục của một trường danh sách. Board sai kiểu thì là 0, chứ không được ném. */
+const countOf = (v) => (Array.isArray(v) ? v.length : 0);
+
+/**
+ * Dựng một dự án từ thư mục board. Tách khỏi `buildState` để chỗ gọi bọc được try/catch
+ * mà vẫn trả về một dự án đủ hình dạng — xem `brokenProject`.
+ */
+async function buildProject(dir) {
+  const { data, errors, warnings, parseError } = await readBoard(dir);
+
+  // Chỉ hỏi `git rev-list` khi mốc board là thứ git trả lời được — luật nằm ở
+  // `isBoardCommit` trong `collect/now.js`, cùng chỗ với `SHA_RE` mà schema đang dùng.
+  // Một board ghi `updatedAtCommit: "7b8525e (nhánh docs/…)"` từng làm lệnh ấy thoát 128 ở
+  // mỗi lượt quét, tức một dòng rác cố định trong `runFailures` mà đọc xong cũng không sửa
+  // được. `validateNow` đã kêu đúng chỗ ấy rồi, nên đây chỉ cần thôi hỏi.
+  const boardCommit = data?.updatedAtCommit;
+  const badCommit = boardCommit != null && !isBoardCommit(boardCommit);
+  const gitInfo = await collectGit(dir, badCommit ? null : boardCommit);
+  // Mốc không dùng được thì độ lệch cũng không đo được. Nói ra bằng đúng cờ mà giao diện
+  // đang hiểu, còn LÝ DO thì để dòng lỗi schema ngay bên cạnh kể, khỏi bịa thêm chữ mới.
+  if (badCommit && gitInfo.isRepo) gitInfo.unknownCommit = true;
+
+  const ageDays = daysSince(data?.updatedAt);
+  const health = parseError
+    ? 'broken'
+    : healthOf({
+        ageDays,
+        driftCommits: gitInfo.driftCommits,
+        // `collectGit` bật sẵn `unknownCommit` cho MỌI ca không đo được độ lệch, kể cả khi
+        // nó không hỏi được git câu nào. Chép lại luật ấy ở đây là nuôi bản thứ hai để lệch.
+        unknownCommit: gitInfo.unknownCommit,
+      });
+
+  let hasMd = false;
+  try {
+    await fs.access(path.join(dir, 'NOW.md'));
+    hasMd = true;
+  } catch {
+    /* board chưa render view — không phải lỗi, chỉ là thiếu */
+  }
+
+  const decisions = Array.isArray(data?.decisionsNeeded) ? data.decisionsNeeded : [];
+  const blockedBy = Array.isArray(data?.focus?.blockedBy) ? data.focus.blockedBy : [];
+  const blockerIds = new Set(blockedBy.map((b) => b?.id).filter(Boolean));
+
+  return {
+    id: relOf(dir),
+    name: data?.project || path.basename(dir),
+    folder: path.basename(dir),
+    path: dir,
+    group: groupOf(dir),
+    now: data,
+    hasMd,
+    parseError,
+    /** Xem `brokenProject`: ô trên là lỗi của `JSON.parse` thật, không phải lỗi dựng thẻ. */
+    buildFailed: false,
+    schemaErrors: errors,
+    /** Lệch hợp đồng nhưng vẫn đọc được — xem `validateNowDetail`. Chưa màn nào vẽ. */
+    schemaWarnings: warnings,
+    git: gitInfo,
+    ageDays,
+    health,
+    counts: {
+      decisions: decisions.length,
+      hot: decisions.filter((d) => d?.heat === 'now').length,
+      waiting: countOf(data?.waitingOn),
+      queue: countOf(data?.upNext),
+      done: countOf(data?.recentlyDone),
+      sideTracks: countOf(data?.sideTracks),
+      worktrees: gitInfo.worktrees?.length ?? 0,
+      worktreeWarn: (gitInfo.worktrees ?? []).filter((w) => w.warn).length,
+    },
+    blockerIds: [...blockerIds],
+    sessions: [],
+    /** Hội thoại Antigravity mở trên chính thư mục này — bề mặt làm việc thứ hai. */
+    convos: [],
+    /** Bề mặt đang có việc của dự án này (xem khối `surfaces` ở cuối `buildState`). */
+    openIn: [],
+  };
+}
+
+/**
+ * Dự án dựng hỏng giữa chừng, vẫn đủ hình dạng để mọi màn vẽ được.
+ *
+ * Trước đây `mapLimit` nuốt exception thành `null` rồi `filter(Boolean)` quét nốt, nên một
+ * board sai kiểu (`focus.blockedBy` là chuỗi thì `.map()` ném TypeError) lặng lẽ rời khỏi
+ * lưới dự án, bảng quyết định và thống kê. Biến mất là kiểu hỏng tệ nhất của một dashboard:
+ * màn hình vẫn xanh, chỉ thiếu đúng cái dự án đang hỏng. Ở lại và tự khai là hỏng thì người
+ * đọc còn thấy để sửa.
+ *
+ * Xuất ra để test soi được hình dạng: `buildProject` gọi hàng chục thứ ngoài (git, phiên,
+ * hạn mức) nên dựng lại một ca hỏng thật trong test thì đắt hơn nhiều so với gọi thẳng.
+ */
+export function brokenProject(dir, err) {
+  return {
+    id: relOf(dir),
+    name: path.basename(dir),
+    folder: path.basename(dir),
+    path: dir,
+    group: groupOf(dir),
+    now: null,
+    hasMd: false,
+    // Thông báo gốc của exception, giữ NGUYÊN VĂN. Câu tiếng Việt tự chế ở đây là một chuỗi
+    // hiển thị không đi qua `public/lib/i18n.js`, và bản tiếng Anh của dashboard sẽ đọc ra
+    // tiếng Việt; nhãn nằm ở khoá `health.buildFail`, vốn có cả hai thứ tiếng.
+    //
+    // Vẫn là ô `parseError` chứ không phải một ô mới, và lý do nằm ngoài file này:
+    // `integrity()` trong `public/views/shared.js` chấm 0 điểm cho board có `parseError`,
+    // còn board không có thì nó tính bằng tuổi và độ lệch — mà dự án dựng hỏng thì hai số ấy
+    // đều rỗng, nên chuyển thông báo sang ô khác là thẻ này lập tức khoe 100% độ tươi.
+    parseError: String(err?.message ?? err),
+    /** Chọn nhãn, không mang chữ: `parseError` ở đây là "dựng thẻ ném", không phải "JSON hỏng". */
+    buildFailed: true,
+    schemaErrors: [],
+    schemaWarnings: [],
+    git: { isRepo: false },
+    ageDays: null,
+    health: 'broken',
+    counts: { decisions: 0, hot: 0, waiting: 0, queue: 0, done: 0, sideTracks: 0, worktrees: 0, worktreeWarn: 0 },
+    blockerIds: [],
+    sessions: [],
+    convos: [],
+    openIn: [],
+  };
 }
 
 /** Số ngày kể từ một chuỗi ngày tự do (`since` trong board có thể là YYYY-MM-DD hoặc chữ). */
@@ -251,56 +377,21 @@ export async function buildState({ watched = true, badge = false } = {}) {
     byConvo: {},
   }));
 
-  const projects = await mapLimit(boards, 6, async (dir) => {
-    const { data, errors, parseError } = await readBoard(dir);
-    const gitInfo = await collectGit(dir, data?.updatedAtCommit);
-    const ageDays = daysSince(data?.updatedAt);
-    const health = parseError
-      ? 'broken'
-      : healthOf({ ageDays, driftCommits: gitInfo.driftCommits, unknownCommit: gitInfo.unknownCommit });
-
-    let hasMd = false;
-    try {
-      await fs.access(path.join(dir, 'NOW.md'));
-      hasMd = true;
-    } catch {
-      /* board chưa render view — không phải lỗi, chỉ là thiếu */
-    }
-
-    const decisions = data?.decisionsNeeded ?? [];
-    const blockerIds = new Set((data?.focus?.blockedBy ?? []).map((b) => b.id));
-
-    return {
-      id: relOf(dir),
-      name: data?.project || path.basename(dir),
-      folder: path.basename(dir),
-      path: dir,
-      group: groupOf(dir),
-      now: data,
-      hasMd,
-      parseError,
-      schemaErrors: errors,
-      git: gitInfo,
-      ageDays,
-      health,
-      counts: {
-        decisions: decisions.length,
-        hot: decisions.filter((d) => d.heat === 'now').length,
-        waiting: (data?.waitingOn ?? []).length,
-        queue: (data?.upNext ?? []).length,
-        done: (data?.recentlyDone ?? []).length,
-        sideTracks: (data?.sideTracks ?? []).length,
-        worktrees: gitInfo.worktrees?.length ?? 0,
-        worktreeWarn: (gitInfo.worktrees ?? []).filter((w) => w.warn).length,
-      },
-      blockerIds: [...blockerIds],
-      sessions: [],
-      /** Hội thoại Antigravity mở trên chính thư mục này — bề mặt làm việc thứ hai. */
-      convos: [],
-      /** Bề mặt đang có việc của dự án này (xem khối `surfaces` ở cuối hàm). */
-      openIn: [],
-    };
-  });
+  // Một board hỏng phải Ở LẠI lưới dự án và tự khai là hỏng. `mapLimit` bắt exception
+  // thành `null` rồi `filter(Boolean)` quét nốt, nên không bọc try/catch ở đây thì board
+  // ấy biến mất khỏi mọi màn mà không ai biết — xem `brokenProject`.
+  const projects = await mapLimit(
+    boards,
+    6,
+    async (dir) => {
+      try {
+        return await buildProject(dir);
+      } catch (err) {
+        return brokenProject(dir, err);
+      }
+    },
+    'project',
+  );
 
   const live = projects.filter(Boolean);
 

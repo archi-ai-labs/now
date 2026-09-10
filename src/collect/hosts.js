@@ -33,6 +33,27 @@ const PRUNE_MS = 120 * 86400_000;
 let ledger = null;
 let dirty = false;
 
+/**
+ * Hàng đợi ghi, và bộ đếm cho tên file tạm.
+ *
+ * Bản trước hỏng hai lớp, và lớp thứ hai là lớp thật. Lớp dễ thấy: tên tạm là
+ * `${SESSION_HOST_FILE}.${process.pid}`, tức MỌI lượt ghi trong cùng tiến trình dùng chung
+ * một tên, nên hai lượt chồng nhau thì lượt xong trước đổi tên file đi mất còn lượt sau
+ * `rename` vào một đường đã trống và ném ENOENT. Bộ đếm dưới đây đóng lớp ấy, cùng lối đặt
+ * tên mà `cyclesTmpPath` trong `collect/quotalog.js` dùng.
+ *
+ * Lớp thật nằm ở THỨ TỰ. Đặt tên tạm khác nhau thì không lượt nào ném nữa, nhưng hai lượt
+ * vẫn có thể đáp xuống ngược thứ tự phát ra, và khi ấy nội dung CŨ đè lên nội dung MỚI mà
+ * không ai ném gì cả. Đo được: ép hai lượt ghi sát nhau 15 lần, chỉ sửa tên tạm thôi thì
+ * 2/15 lần sổ trên đĩa giữ lại lượt đầu và mất lượt sau.
+ *
+ * Nên các lượt ghi được nối thành một hàng: mỗi lượt chụp trạng thái NGAY lúc được gọi, rồi
+ * xếp sau lượt trước. Thứ tự trên đĩa vì vậy đúng bằng thứ tự gọi, và lượt gọi sau cùng là
+ * lượt thắng, đó mới là điều gọi `syncHosts` mong đợi.
+ */
+let tmpSeq = 0;
+let writeChain = Promise.resolve();
+
 async function load() {
   if (ledger) return ledger;
   ledger = new Map();
@@ -47,15 +68,27 @@ async function load() {
   return ledger;
 }
 
-/** Ghi tạm rồi đổi tên: đọc trúng lúc đang ghi thì thấy bản cũ nguyên vẹn. */
-async function flush(now) {
-  if (!dirty) return;
+/**
+ * Xếp một lượt ghi vào hàng và trả về lời hứa của cả hàng tính tới lượt này.
+ *
+ * Trạng thái được chụp ngay tại đây chứ không phải lúc lượt ghi chạy, vì `ledger` còn đổi
+ * tiếp trong lúc lượt trước đang nằm trên đĩa; chụp muộn thì hai lượt ghi ra cùng một nội
+ * dung và thứ tự mất hết ý nghĩa.
+ */
+function flush(now) {
+  if (!dirty) return writeChain;
   dirty = false;
   const sessions = {};
   for (const [id, v] of ledger) {
     if (now - v.at <= PRUNE_MS) sessions[id] = v;
   }
-  const tmp = `${SESSION_HOST_FILE}.${process.pid}`;
+  writeChain = writeChain.then(() => writeOnce(sessions));
+  return writeChain;
+}
+
+/** Ghi tạm rồi đổi tên: đọc trúng lúc đang ghi thì thấy bản cũ nguyên vẹn. */
+async function writeOnce(sessions) {
+  const tmp = `${SESSION_HOST_FILE}.${process.pid}.${(tmpSeq += 1)}`;
   try {
     await fs.mkdir(path.dirname(SESSION_HOST_FILE), { recursive: true });
     await fs.writeFile(tmp, JSON.stringify({ version: 1, sessions }));
@@ -63,6 +96,7 @@ async function flush(now) {
   } catch {
     await fs.rm(tmp, { force: true }).catch(() => {});
     // Mất sổ chỉ tốn độ chính xác của một biểu đồ; làm sập lượt quét thì mất cả trang.
+    // Nuốt lỗi ở đây là cố ý: ném ra thì cả hàng đợi phía sau hỏng theo một lượt ghi lỗi.
     dirty = true;
   }
 }
@@ -90,3 +124,15 @@ export function _reset() {
   ledger = null;
   dirty = false;
 }
+
+/**
+ * Chỉ dùng cho test: chờ mọi lượt ghi đang bay đáp xuống.
+ *
+ * Vì `syncHosts` cố ý không await `flush`, một ca test kết thúc vẫn có thể để lại một lượt
+ * ghi lơ lửng, và lượt ấy đáp xuống GIỮA ca sau. Đó là nguyên nhân thật của ca "mục quá cũ
+ * bị cắt" đỏ khoảng một trên sáu lượt `npm test` khi máy đang tải nặng: nó chờ mục `xua`
+ * xuất hiện, trong khi lượt ghi còn sót của ca trước đè lên đúng lúc. Hàng đợi ở trên đã
+ * chốt thứ tự, cửa này chỉ còn lo phần CHỜ. Cùng cửa với `_flush` của `makeTracker` trong
+ * `collect/cycletrack.js`, và cùng lý do.
+ */
+export const _flush = () => writeChain;

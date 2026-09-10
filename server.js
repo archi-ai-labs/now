@@ -81,10 +81,15 @@ function getState({ force = false, watched = clients.size > 0, badge = false } =
  *
  * Lượt dựng nền có `broadcast`: nó đã tốn công quét rồi, tab đang mở không có lý do gì
  * phải đợi thêm một nhịp nữa mới thấy.
+ *
+ * `refresh: false` là cửa cho người hỏi KHÔNG cần bản mới, hiện chỉ có nhịp nền của lớp
+ * trò chơi đi qua. Nó đọc bản trong tay rồi thôi, không châm thêm lượt dựng nào — nếu
+ * không thì cửa này chỉ dời chi phí `buildState` từ chỗ chờ sang chỗ nền chứ không bỏ đi
+ * được lượt nào. Xem chú thích ở `petTick`.
  */
-function peekState({ watched = clients.size > 0 } = {}) {
+function peekState({ watched = clients.size > 0, refresh = true } = {}) {
   if (!cache) return null;
-  if (!building && Date.now() - cache.generatedAt >= STALE_MS) {
+  if (refresh && !building && Date.now() - cache.generatedAt >= STALE_MS) {
     getState({ force: true, watched })
       .then(broadcast)
       .catch((err) => console.error('[now-dash] dựng nền lỗi:', err.message));
@@ -289,16 +294,31 @@ const petLock = (fn) => (petQueue = petQueue.then(fn, fn));
 /**
  * Đọc sổ, cộng phần tiền chưa cộng, rồi (tuỳ chọn) làm một việc lên nó.
  *
- * Cộng tiền chạy ở MỌI lượt kể cả lượt chỉ đọc: nguồn tiền là sổ token, mà sổ token thì
- * cập nhật theo lượt quét chứ không theo cú bấm. Không cộng lúc đọc thì ví chỉ nhúc nhích
- * khi người ta mua gì đó — đúng lúc họ đang thiếu tiền.
+ * Cộng tiền chạy ở MỌI lượt kể cả lượt chỉ đọc, chừng nào trò chơi còn bật: nguồn tiền là
+ * sổ token, mà sổ token thì cập nhật theo lượt quét chứ không theo cú bấm. Không cộng lúc
+ * đọc thì ví chỉ nhúc nhích khi người ta mua gì đó — đúng lúc họ đang thiếu tiền. Trò chơi
+ * tắt thì xem cổng ngay dưới lượt `readLedger`.
+ *
+ * `snap` là bản trạng thái mà người gọi đã cầm sẵn. Không truyền thì hàm tự đi `getState`,
+ * tức chịu trọn một lượt dựng, và đó là điều đúng cho lượt người dùng bấm: họ vừa mua một
+ * món và đang nhìn thẳng vào cái ví. Nhịp nền thì đưa bản cache vào, xem `petTick`.
  */
-async function withPet(action) {
-  const state = await getState({ watched: false });
+async function withPet(action, { snap = null } = {}) {
+  const state = snap ?? (await getState({ watched: false }));
   const series = state.usage?.ok ? (state.usage.series ?? []) : [];
   const today = todayLocal();
 
   let ledger = await readLedger();
+  // Công tắc tắt trò chơi chặn ở ĐÂY chứ không ở từng chỗ gọi, vì mọi đường vào sổ đều đi
+  // qua hàm này. Đặt ở chỗ gọi thì sót đúng một đường, và bản trước sót thật: nhịp nền
+  // `petTick` có cổng còn `/api/badge` thì không, mà app Swift hỏi `/api/badge` mỗi 30 giây,
+  // nên trò chơi đã tắt mà sổ vẫn cộng tiền, vẫn quan sát nghỉ và vẫn ghi đĩa đúng nhịp cũ.
+  //
+  // Chỉ chặn lượt CHỈ ĐỌC. Lượt người dùng bấm vẫn chạy đủ kể cả khi sổ đang tắt, vì chính
+  // cú bấm bật lại đi qua đây (`action: 'toggle'`) và nó phải cộng bù được phần đã bỏ. Bù
+  // không mất xu nào: `accrue` khoá theo NGÀY và đối chiếu với `series`. Còn khi trò chơi
+  // bật thì cổng này không đụng vào gì, lý lẽ "cộng tiền chạy ở mọi lượt" ở trên nguyên vẹn.
+  if (!action && ledger?.on === false) return { view: petView(ledger), error: null };
   const fresh = !ledger;
   // `emptyLedger` rồi `accrue` NGAY, không phải một trong hai. Sổ mới đánh dấu mọi ngày
   // cũ là đã cộng và để hôm nay ở 0; chính lượt `accrue` liền sau mới biến hôm nay thành
@@ -339,6 +359,48 @@ async function withPet(action) {
   const out = action ? action(ledger) : { ledger, error: null };
   if (out.ledger !== ledger || fresh || rested) await writeLedger(out.ledger);
   return { view: petView(out.ledger), error: out.error ?? null };
+}
+
+/**
+ * Một lượt nền của lớp trò chơi, chạy theo `PET_MS` ở cuối file.
+ *
+ * Có hai việc lượt này KHÔNG được làm, và cả hai đều là lỗi đo được của bản trước.
+ *
+ * Một, nó không được ép dựng lại trạng thái. `withPet` mặc định đi `getState`, mà cache
+ * chỉ tươi 1,5 giây (`STALE_MS`) còn nhịp này cách nhau 30 giây, nên lượt nào cũng trượt
+ * và kéo theo một `buildState`. Cộng thêm lượt `/api/badge` mà app Swift hỏi cũng mỗi 30
+ * giây, ca không có tab nào mở vẫn dựng lại state 2–3 lần mỗi phút, tức đúng ca mà `B18`
+ * sinh ra để tiết kiệm. Đo bằng cách thay `buildState` bằng một bản giả rồi đếm lượt gọi
+ * trong 95 giây với 0 client SSE: bản cũ 4 lượt (khởi động, 32s, 62s, 93s), bản này 2 lượt
+ * (khởi động, 62s), tức phần nền tụt từ 3 lượt xuống 1. Giá một lượt không hề nhỏ và đang
+ * lớn dần: `buildMs` của `/api/state` đo ngày 3/8 là 325–1614 ms, còn 11 mẫu đọc thẳng từ
+ * server đang chạy ngày 10/9 (9 dự án, 10 phiên) rải 0,95–23,4 giây, tức lượt dựng đắt nhất
+ * hôm nay dài gần bằng cả chu kỳ 30 giây của chính nhịp này.
+ *
+ * Lượt này chỉ cần `usage.series` cho phép cộng tiền và mấy mốc đồng hồ của phiên cho
+ * `idleOf`/`awayOf`, nên bản trong tay là đủ. Nó già tới đâu thì tính được, và KHÔNG phải
+ * đúng một phút như bản chú thích trước viết: `scheduleScan` chỉ hẹn lượt kế tiếp SAU khi
+ * lượt dựng xong, nên chu kỳ quét là `SCAN_MS.idle` CỘNG `buildMs`. Với dải đo hôm nay thì
+ * bản cache già nhất khoảng 1,0–1,4 phút, và mốc ấy trôi theo tải máy chứ không cố định.
+ * Vẫn còn xa `BREAK_MS` 10 phút, mà `REST_WRITE_MS` thì vốn đã kẹp mốc nghỉ ở một lượt ghi
+ * mỗi phút. Chưa dựng lượt nào thì `peekState` trả `null`, và bỏ lượt này là đúng vì lúc ấy
+ * chưa có gì để quan sát.
+ *
+ * Hai, trò chơi tắt thì nó không được tiêu gì. Cổng ấy nay nằm trong `withPet`, chỗ cả nhịp
+ * này lẫn `/api/badge` đều đi qua — đọc lý do ở đó. Lượt `readLedger` tại đây chặn sớm hơn
+ * một bước và là hình dạng `test/serverloop.test.js` cắt ra chạy được với ba cửa giả, nên nó
+ * ở lại; giá là một lượt đọc sổ ≈1KB thừa mỗi nhịp khi trò chơi đang bật, và cả hai lượt nằm
+ * gọn trong một `petLock` nên không ai chen vào giữa để hai bản đọc lệch nhau.
+ *
+ * Lượt người dùng bấm KHÔNG đi cửa này. Ở đó dựng bản mới là đúng, và phép cộng tiền vẫn
+ * phải chạy kể cả khi lượt ấy chỉ đọc.
+ */
+async function petTick() {
+  const snap = peekState({ watched: false, refresh: false });
+  if (!snap) return;
+  const ledger = await readLedger();
+  if (ledger?.on === false) return;
+  await withPet(null, { snap });
 }
 
 /**
@@ -539,6 +601,9 @@ async function handle(req, res) {
       // chỉ đọc file, để chính lượt hỏi của icon cũng chốt được quãng nghỉ vừa hết giờ —
       // app Swift hỏi mỗi 30 giây, tức huy hiệu tự tắt chậm nhất nửa phút sau khi nghỉ đủ.
       // Sổ hỏng thì huy hiệu chỉ thiếu phần nghỉ, không được kéo đổ phần hạn mức.
+      //
+      // Trò chơi tắt thì lượt này không cộng tiền cũng không ghi đĩa, và cửa này không phải
+      // tự kiểm lấy: cổng nằm trong `withPet` cho mọi lượt chỉ đọc, xem chú thích ở đó.
       let pv = null;
       try {
         ({ view: pv } = await petLock(() => withPet(null)));
@@ -739,13 +804,20 @@ scheduleScan();
  * Nó phải chạy ở nhịp nền chứ không chỉ lúc ai đó mở popover: cắm mặt làm ba tiếng
  * không mở lần nào thì sẽ không sinh được lượt quan sát nào, và tới lúc mở ra thanh tập
  * trung vẫn đầy — tức lời nhắc câm đúng vào ca nó cần lên tiếng nhất. Mà "ba tiếng không
- * mở gì" chính là ca 0 client SSE, tức đúng ca `SCAN_MS.idle`. Buộc hai nhịp vào nhau là
- * hạ độ phân giải của mốc nghỉ xuống 1 phút đúng lúc nó là thứ duy nhất còn chạy.
+ * mở gì" chính là ca 0 client SSE, tức đúng ca `SCAN_MS.idle`.
+ *
+ * Từ lượt `petTick` đọc cache thay vì tự dựng, nhịp 30 giây này KHÔNG còn quyết định độ
+ * phân giải của phép quan sát nữa. Số nó nhìn (`idleOf`, `awayOf`) tươi tới đâu là do vòng
+ * quét nền quyết, nên ở ca 0 client mốc nghỉ chốt chậm nhất thêm quãng một phút; cái giá ấy
+ * đã cân ở chú thích `petTick` (`BREAK_MS` 10 phút, `REST_WRITE_MS` một lượt ghi mỗi phút).
+ * Việc còn lại của nhịp này là CHỐT SỔ, và nó vẫn phải đứng riêng: `setInterval` giữ đúng 30
+ * giây bất kể lượt dựng lâu bao nhiêu, còn chu kỳ của `scheduleScan` là 60 giây cộng
+ * `buildMs` nên nó co giãn theo tải máy. Buộc phép chốt sổ vào nhịp ấy là để nó trôi theo.
  *
  * Nuốt lỗi: sổ hỏng hay đĩa đầy thì dashboard vẫn phải chạy. Cả lớp trò chơi này là
  * phần thêm, không được phép kéo theo phần số liệu.
  */
 const PET_MS = 30_000;
 setInterval(() => {
-  petLock(() => withPet(null)).catch(() => {});
+  petLock(() => petTick()).catch(() => {});
 }, PET_MS).unref?.();

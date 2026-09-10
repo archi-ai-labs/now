@@ -797,6 +797,11 @@ function chartAgCtxFill(g) {
 export function agTab(a, g, scannedAt) {
   if (!(a?.convos ?? []).length) return empty('⬡', t('tools.agNone'), t('tools.agNoneHint'));
   const turns = g?.ok && g.turns ? g : null;
+  // `reason: 'shape'` là ca collector mở được mọi file mà không bóc nổi một lượt nào, tức là
+  // Antigravity đã đổi hình dạng bản ghi. Bắt riêng nhánh này vì nếu không thì khối chart
+  // chỉ lặng lẽ biến mất, mà một khoảng trắng thì trông y hệt "tuần này chưa dùng
+  // Antigravity", và đó đúng là cái nhầm đã giấu ba tuần dữ liệu hồi 19/8.
+  const shapeBroken = g?.ok === false && g.reason === 'shape';
   return html`${agRow(a, turns)}
     ${dataAt(scannedAt)}
     ${turns
@@ -810,7 +815,9 @@ export function agTab(a, g, scannedAt) {
           ${turns.unreadable
             ? html`<p class="ch-note"><b>${t('tools.agUnreadable', { n: turns.unreadable })}</b></p>`
             : ''}`
-      : ''}
+      : shapeBroken
+        ? empty('⬡', t('tools.agShape'), t('tools.agShapeHint', { files: g.shape }))
+        : ''}
 
     <div class="sec-h" style="margin-top:${turns ? '22px' : '18px'}">${ulabel(t('tools.agConvoSection'))}</div>
     ${(() => {

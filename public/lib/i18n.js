@@ -937,6 +937,10 @@ const DICT = {
 
     // ── Màn Sức khoẻ (health) ──
     'health.parseError': (o) => `${o.name} — NOW.json không đọc được`,
+    // Khác `parseError` ở nguyên nhân: file đọc được và parse được, nhưng phép dựng thẻ dự
+    // án ném ra giữa chừng (field sai kiểu là ca thường gặp). Dùng chung một nhãn thì người
+    // đọc đi sửa JSON trong khi lỗi nằm ở chỗ khác.
+    'health.buildFail': (o) => `${o.name} — không dựng được thẻ dự án`,
     'health.schemaError': (o) => `${o.name} — sai schema`,
     'health.nested': (o) => `${o.name} — board nằm bên trong một repo khác`,
     'health.nestedDesc': (o) =>
@@ -1678,6 +1682,12 @@ const DICT = {
     // ở đây không trỏ lên khối hạn mức như bên Cursor: hai thứ hỏng độc lập nhau.
     'tools.agNone': 'Chưa đọc được hội thoại Antigravity nào',
     'tools.agNoneHint': 'Cần mở Antigravity ít nhất một lần trên máy này; sổ hội thoại nằm ở ~/.gemini.',
+    // Không phải "không có dữ liệu" mà là "đọc được file nhưng không hiểu": Antigravity đổi
+    // hình dạng bản ghi sau một lượt nâng cấp. Phân biệt hai ca này là cả lý do khối shape
+    // tồn tại, nên câu chữ phải nói ra bản nâng cấp chứ không rơi về câu "chưa có gì".
+    'tools.agShape': 'Antigravity đã đổi hình dạng dữ liệu',
+    'tools.agShapeHint': (o) =>
+      `Đọc được ${o.files} hội thoại nhưng không bóc được lượt gọi nào. Nhiều khả năng bản Antigravity mới ghi khác đi; số lượt sẽ trống cho tới khi cách đọc được cập nhật.`,
 
     'tools.agConvos': 'Hội thoại',
     'tools.agAwake': 'Đang thức',
@@ -2642,6 +2652,7 @@ const DICT = {
 
     // ── Health view ──
     'health.parseError': (o) => `${o.name} — NOW.json couldn't be read`,
+    'health.buildFail': (o) => `${o.name} — the project card could not be built`,
     'health.schemaError': (o) => `${o.name} — schema error`,
     'health.nested': (o) => `${o.name} — board sits inside another repo`,
     'health.nestedDesc': (o) =>
@@ -3282,6 +3293,9 @@ const DICT = {
 
     'tools.agNone': 'No Antigravity conversations could be read',
     'tools.agNoneHint': 'Open Antigravity at least once on this machine; its conversation log lives under ~/.gemini.',
+    'tools.agShape': 'Antigravity changed its data shape',
+    'tools.agShapeHint': (o) =>
+      `Read ${o.files} conversations and parsed no calls out of them. A newer Antigravity build almost certainly writes these records differently; call counts stay empty until the reader catches up.`,
 
     'tools.agConvos': 'Conversations',
     'tools.agAwake': 'Awake',

@@ -15,8 +15,9 @@ import { all, decode, int, str, sub, timestampMs } from '../lib/pb.js';
  *
  * 1. `agyhub_summaries_proto.pb` — sổ mục lục: id, tiêu đề, workspace, số bước, mốc
  *    tạo và mốc cập nhật. Protobuf nhị phân, KHÔNG có tài liệu.
- * 2. `conversations/<id>.db` — mtime của file, tức là lần ghi cuối. Đây là mốc đáng
- *    tin nhất về "còn sống hay không", vì nó do hệ tệp ghi chứ không do app tự khai.
+ * 2. `conversations/<id>.db` cùng file `-wal` của nó khi `-wal` còn byte chưa checkpoint —
+ *    mtime muộn hơn trong hai cái là lần ghi cuối. Đây là mốc đáng tin nhất về "còn sống
+ *    hay không", vì nó do hệ tệp ghi chứ không do app tự khai.
  * 3. Tiến trình `Antigravity.app` đang chạy hay không (xem `collect/procs.js`).
  *
  * Vì (1) không có tài liệu nên mọi trường đều đọc phòng thủ: thiếu thì để `null` và
@@ -38,7 +39,7 @@ import { all, decode, int, str, sub, timestampMs } from '../lib/pb.js';
  *
  * Trường 3 luôn ≥ trường 7 trên toàn bộ 80 bản ghi ở đây, nên phép gán "3 = cập nhật,
  * 7 = tạo" là quan sát chứ không phải phỏng đoán. Dù vậy `at` vẫn lấy mtime của file
- * `.db` làm chuẩn khi có — nguồn (2) không phụ thuộc vào việc đọc đúng schema.
+ * trên đĩa làm chuẩn khi có — nguồn (2) không phụ thuộc vào việc đọc đúng schema.
  */
 
 /** `file:///Users/…` → `/Users/…`. Bỏ qua thứ không phải file cục bộ. */
@@ -84,7 +85,21 @@ export function parseSummaries(buf, now = Date.now()) {
   return { ok: true, rows, at: now };
 }
 
-/** mtime của từng file hội thoại — nguồn "sống chết" không phụ thuộc schema. */
+/**
+ * mtime của từng file hội thoại — nguồn "sống chết" không phụ thuộc schema.
+ *
+ * Lấy mốc MUỘN HƠN giữa `.db` và `-wal`, nhưng chỉ khi `-wal` CÓ byte. SQLite ở chế độ WAL
+ * ghi hàng mới vào `-wal` trước và chỉ chạm `.db` lúc checkpoint, nên chỉ nhìn `.db` là đọc
+ * hụt đúng những hội thoại đang chạy: đo được một hội thoại có `.db` mtime 22:09 trong khi
+ * `-wal` mtime 22:13 với 5,6 MB chưa checkpoint, tức là dashboard sẽ khai nó ngủ trong lúc
+ * nó vẫn đang gõ.
+ *
+ * Điều kiện "có byte" không phải phòng xa. Một `-wal` dài 0 byte là chỗ chứa đã trống, và
+ * mtime của nó chỉ nói lần cuối có ai đó MỞ file, kể cả người chỉ đọc. Đo 2026-09-10:
+ * 543/547 hội thoại đang mang một `-wal` rỗng với mtime của hôm nay, do chính dashboard mở
+ * ra ở những lượt quét trước; đếm cả chúng thì số hội thoại trong cửa sổ giữ nhảy từ 226 lên
+ * 334, và phần lớn phần thêm ra là hội thoại đã nguội từ tháng trước.
+ */
 async function touchTimes() {
   const times = new Map();
   let names;
@@ -93,13 +108,24 @@ async function touchTimes() {
   } catch {
     return times;
   }
+  const walTime = async (file) => {
+    try {
+      const st = await fs.stat(file);
+      return st.size > 0 ? st.mtimeMs : 0;
+    } catch {
+      return 0;
+    }
+  };
   await Promise.all(
     names
       .filter((n) => n.endsWith('.db'))
       .map(async (n) => {
+        const file = path.join(ANTIGRAVITY_CONVOS, n);
         try {
-          const st = await fs.stat(path.join(ANTIGRAVITY_CONVOS, n));
-          times.set(n.slice(0, -3), { at: st.mtimeMs, bytes: st.size });
+          const st = await fs.stat(file);
+          // `bytes` vẫn chỉ đếm `.db`: đó là con số người dùng đối chiếu được bằng Finder,
+          // còn `-wal` là chỗ chứa tạm sẽ tan vào `.db` ở lần checkpoint kế tiếp.
+          times.set(n.slice(0, -3), { at: Math.max(st.mtimeMs, await walTime(`${file}-wal`)), bytes: st.size });
         } catch {
           /* file vừa bị xoá giữa readdir và stat — bỏ qua, lượt sau sẽ đúng */
         }

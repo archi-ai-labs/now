@@ -40,23 +40,143 @@ export async function scanRoots() {
 }
 
 /**
- * Kiểm tra NOW.json theo schema v1 (`~/.claude/skills/now/now.schema.json`).
+ * Luật của các mảng trong `now.schema.json`, chép sang JS để giữ zero-dependency.
  *
- * Cố ý viết tay thay vì kéo thư viện JSON Schema: dashboard giữ nguyên tắc
- * zero-dependency, và ta chỉ cần các ràng buộc mà board thật hay vi phạm —
- * thiếu field bắt buộc, sai schemaVersion, focus không đủ thông tin để quay lại việc.
+ * Xuất ra vì `test/now.test.js` đối chiếu bảng này với file schema THẬT: đã chép tay thì
+ * phải có người canh hai bên khỏi lệch, và người canh phải là test chứ không phải trí nhớ.
+ * `keys: null` nghĩa là mảng chuỗi, không có key để soát.
  */
-export function validateNow(data) {
+export const LIST_RULES = {
+  sideTracks: { max: 3, required: ['title'], keys: ['title', 'owner'] },
+  recentlyDone: { max: 5, required: ['date', 'title'], keys: ['date', 'title', 'ref'] },
+  decisionsNeeded: {
+    max: 5,
+    required: ['title', 'heat', 'blocks'],
+    keys: ['id', 'title', 'heat', 'blocks', 'question', 'ref', 'since'],
+  },
+  waitingOn: { max: 5, required: ['what', 'who'], keys: ['what', 'who', 'since', 'ref'] },
+  upNext: { max: 5, required: ['title'], keys: ['title', 'ref'] },
+};
+
+/** Ba mảng nằm trong `focus`. `blockedBy` là mảng mà `state.js` gọi `.map()` lên. */
+export const FOCUS_LIST_RULES = {
+  refs: { max: 3, required: ['label', 'ref'], keys: ['label', 'ref'] },
+  laterSteps: { max: 3, required: [], keys: null },
+  blockedBy: { max: 3, required: ['id'], keys: ['id', 'note'] },
+};
+
+/** `additionalProperties: false` ở cấp gốc. `$comment` là khoá hợp lệ của JSON Schema. */
+export const ROOT_KEYS = [
+  '$comment',
+  'schemaVersion',
+  'project',
+  'branch',
+  'updatedAt',
+  'updatedAtCommit',
+  'updatedBy',
+  'focus',
+  ...Object.keys(LIST_RULES),
+];
+
+const typeName = (v) => (Array.isArray(v) ? 'array' : v === null ? 'null' : typeof v);
+
+/**
+ * Luật SHA của `updatedAtCommit`, chép nguyên `pattern` trong `now.schema.json`.
+ *
+ * Xuất ra vì `src/state.js` cũng phải biết luật này để quyết có hỏi `git rev-list` hay
+ * không. Mỗi file giữ một bản riêng thì hai bên lệch nhau lúc nào không hay, nên
+ * `test/now.test.js` vừa đối chiếu `source` của nó với `pattern` trong file schema thật,
+ * vừa canh `state.js` không mọc lại bản chép tay thứ hai.
+ */
+export const SHA_RE = /^[0-9a-fA-F]{7,40}$/;
+
+/**
+ * Mốc commit có hỏi được git hay không — hẹp hơn `SHA_RE` đúng một ca.
+ *
+ * `0000000` là sentinel board dùng khi thư mục chưa phải repo git, nên schema vẫn nhận và
+ * `validateNow` không được kêu. Nhưng thư mục ấy về sau có thể thành repo trong khi board
+ * còn giữ sentinel, và từ lúc đó `git rev-list 0000000..HEAD` thoát 128 ở MỖI lượt quét,
+ * đẻ một dòng rác cố định trong sổ lỗi mà người đọc không sửa được bằng cách đọc nó.
+ */
+export function isBoardCommit(value) {
+  const s = String(value);
+  return SHA_RE.test(s) && !/^0+$/.test(s);
+}
+
+/**
+ * Soát một mảng: đúng kiểu, không quá dài, mỗi mục đủ key bắt buộc và không thừa key lạ.
+ *
+ * Sai kiểu là lỗi vì nó làm hỏng chỗ khác: `state.js` gọi `.map()` lên `focus.blockedBy`,
+ * nên một chuỗi ở đó ném TypeError giữa lượt dựng dự án.
+ */
+function checkList(name, value, rule, errors, warnings) {
+  if (value == null) return;
+  if (!Array.isArray(value)) {
+    errors.push(`\`${name}\` phải là mảng (đang là ${typeName(value)})`);
+    return;
+  }
+  if (value.length > rule.max) {
+    warnings.push(`\`${name}\` có ${value.length} mục, schema cho tối đa ${rule.max}`);
+  }
+  value.forEach((item, i) => {
+    if (rule.keys === null) {
+      if (typeof item !== 'string') errors.push(`\`${name}[${i}]\` phải là chuỗi (đang là ${typeName(item)})`);
+      return;
+    }
+    if (item === null || typeof item !== 'object' || Array.isArray(item)) {
+      errors.push(`\`${name}[${i}]\` phải là object (đang là ${typeName(item)})`);
+      return;
+    }
+    for (const k of rule.required) if (item[k] == null) errors.push(`\`${name}[${i}]\` thiếu \`${k}\``);
+    for (const k of Object.keys(item)) if (!rule.keys.includes(k)) warnings.push(`\`${name}[${i}]\` có key lạ \`${k}\``);
+  });
+}
+
+/**
+ * Kiểm tra NOW.json theo schema v1 (xem `findNowSchema()`), tách làm hai mức.
+ *
+ * Cố ý viết tay thay vì kéo thư viện JSON Schema: dashboard giữ nguyên tắc zero-dependency.
+ * Đổi lại phải tự phân mức, và chủ dự án đã chốt ranh giới theo câu hỏi "đọc board này còn
+ * tin được không":
+ *
+ * - `errors` — thiếu field bắt buộc, sai kiểu, sai pattern, sai enum. Nội dung không dùng
+ *   được như đã hứa, hoặc làm chỗ khác ném lỗi.
+ * - `warnings` — vượt `maxItems` và key lạ. Board vẫn hiện được và mọi con số vẫn đúng, chỉ
+ *   là lệch hợp đồng; đánh dấu để người viết board sửa, đừng bắt màn Sức khoẻ kêu như lỗi.
+ *
+ * Đôi `validateNow` / `validateNowDetail` đi theo đúng khuôn `run` / `runDetail` ở
+ * `lib/sh.js`: dạng đơn giản trả về đúng thứ mọi chỗ gọi đang cần (một mảng chuỗi lỗi,
+ * `public/views/health.js` duyệt thẳng), còn chỗ nào cần đủ hai mức thì gọi bản detail.
+ */
+export function validateNowDetail(data) {
   const errors = [];
-  const req = ['schemaVersion', 'project', 'branch', 'updatedAt', 'updatedAtCommit', 'updatedBy', 'focus'];
-  for (const k of req) if (data?.[k] == null) errors.push(`thiếu \`${k}\``);
+  const warnings = [];
 
-  if (data?.schemaVersion !== 1) errors.push(`schemaVersion phải là 1 (đang là ${JSON.stringify(data?.schemaVersion)})`);
-  if (data?.updatedAt && !/^\d{4}-\d{2}-\d{2}$/.test(data.updatedAt)) errors.push('`updatedAt` sai định dạng YYYY-MM-DD');
-  if (data?.updatedAtCommit && !/^[0-9a-fA-F]{7,40}$/.test(data.updatedAtCommit)) errors.push('`updatedAtCommit` không phải SHA hợp lệ');
+  // Cấp gốc phải là object thuần, và phải chặn ngay tại đây chứ không để mấy vòng soát bên
+  // dưới chạy tiếp: `Object.keys()` của một mảng là danh sách chỉ số, nên một NOW.json viết
+  // nhầm thành mảng 40 phần tử đẻ ra 40 dòng "cấp gốc có key lạ `0`" và chôn mất dòng duy
+  // nhất nói đúng chuyện.
+  if (data === null || typeof data !== 'object' || Array.isArray(data)) {
+    errors.push(`NOW.json phải là một object ở cấp gốc (đang là ${typeName(data)})`);
+    return { errors, warnings };
+  }
 
-  const f = data?.focus;
-  if (f) {
+  for (const k of ['schemaVersion', 'project', 'branch', 'updatedAt', 'updatedAtCommit', 'updatedBy', 'focus']) {
+    if (data[k] == null) errors.push(`thiếu \`${k}\``);
+  }
+
+  if (data.schemaVersion !== 1) errors.push(`schemaVersion phải là 1 (đang là ${JSON.stringify(data.schemaVersion)})`);
+  if (data.updatedAt && !/^\d{4}-\d{2}-\d{2}$/.test(data.updatedAt)) errors.push('`updatedAt` sai định dạng YYYY-MM-DD');
+  if (data.updatedAtCommit && !SHA_RE.test(data.updatedAtCommit)) errors.push('`updatedAtCommit` không phải SHA hợp lệ');
+
+  for (const k of Object.keys(data)) {
+    if (!ROOT_KEYS.includes(k)) warnings.push(`cấp gốc có key lạ \`${k}\``);
+  }
+
+  const f = data.focus;
+  if (f != null && (typeof f !== 'object' || Array.isArray(f))) {
+    errors.push(`\`focus\` phải là object (đang là ${typeName(f)})`);
+  } else if (f) {
     for (const k of ['title', 'context', 'nextAction', 'resume', 'confidence']) {
       if (f[k] == null) errors.push(`focus thiếu \`${k}\``);
     }
@@ -66,13 +186,27 @@ export function validateNow(data) {
     if (f.resume && (!f.resume.workingState || !f.resume.howToContinue)) {
       errors.push('`focus.resume` thiếu workingState hoặc howToContinue');
     }
+    for (const [k, rule] of Object.entries(FOCUS_LIST_RULES)) checkList(`focus.${k}`, f[k], rule, errors, warnings);
   }
 
-  for (const d of data?.decisionsNeeded ?? []) {
-    if (!['now', 'soon', 'later'].includes(d.heat)) errors.push(`decision "${d.title ?? '?'}" có heat lạ: ${d.heat}`);
+  for (const [k, rule] of Object.entries(LIST_RULES)) checkList(k, data[k], rule, errors, warnings);
+
+  // Chỉ duyệt khi đúng là mảng: `checkList` đã kêu ở trên rồi, mà `for…of` trên một chuỗi
+  // thì chạy được và đẻ ra một dòng lỗi cho MỖI ký tự.
+  if (Array.isArray(data.decisionsNeeded)) {
+    for (const d of data.decisionsNeeded) {
+      if (d && typeof d === 'object' && !['now', 'soon', 'later'].includes(d.heat)) {
+        errors.push(`decision "${d.title ?? '?'}" có heat lạ: ${d.heat}`);
+      }
+    }
   }
 
-  return errors;
+  return { errors, warnings };
+}
+
+/** Chỉ danh sách lỗi. Giữ nguyên hợp đồng cũ cho mọi chỗ đang gọi. */
+export function validateNow(data) {
+  return validateNowDetail(data).errors;
 }
 
 export function daysSince(dateStr) {
@@ -101,8 +235,9 @@ export async function readBoard(dir) {
   try {
     const text = await fs.readFile(file, 'utf8');
     const data = JSON.parse(text);
-    return { data, errors: validateNow(data), parseError: null };
+    const { errors, warnings } = validateNowDetail(data);
+    return { data, errors, warnings, parseError: null };
   } catch (err) {
-    return { data: null, errors: [], parseError: err.message };
+    return { data: null, errors: [], warnings: [], parseError: err.message };
   }
 }

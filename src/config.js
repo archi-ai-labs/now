@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export const HOME = os.homedir();
 export const CLAUDE_DIR = path.join(HOME, '.claude');
@@ -87,6 +88,128 @@ function readDirs(dir) {
  * là của Claude Code, và chính nó là thứ đang tự dọn dẹp (xem `USAGE_ROLLUP`).
  */
 export const DATA_DIR = process.env.NOW_DATA_DIR || path.join(HOME, '.now-dashboard');
+
+/**
+ * Đường tới sổ ghi tiến trình nào đang nhận một thư mục dữ liệu làm của mình; xem
+ * `claimDataDir`. Đây là chỗ DUY NHẤT viết ra tên `owner.json`, nên đổi tên file thì
+ * chỉ phải sửa một dòng, và test hỏi được đúng đường mà code thật ghi vào.
+ */
+export const ownerFile = (dir = DATA_DIR) => path.join(dir, 'owner.json');
+
+/**
+ * `process.kill(pid, 0)` không gửi tín hiệu nào, nó chỉ hỏi kernel xem pid ấy còn không.
+ *
+ * `EPERM` vẫn là CÒN SỐNG, chỉ là tiến trình đó thuộc người dùng khác nên ta không có
+ * quyền báo hiệu cho nó. Coi `EPERM` là đã chết thì mọi service chạy dưới tài khoản khác
+ * đều lọt lưới, mà đó chính là ca đáng cảnh báo nhất.
+ */
+export function isPidAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return err.code === 'EPERM';
+  }
+}
+
+/** Đọc sổ chủ sở hữu. File thiếu, JSON hỏng hay pid rác đều trả `null`, không ném. */
+export function readOwner(dir = DATA_DIR) {
+  try {
+    const o = JSON.parse(fs.readFileSync(ownerFile(dir), 'utf8'));
+    return Number.isInteger(o?.pid) && o.pid > 0 ? o : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Nhận `dir` làm của mình, và trả về chủ cũ nếu chủ ấy CÒN SỐNG.
+ *
+ * Vì sao cần: mỗi tracker giữ memo riêng trong bộ nhớ rồi ghi TRỌN file xuống đĩa, nên
+ * hai tiến trình dashboard cùng một `DATA_DIR` không trộn dữ liệu mà đè lên nhau, và bản
+ * ghi sau thắng. Chu kỳ do bản kia thêm biến mất, đúng thứ `QUOTA_LOG` phía dưới khai là
+ * không dựng lại được. Ca có thật: service launchd chạy nền, còn preview của Claude Code
+ * mở thêm một `node server.js` nữa mà không đặt `NOW_DATA_DIR`.
+ *
+ * Cảnh báo chỉ đi MỘT CHIỀU, và đây là điểm yếu lớn nhất chứ không phải hai ca hiếm ở
+ * đoạn dưới. Sổ được đọc đúng một lần lúc khởi động, nên chỉ bản lên SAU nhìn thấy bản
+ * đang chạy, còn service launchd đã lên từ sáng thì không bao giờ hay biết là preview
+ * vừa cướp thư mục của nó. Ca thường gặp rơi đúng vào chiều mù ấy. Muốn cả hai cùng
+ * biết thì tiến trình đang chạy phải đọc lại sổ theo chu kỳ, và cái giá đó lớn hơn mức
+ * một dòng log đáng phải trả.
+ *
+ * Nhận diện bằng pid vì đó là cách rẻ nhất không thêm phụ thuộc và không cần khoá file.
+ * Điểm yếu đã biết và chấp nhận: pid được cấp lại sau khi máy khởi động lại thì cảnh báo
+ * sai, còn hai tiến trình lên cùng lúc thì có thể bỏ lỡ nhau. Hậu quả tối đa của cả hai
+ * ca là một dòng stderr thừa hoặc thiếu, nên không đáng đổi lấy một cơ chế khoá thật.
+ *
+ * Nuốt mọi lỗi đĩa: đây là lưới đỡ, nó không được phép làm hỏng lượt khởi động.
+ */
+export function claimDataDir({ dir = DATA_DIR, pid = process.pid, now = Date.now() } = {}) {
+  const prev = readOwner(dir);
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(ownerFile(dir), JSON.stringify({ pid, startedAt: now }));
+  } catch {
+    // Ghi không được thì thôi. Phần đọc ở trên đã cho câu trả lời mà lời cảnh báo cần.
+  }
+  if (!prev || prev.pid === pid || !isPidAlive(prev.pid)) return null;
+  return prev;
+}
+
+/**
+ * CHỈ cảnh báo, tuyệt đối không chặn tiến trình khởi động.
+ *
+ * Chạy hai bản dashboard là việc hợp lệ khi mỗi bản trỏ vào một `DATA_DIR` riêng, và một
+ * service nền tự tắt vì đọc phải sổ cũ thì tệ hơn hẳn một dòng log. `log` nhận được từ
+ * ngoài để test đọc lại được câu chữ mà không phải chiếm `console.error` toàn cục.
+ */
+export function warnSharedDataDir({ dir = DATA_DIR, pid = process.pid, now = Date.now(), log = console.error } = {}) {
+  const prev = claimDataDir({ dir, pid, now });
+  if (!prev) return null;
+  log(
+    `[now-dash] CẢNH BÁO: tiến trình ${prev.pid} đang dùng chung thư mục dữ liệu ${dir}. `
+    + 'Hai bản sẽ ghi đè sổ của nhau và chu kỳ hạn mức bị mất; đặt NOW_DATA_DIR riêng cho một trong hai.',
+  );
+  return prev;
+}
+
+/** `server.js` của chính bản cài này, suy từ vị trí `config.js` chứ không từ thư mục gọi. */
+const SERVER_ENTRY = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'server.js');
+
+/**
+ * Tiến trình ĐANG CHẠY có phải là server không? Câu hỏi là về tiến trình, không phải về
+ * file này: `config.js` luôn là module bị import, nên nó phải soi điểm vào của tiến trình.
+ *
+ * So bằng realpath chứ không bằng tên file. `package.json` khai `bin: { "now-dash":
+ * "./server.js" }`, npm dựng bin ấy bằng symlink, còn Node giữ nguyên đường người gọi gõ
+ * trong `argv[1]`. Canh theo tên thì `now-dash` của người cài gói trượt lưới và cảnh báo
+ * tắt im lặng, đúng ca reviewer đã dựng lại được. Realpath còn gỡ luôn `/tmp` với
+ * `/private/tmp` trên macOS, hai đường trỏ cùng một file mà chuỗi thì khác nhau.
+ *
+ * `argv[1]` rỗng (`node -e`, REPL) hoặc realpath ném vì file đã bị xoá đều trả `false`:
+ * không biết chắc mình là server thì không nhận thư mục.
+ */
+export function isServerProcess(entry = process.argv[1]) {
+  if (!entry) return false;
+  try {
+    return fs.realpathSync(entry) === fs.realpathSync(SERVER_ENTRY);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Chỉ server mới được nhận thư mục dữ liệu.
+ *
+ * `config.js` bị mọi module và mọi file test nạp vào, nên gọi thẳng `warnSharedDataDir()`
+ * ở tầng module là bộ test và lệnh `npm run state` cũng ghi sổ vào `DATA_DIR` THẬT rồi
+ * cướp quyền sở hữu của service đang chạy. Cách bền hơn là để `server.js` tự gọi một
+ * dòng, nhưng mọi module khác cũng đọc `DATA_DIR` nên lưới đỡ nằm cạnh hằng số ấy thì
+ * không ai quên được.
+ */
+if (isServerProcess()) warnSharedDataDir();
 
 /**
  * Sổ cộng dồn token theo ngày.

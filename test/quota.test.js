@@ -1,6 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { forecastOf, forecastWith, parseApiQuota, parseQuota, retryAfterMs } from '../src/collect/quota.js';
+import { fileURLToPath } from 'node:url';
+import { after } from 'node:test';
+import {
+  claimDataDir, isPidAlive, isServerProcess, ownerFile, readOwner, warnSharedDataDir,
+} from '../src/config.js';
 
 /**
  * Dữ liệu hạn mức khác mọi thứ khác trong dashboard: nó là ẢNH CHỤP, không phải sự
@@ -405,4 +414,196 @@ test('forecast chưa đoán được (early/rolled/unknown) thì vệt không c�
   // Cửa sổ lăn kiểu AG: mốc reset luôn cách đủ một cửa sổ → phần đã trôi ≈ 0.
   const f = forecastWith(38, wkNow + WK, WK, wkNow, trail);
   assert.equal(f.known, false);
+});
+
+/* ── Sổ chủ sở hữu DATA_DIR ──────────────────────────────────────────────────── */
+
+/**
+ * Hai tiến trình dashboard cùng một `DATA_DIR` không trộn dữ liệu mà đè lên nhau, vì
+ * mỗi tracker giữ memo riêng trong bộ nhớ rồi ghi trọn file. Chu kỳ hạn mức do bản kia
+ * thêm mất vĩnh viễn, nên `config.js` nhận diện ca ấy lúc khởi động và cảnh báo.
+ *
+ * Các ca chạy trong tiến trình này đều truyền `dir` và `pid` tường minh, còn các ca sinh
+ * tiến trình con thì đặt `NOW_DATA_DIR` sang thư mục tạm. Không ca nào chạm `DATA_DIR`
+ * thật, và đó là lý do khối này ở chung được với các ca hạn mức mà không cần `import`
+ * động như `hosts.test.js`.
+ */
+
+/**
+ * Thư mục tạm được ghi sổ lại để `after` dọn. Đo hôm nay bằng cách gỡ đúng dòng `after`
+ * ở dưới: một lượt chạy file này bỏ lại 15 thư mục trong `$TMPDIR`, và chúng tích luỹ
+ * mãi vì không ai xoá `$TMPDIR` hộ.
+ */
+const madeDirs = [];
+const ownerDir = () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'now-owner-'));
+  madeDirs.push(d);
+  return d;
+};
+after(() => madeDirs.forEach((d) => fs.rmSync(d, { recursive: true, force: true })));
+
+/** Một pid chắc chắn đã chết: sinh tiến trình con, chờ nó thoát hẳn rồi lấy pid. */
+function deadPid() {
+  const r = spawnSync(process.execPath, ['-e', '0']);
+  assert.equal(r.status, 0, 'không sinh nổi tiến trình con thì ca này vô nghĩa');
+  return r.pid;
+}
+
+test('thư mục còn trống thì không có chủ cũ, nhưng sổ được ghi ngay lượt đầu', () => {
+  const dir = ownerDir();
+  assert.equal(claimDataDir({ dir, pid: 4242, now: 111 }), null);
+  assert.deepEqual(readOwner(dir), { pid: 4242, startedAt: 111 });
+});
+
+test('chủ cũ CÒN SỐNG và khác pid → trả về chủ cũ, và sổ sang tên cho người mới', () => {
+  const dir = ownerDir();
+  // pid của chính bộ test là pid sống chắc chắn nhất có thể mượn.
+  claimDataDir({ dir, pid: process.pid, now: 100 });
+  const prev = claimDataDir({ dir, pid: process.pid + 1, now: 200 });
+  assert.equal(prev?.pid, process.pid);
+  assert.equal(readOwner(dir).pid, process.pid + 1, 'ghi đè chứ không nhường: bản mới vẫn được chạy');
+});
+
+test('chủ cũ đã chết thì im lặng — sổ mồ côi sau một lần tắt máy là chuyện thường ngày', () => {
+  const dir = ownerDir();
+  claimDataDir({ dir, pid: deadPid(), now: 100 });
+  assert.equal(claimDataDir({ dir, pid: process.pid, now: 200 }), null);
+});
+
+test('cùng một pid nhận lại thư mục của chính nó thì không phải là đụng độ', () => {
+  const dir = ownerDir();
+  claimDataDir({ dir, pid: process.pid, now: 100 });
+  assert.equal(claimDataDir({ dir, pid: process.pid, now: 200 }), null);
+});
+
+test('sổ rác hay pid rác đều trả null chứ không ném — hỏng sổ không được chặn khởi động', () => {
+  const dir = ownerDir();
+  fs.writeFileSync(ownerFile(dir), '{ cụt');
+  assert.equal(readOwner(dir), null);
+  assert.equal(claimDataDir({ dir, pid: process.pid }), null);
+
+  fs.writeFileSync(ownerFile(dir), JSON.stringify({ pid: 'không phải số' }));
+  assert.equal(readOwner(dir), null);
+
+  fs.writeFileSync(ownerFile(dir), JSON.stringify({ pid: 0 }));
+  assert.equal(readOwner(dir), null, 'pid 0 nghĩa là cả nhóm tiến trình, không bao giờ là chủ hợp lệ');
+});
+
+test('thư mục chưa tồn tại thì tự tạo, không ném ENOENT', () => {
+  const dir = path.join(ownerDir(), 'chưa', 'có');
+  assert.equal(claimDataDir({ dir, pid: 7, now: 1 }), null);
+  assert.equal(readOwner(dir).pid, 7);
+});
+
+test('isPidAlive: EPERM vẫn là còn sống, chỉ ESRCH mới là đã chết', () => {
+  assert.equal(isPidAlive(process.pid), true);
+  assert.equal(isPidAlive(deadPid()), false);
+  // pid 1 (launchd/init) luôn sống và thuộc root, nên đây là ca EPERM khi test chạy
+  // dưới tài khoản thường; chạy dưới root thì nó thành ca thường. Cả hai đều phải true.
+  assert.equal(isPidAlive(1), true);
+  assert.equal(isPidAlive(0), false);
+  assert.equal(isPidAlive(-5), false);
+  assert.equal(isPidAlive(1.5), false);
+  assert.equal(isPidAlive(undefined), false);
+});
+
+test('cảnh báo in đúng MỘT dòng, có pid kia và có đường thoát', () => {
+  const dir = ownerDir();
+  const lines = [];
+  claimDataDir({ dir, pid: process.pid, now: 100 });
+  const prev = warnSharedDataDir({ dir, pid: process.pid + 1, log: (m) => lines.push(m) });
+  assert.equal(prev?.pid, process.pid);
+  assert.equal(lines.length, 1);
+  assert.match(lines[0], new RegExp(String(process.pid)));
+  assert.match(lines[0], /NOW_DATA_DIR/, 'cảnh báo phải nói được cách sửa, không chỉ nói là hỏng');
+});
+
+test('không đụng độ thì không in gì cả — cảnh báo thừa dạy người ta bỏ qua log', () => {
+  const dir = ownerDir();
+  const lines = [];
+  assert.equal(warnSharedDataDir({ dir, pid: process.pid, log: (m) => lines.push(m) }), null);
+  assert.deepEqual(lines, []);
+});
+
+/* ── Ai được nhận thư mục: phép canh điểm vào ────────────────────────────────── */
+
+/**
+ * Phần giòn nhất của lưới đỡ là câu hỏi "tiến trình này có phải server không", vì nó
+ * hỏng theo kiểu im lặng: canh sai thì cảnh báo tắt hẳn mà không ca nào đỏ, còn canh
+ * rộng quá thì chính bộ test ghi sổ vào `~/.now-dashboard` thật rồi cướp thư mục của
+ * service đang chạy. Đó là tai nạn `session-hosts.json` mà `test/hosts.test.js` kể lại.
+ * Vì vậy khối này khoá CẢ HAI chiều hỏng.
+ */
+
+const REPO = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+const SERVER_JS = path.join(REPO, 'server.js');
+const CONFIG_URL = new URL('../src/config.js', import.meta.url).href;
+
+/**
+ * Chạy `src/config.js` trong một tiến trình con giả làm điểm vào `entry`, rồi hỏi lại
+ * xem sổ có được ghi không.
+ *
+ * Ghi đè `process.argv[1]` TRƯỚC `import()` động là cách dựng lại đúng ca thật mà không
+ * phải bật server HTTP lên: `config.js` đọc `argv[1]` đúng một lần, lúc module được
+ * nạp. `NOW_DATA_DIR` luôn trỏ thư mục tạm, nên phép canh có hỏng thì sổ rác cũng rơi
+ * vào đó chứ không rơi vào sổ thật của người dùng.
+ */
+function claimsWhenEntryIs(entry) {
+  const dir = ownerDir();
+  const child = `
+    import fs from 'node:fs';
+    process.argv[1] = process.env.T_ENTRY;
+    await import(process.env.T_CONFIG);
+    process.stdout.write(fs.existsSync(process.env.T_OWNER) ? 'CLAIMED' : 'CLEAN');
+  `;
+  const r = spawnSync(process.execPath, ['--input-type=module', '-e', child], {
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      NOW_DATA_DIR: dir,
+      T_ENTRY: entry,
+      T_CONFIG: CONFIG_URL,
+      T_OWNER: ownerFile(dir),
+    },
+  });
+  assert.equal(r.status, 0, `tiến trình con chết: ${r.stderr}`);
+  return r.stdout;
+}
+
+test('chạy thẳng server.js thì tiến trình nhận thư mục — không có dòng này thì cả lưới đỡ vô dụng', () => {
+  assert.equal(claimsWhenEntryIs(SERVER_JS), 'CLAIMED');
+});
+
+test('vào qua bin `now-dash` (symlink, tên khác) vẫn nhận thư mục', () => {
+  // Dựng lại đúng thứ npm tạo cho `bin: { "now-dash": "./server.js" }`: một symlink tên
+  // khác trỏ về server.js, và Node giữ nguyên đường ấy trong argv[1] chứ không giải nó.
+  const link = path.join(ownerDir(), 'now-dash');
+  fs.symlinkSync(SERVER_JS, link);
+  assert.equal(claimsWhenEntryIs(link), 'CLAIMED');
+});
+
+test('một file LẠ tên đúng server.js thì KHÔNG được nhận thư mục', () => {
+  // Chiều hỏng thứ hai: canh theo tên file thì bất kỳ script nào tên server.js cũng cướp
+  // được sổ, kể cả script của người khác đang nạp module này để đọc hằng số.
+  const impostor = path.join(ownerDir(), 'server.js');
+  fs.writeFileSync(impostor, '');
+  assert.equal(claimsWhenEntryIs(impostor), 'CLEAN');
+});
+
+test('bộ test và `npm run state` nạp config.js nhưng không được nhận thư mục', () => {
+  // `import.meta.url` của chính file test này đóng vai điểm vào kiểu "module bị nạp".
+  assert.equal(claimsWhenEntryIs(fileURLToPath(import.meta.url)), 'CLEAN');
+  assert.equal(isServerProcess(fileURLToPath(import.meta.url)), false);
+});
+
+test('isServerProcess so bằng realpath, không bằng tên file', () => {
+  assert.equal(isServerProcess(SERVER_JS), true);
+  // `/tmp` là symlink của `/private/tmp` trên macOS: hai chuỗi khác nhau, một file.
+  const link = path.join(ownerDir(), 'now-dash');
+  fs.symlinkSync(SERVER_JS, link);
+  assert.equal(isServerProcess(link), true);
+
+  assert.equal(isServerProcess(undefined), false, 'node -e và REPL không có argv[1]');
+  assert.equal(isServerProcess(''), false);
+  assert.equal(isServerProcess(path.join(REPO, 'không-có-file-này.js')), false, 'realpath ném thì trả false');
 });

@@ -21,7 +21,7 @@ import path from 'node:path';
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'now-hosts-'));
 process.env.NOW_DATA_DIR = tmp;
 
-const { syncHosts, _reset } = await import('../src/collect/hosts.js');
+const { syncHosts, _reset, _flush } = await import('../src/collect/hosts.js');
 const { SESSION_HOST_FILE } = await import('../src/config.js');
 
 const NOW = Date.parse('2026-07-26T09:00:00+07:00');
@@ -65,6 +65,7 @@ test('sổ ghi vào thư mục tạm, KHÔNG vào sổ thật của người dù
 });
 
 test('chỉ ghi thêm, không bao giờ ghi đè — phiên đã chạy ở đâu thì vĩnh viễn ở đó', async () => {
+  await _flush();
   _reset();
   await syncHosts(new Map([['s1', 'cursor']]), NOW);
   const book = await syncHosts(
@@ -79,25 +80,31 @@ test('chỉ ghi thêm, không bao giờ ghi đè — phiên đã chạy ở đâ
 });
 
 test('không biết thì không ghi — để trống còn cơ hội, ghi null là đóng băng cái sai', async () => {
+  await _flush();
   _reset();
   const book = await syncHosts(new Map([['s3', null]]), NOW);
   assert.equal(book.has('s3'), false);
 });
 
 test('sổ sống sót qua khởi động lại — đó là toàn bộ lý do nó tồn tại', async () => {
+  await _flush();
   _reset();
   await syncHosts(new Map([['s4', 'cursor']]), NOW);
   await settleUntil((d) => d.sessions?.s4);
+  await _flush();
   _reset();
   const book = await syncHosts(new Map(), NOW);
   assert.equal(book.get('s4')?.host, 'cursor');
 });
 
 test('mục quá cũ bị cắt: transcript đã bị dọn thì không còn gì để quy trách nhiệm', async () => {
+  await _flush();
   _reset();
   await syncHosts(new Map([['xua', 'cursor']]), NOW - 200 * 86400_000);
   // Chờ mục cũ CÓ MẶT trước đã: không chờ thì lượt ghi thứ hai có thể vượt lượt đầu, và ca
-  // này đỏ vì mục cũ chưa từng được ghi — chứ không vì phép cắt sai.
+  // này đỏ vì mục cũ chưa từng được ghi — chứ không vì phép cắt sai. `await _flush()` ở
+  // đầu ca lo phần còn lại: nó chặn lượt ghi còn sót của ca TRƯỚC đáp xuống giữa chừng rồi
+  // đè mất mục `xua`, đúng nguyên nhân của lượt đỏ một-trên-sáu trước đây.
   await settleUntil((d) => d.sessions?.xua);
   await syncHosts(new Map([['moi', 'vscode']]), NOW);
   const onDisk = await settleUntil((d) => d.sessions?.moi);
@@ -105,11 +112,47 @@ test('mục quá cũ bị cắt: transcript đã bị dọn thì không còn gì
   assert.equal(onDisk.sessions.xua, undefined, 'quá 120 ngày thì bỏ');
 });
 
+test('hai lượt ghi phát ra sát nhau thì lượt SAU thắng, không phải lượt về đích trước', async () => {
+  // Ca này khoá THỨ TỰ, không khoá nội dung. `flush` cố ý không được await, nên nếu các lượt
+  // ghi chạy song song thì hai lượt sát nhau có thể đáp xuống ngược thứ tự phát ra, và lượt
+  // CŨ đè lượt MỚI mà không ai ném gì. Hàng đợi trong `hosts.js` là thứ chốt lại thứ tự ấy.
+  //
+  // Lặp nhiều vòng vì một vòng không đủ: trên máy rỗi, lượt phát ra trước thường cũng về
+  // đích trước, nên bản hỏng vẫn xanh. Đo bằng cách cho `writeOnce` chạy song song trở lại:
+  // một vòng đơn lẻ xanh cả 15 lần, còn ca 40 vòng này đỏ 6 trên 10 lượt chạy, tức tỉ lệ
+  // hỏng mỗi vòng khoảng 2%. Nâng số vòng thì bắt chắc tay hơn, nhưng 40 vòng đã tốn dưới
+  // một giây và đủ để một lượt CI đơn lẻ không bỏ sót lỗi mà im lặng.
+  //
+  // `_reset()` giữa hai lượt là thứ dựng lại đúng hình dạng ấy: nó bỏ sổ trong bộ nhớ, nên
+  // lượt thứ hai nạp lại từ đĩa trong lúc lượt đầu còn đang bay, và hai lượt ghi ra hai nội
+  // dung khác nhau thay vì cùng một nội dung.
+  const VÒNG = 40;
+  const thua = [];
+  for (let v = 0; v < VÒNG; v += 1) {
+    await _flush();
+    _reset();
+    await syncHosts(new Map([[`đầu${v}`, 'cursor']]), NOW);
+    _reset();
+    await syncHosts(new Map([[`sau${v}`, 'vscode']]), NOW);
+    await _flush();
+    const onDisk = JSON.parse(fs.readFileSync(SESSION_HOST_FILE, 'utf8'));
+    if (onDisk.sessions[`sau${v}`]?.host !== 'vscode') thua.push(v);
+  }
+  assert.deepEqual(thua, [], `lượt ghi phát ra sau phải là lượt nằm trên đĩa; thua ở ${thua.length}/${VÒNG} vòng`);
+});
+
 test('sổ hỏng thì bắt đầu lại từ đầu, không làm sập lượt quét', async () => {
+  await _flush();
   _reset();
   fs.writeFileSync(SESSION_HOST_FILE, 'không phải JSON');
   const book = await syncHosts(new Map([['s5', 'terminal']]), NOW);
   assert.equal(book.get('s5').host, 'terminal');
 });
 
-test.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+// Chờ lượt ghi cuối đáp xuống rồi mới xoá thư mục: xoá trước thì lượt ghi ấy hạ cánh vào
+// một đường đã biến mất và in ra một lỗi không ai đọc, sau khi bộ test đã báo xanh.
+test.after(async () => {
+  await _flush();
+  assert.equal(fs.readdirSync(tmp).filter((f) => f.includes(`.${process.pid}.`)).length, 0, 'không được bỏ lại file tạm');
+  fs.rmSync(tmp, { recursive: true, force: true });
+});

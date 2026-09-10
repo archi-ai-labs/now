@@ -24,7 +24,13 @@ function unit(x) {
   // "0 thức / 22" trên đầu nhóm. Chỉ trạng thái NGOẠI LỆ — đang thức — mới đáng
   // tốn mực. Cả cụm dồn về trái để mắt không phải nhảy ngang cả màn hình mới ghép
   // được tên phiên với giờ của nó.
-  return html`<div class="unit ${x.sleeping ? 'sleeping' : 'awake'} ${t ? '' : 'no-cast'}">
+  //
+  // `no-cast` = phiên KHÔNG có todo, và nó phải bám vào `td` chứ không vào bất kỳ biến
+  // nào khác đang nằm sẵn trong scope: `t` là hàm i18n nhập ở đầu file nên luôn truthy,
+  // gõ nhầm sang nó thì class chẳng bao giờ được gắn và hai rule CSS ăn theo nó
+  // (styles.css: giấu cột tiến độ ở màn rộng, bỏ hẳn nó khỏi grid ở màn ≤940px) thành
+  // mã chết mà không có gì đỏ lên.
+  return html`<div class="unit ${x.sleeping ? 'sleeping' : 'awake'} ${td ? '' : 'no-cast'}">
     <span class="unit-av" title="${surfaceName(surface)}">${surfaceIcon(surface)}</span>
 
     <div>
@@ -63,12 +69,23 @@ function unit(x) {
  * nhau nhưng cùng chiếm một chỗ trong đầu người dùng — "cái gì đang chạy ở dự án này".
  * Cho chúng hai kiểu thẻ khác nhau là bắt mắt học hai bảng chú giải cho một câu hỏi.
  *
- * Khác biệt thì nằm ở chỗ khác biệt THẬT: không có `resume` (Antigravity không có lệnh
- * nối lại từ ngoài), không có todo, và cột giữa đo bằng SỐ BƯỚC agent đã đi thay vì
- * tiến độ việc — vì đó là thứ sổ của nó ghi lại.
+ * Khác biệt thì nằm ở chỗ khác biệt THẬT: không có `resume`, vì Antigravity không có lệnh
+ * nối lại từ ngoài, và không có todo, nên cột tiến độ ở giữa bỏ trống hẳn. Thứ sổ của nó
+ * ghi lại được là SỐ BƯỚC agent đã đi, và con số ấy nằm trong dòng meta chứ không chiếm
+ * cột giữa.
  */
 function convoUnit(c) {
-  return html`<div class="unit convo ${c.sleeping ? 'sleeping' : 'awake'}">
+  // `no-cast` đặt cứng, không dò theo dữ liệu: sổ Antigravity không ghi danh sách việc,
+  // nên thẻ hội thoại KHÔNG BAO GIỜ có cột tiến độ để vẽ. Thiếu class này thì hai rule ăn
+  // theo nó trong styles.css thành mã chết với phần lớn danh sách, vì payload đo được lúc
+  // 2026-09-10 có 226 thẻ hội thoại trên tổng 236 hàng. Ở mốc ≤940px, hàng lưới rỗng ấy
+  // đo được 12px một thẻ: 62,2px khi thiếu class, 50,2px khi có, tại viewport 768.
+  //
+  // Ô `u-cast` rỗng bên dưới vẫn phải ở lại. Màn rộng xếp `.unit` thành lưới bốn cột với
+  // cột thứ ba rộng cố định 176px, nên bỏ ô đi thì hai nút dồn sang cột ba và nút của thẻ
+  // hội thoại lệch khỏi nút của thẻ phiên khi rà mắt dọc danh sách. Giấu nó là việc của
+  // `no-cast`, còn ở ≤940px thì `display: none` bỏ hẳn nó khỏi lưới.
+  return html`<div class="unit convo no-cast ${c.sleeping ? 'sleeping' : 'awake'}">
     <span class="unit-av" title="${surfaceName('antigravity')}">${surfaceIcon('antigravity')}</span>
 
     <div>

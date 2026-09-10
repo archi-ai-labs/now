@@ -71,7 +71,21 @@ export function renderHealth(s, q) {
   }
 
   for (const p of s.projects) {
-    if (p.parseError) rows.push(item('✖', t('health.parseError', { name: p.name }), p.parseError, copyCode('/now update')));
+    // Một ô `parseError`, hai nguyên nhân, và nhãn phải nói đúng nguyên nhân: `buildFailed`
+    // nghĩa là NOW.json đọc được và parse được, chỉ phép dựng thẻ dự án trong `src/state.js`
+    // ném giữa chừng. Dùng chung nhãn "NOW.json không đọc được" là đẩy người đọc đi sửa một
+    // file JSON không có lỗi. Phần mô tả là thông báo gốc của exception nên nó vẫn tiếng
+    // Anh, y như `parseError` của `JSON.parse`.
+    if (p.parseError) {
+      rows.push(
+        item(
+          '✖',
+          t(p.buildFailed ? 'health.buildFail' : 'health.parseError', { name: p.name }),
+          p.parseError,
+          copyCode('/now update'),
+        ),
+      );
+    }
     for (const e of p.schemaErrors) rows.push(item('⚠', t('health.schemaError', { name: p.name }), e, copyCode('/now update')));
 
     if (p.git.nestedIn) {
@@ -83,7 +97,15 @@ export function renderHealth(s, q) {
           copyCode(`git -C ${p.path} init`, t('health.splitRepo')),
         ),
       );
-    } else if (p.git.unknownCommit) {
+    } else if (p.git.unknownCommit && !p.git.degraded) {
+      // `degraded` phải chặn trước: `collectGit` bật `unknownCommit` cho cả ca không hỏi
+      // được git, mà dòng dưới đây khẳng định mốc board đã biến mất khỏi lịch sử — một câu
+      // ta không có cơ sở để nói khi chưa đọc nổi repo. Im lặng còn hơn nói sai chỗ, và
+      // thẻ dự án bên màn Tổng quan vẫn treo cờ "không đo được" cho board ấy.
+      //
+      // Lý do cụ thể thì chỉ những lượt hỏng vì máy (timeout, thiếu lệnh…) mới có dòng ⌁ ở
+      // đầu màn kể; `git status` thoát khác 0 rơi vào nhánh `exit` mà `RUN_WHY` cố ý bỏ qua,
+      // nên ca ấy hiện đang trống lý do. Bịt nốt thì cần một khoá i18n riêng.
       rows.push(
         item(
           '◎',
@@ -206,6 +228,10 @@ export function renderHealth(s, q) {
         <tbody>
           ${s.projects.map((p) => {
             const hp = integrity(p, s.thresholds);
+            // Hai ô Lệch và Bẩn từng bịa số cho một repo chưa đọc được: nhánh nuốt null
+            // thành 0 in ra "lệch 0 commit", còn ô Bẩn in ra chuỗi rỗng. Cả hai giá trị đều
+            // là "chưa đo được", nên phải hiện đúng như vậy. Chú thích để ngoài chuỗi HTML:
+            // để trong thì mỗi dự án lại chép nó thêm một lần vào DOM.
             return html`<tr>
               <td><b>${p.name}</b><div style="color:var(--faint);font:10px var(--mono)">${p.id}</div></td>
               <td style="white-space:nowrap">
@@ -214,8 +240,8 @@ export function renderHealth(s, q) {
               </td>
               <td><code>${p.git.branch ?? '—'}</code></td>
               <td>${p.ageDays == null ? '—' : p.ageDays === 0 ? t('health.today') : t('health.ageShort', { n: p.ageDays })}</td>
-              <td>${p.git.unknownCommit ? '?' : (p.git.driftCommits ?? 0)}</td>
-              <td>${p.git.dirty}</td>
+              <td>${p.git.unknownCommit ? '?' : (p.git.driftCommits ?? '—')}</td>
+              <td>${p.git.dirty ?? '—'}</td>
               <td>${p.counts.awake}/${p.counts.sessions}</td>
             </tr>`;
           })}

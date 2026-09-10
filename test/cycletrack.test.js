@@ -139,3 +139,89 @@ test('tracker bỏ qua lượt đọc hỏng — không tạo sổ, không ném'
   assert.equal(r2.size, 0);
   await assert.rejects(fs.access(file), 'không có gì để ghi thì không được đẻ file');
 });
+
+/* ── Sổ tự lành ở MỖI lượt ghi ───────────────────────────────────────────────── */
+
+const WEEK = 7 * 86400_000;
+
+/** Sổ bẩn đúng kiểu bản cũ ghi ra: mỗi ảnh chụp một khoá, mốc reset bò theo đồng hồ. */
+const dirtyLedger = (n) => {
+  const m = new Map();
+  for (let i = 0; i < n; i++) {
+    const at = AT + i * 5 * 60_000;
+    m.set(`3p-weekly|${at + WEEK}`, {
+      kind: '3p-weekly',
+      resetsAt: at + WEEK,
+      windowMs: WEEK,
+      peak: 0,
+      samples: 1,
+      firstAt: at,
+      lastAt: at,
+    });
+  }
+  return m;
+};
+
+test('writeCycles gộp cửa sổ lăn và trả về map ĐÃ gộp', async () => {
+  // Gộp chỉ ở `readCycles` thì một tiến trình chạy liền hai tuần là hai tuần không ai dọn,
+  // vì bản ghi của cửa sổ lăn có mốc reset ở tương lai nên `trimCycles` miễn cắt cho nó.
+  const file = path.join(await fs.mkdtemp(path.join(os.tmpdir(), 'cyc-')), 'ag-cycles.json');
+  // Dọn xong là tin lành, nên nó phải đi stdout. `service.err.log` là chỗ người ta mở ra khi
+  // nghi có sự cố, và mọi dòng khác của nhánh sổ chu kỳ ở đó đều là một lượt ghi hỏng.
+  const out = [];
+  const errs = [];
+  const realLog = console.log;
+  const realError = console.error;
+  console.log = (...a) => out.push(a.join(' '));
+  console.error = (...a) => errs.push(a.join(' '));
+  let kept;
+  try {
+    kept = await writeCycles(dirtyLedger(20), file, AT + 100 * 60_000);
+  } finally {
+    console.log = realLog;
+    console.error = realError;
+  }
+  assert.equal(kept.size, 1, 'map trả về phải là map đã gộp, không thì bộ nhớ lệch với đĩa');
+  assert.equal([...kept.values()][0].samples, 20, 'samples của cả nhóm phải cộng dồn');
+  assert.deepEqual(errs, [], 'dọn sổ thành công không được lẫn vào stderr');
+  assert.equal(out.length, 1, 'phải có đúng một dòng báo dọn, và nó ở stdout');
+  assert.match(out[0], /gộp 19 bản ghi của cửa sổ lăn \(20 → 1\)/);
+  const onDisk = JSON.parse(await fs.readFile(file, 'utf8'));
+  assert.equal(Object.keys(onDisk.cycles).length, 1, 'đĩa cũng phải sạch ngay lượt ghi này');
+});
+
+test('tracker: mười lượt gấp một ảnh chụp chỉ tính một lượt đọc', async () => {
+  // Nhịp production: `ag.at` là thời điểm FETCH và ảnh chụp sống 5 phút, còn tracker được
+  // gọi 30 giây một lần. Trước khi sửa, sáu ảnh chụp ra sáu khoá (một khoá gộp cộng năm
+  // khoá rác `samples: 1`), và sổ AG thật phồng lên 158 KB theo đúng đường đó.
+  //
+  // Sáu lượt fetch ở đây chạy nối đuôi trong cùng một tick, tức sáu lượt ghi chồng lên
+  // nhau. Nuốt được nhịp đó là phần việc của tên file tạm riêng từng lượt ghi
+  // (`cyclesTmpPath`); test bắt luôn stderr để một lượt ghi hỏng không lặng lẽ trôi qua và
+  // để khẳng định về nội dung file khỏi đọc trúng bản của lượt ghi cũ.
+  const file = path.join(await fs.mkdtemp(path.join(os.tmpdir(), 'cyc-')), 'ag-cycles.json');
+  const track = makeTracker(file);
+  const errs = [];
+  const realError = console.error;
+  console.error = (...a) => errs.push(a.join(' '));
+  let last = null;
+  try {
+    for (let f = 0; f < 6; f++) {
+      const at = AT + f * 5 * 60_000;
+      for (let i = 0; i < 10; i++) last = await track([{ kind: '3p-weekly', resetsAt: at + WEEK, windowMs: WEEK, used: 40 + f }], at);
+    }
+    await track._flush();
+  } finally {
+    console.error = realError;
+  }
+  assert.deepEqual(errs, [], 'không lượt ghi nào được hỏng — mỗi lượt phải có file tạm riêng');
+  assert.equal(last.size, 1, 'sáu ảnh chụp của một cửa sổ đang lăn phải nằm chung một hàng');
+  assert.equal([...last.cycles.values()][0].kind, '3p-weekly');
+  // Chỉ khẳng định SỐ KHOÁ, không khẳng định `samples`: tracker ghi đĩa không await rồi mới
+  // gán lại memo, nên một lượt ghi về muộn có thể kéo memo lùi về ảnh chụp cũ. Số khoá thì
+  // miễn nhiễm với chuyện đó vì mọi bản trung gian đều đúng một khoá. Phép cộng `samples`
+  // và MAX của đỉnh đã được khoá ở `quotalog.test.js`, nơi gọi thẳng `bumpWindows`.
+  const onDisk = JSON.parse(await fs.readFile(file, 'utf8'));
+  assert.equal(Object.keys(onDisk.cycles).length, 1, 'đĩa cũng chỉ được có một hàng');
+  assert.deepEqual(await fs.readdir(path.dirname(file)), ['ag-cycles.json'], 'không được để lại file tạm');
+});

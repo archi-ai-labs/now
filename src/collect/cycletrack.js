@@ -59,6 +59,10 @@ export function cursorCycleWindows(cu) {
  */
 export function makeTracker(file) {
   let memo = null;
+  // Các lượt ghi ĐANG BAY. Đường quét không đợi chúng, còn test thì phải đợi: một khẳng
+  // định về nội dung file mà không chờ lượt ghi đáp xuống là đang đọc bản của lượt ghi
+  // TRƯỚC, và khẳng định như thế vẫn xanh cả khi bản sửa bị gỡ đi.
+  const inflight = new Set();
   const track = async (windows, at) => {
     // Sổ được nạp CẢ KHI lượt này không mang cửa sổ nào (app đóng, nguồn hỏng): từ 30/7
     // `collectLookback` đọc lịch sử qua chính memo này, mà lịch sử trên đĩa thì không
@@ -69,12 +73,15 @@ export function makeTracker(file) {
     const next = bumpWindows(memo, at, windows);
     if (next !== memo) {
       memo = next;
-      writeCycles(memo, file, at).then(
-        (trimmed) => {
-          memo = trimmed;
-        },
-        (err) => console.error(`cycletrack: ghi ${file} hỏng — ${err.message}`),
-      );
+      const write = writeCycles(memo, file, at)
+        .then(
+          (trimmed) => {
+            memo = trimmed;
+          },
+          (err) => console.error(`cycletrack: ghi ${file} hỏng — ${err.message}`),
+        )
+        .finally(() => inflight.delete(write));
+      inflight.add(write);
     }
     // `cycles` là chính cái Map trong memo — đường đọc của `collectLookback`. Cùng cảnh
     // báo với `trackQuota`: không được để nó lọt vào state, JSON hoá Map ra `{}`.
@@ -84,6 +91,9 @@ export function makeTracker(file) {
   track._reset = () => {
     memo = null;
   };
+  // Chỉ test dùng: chờ mọi lượt ghi đang bay đáp xuống rồi mới đọc file. Nó thay cho nhịp
+  // `setTimeout` mà test từng phải chèn, thứ chỉ đoán chừng chứ không chờ đúng lượt ghi.
+  track._flush = () => Promise.all([...inflight]);
   return track;
 }
 

@@ -269,6 +269,16 @@ function panel() {
  * về, nên tới khung hình kế tiếp thì DOM đã có và đã bố cục xong.
  */
 function measureSoon() {
+  // Bề mặt không có nhịp vẽ thì bỏ phép đo, và bề mặt đó là Node chứ không phải một trình
+  // duyệt cũ nào. `renderBench` phải GỌI ĐƯỢC ngoài trình duyệt, vì `test/views.test.js`
+  // chạy thật mọi hàm render để bắt biến thiếu trong template literal, mà lỗi loại ấy chỉ
+  // ném lúc render. Một lời gọi rAF trần làm chính hàm render nổ trước khi chạm tới chỗ cần
+  // canh, nên nó vô hiệu hoá đúng cái lưới đang canh nó. Khuôn guard lấy từ `glide` trong
+  // `views/pet.js`, nơi lý do cũng như vậy.
+  //
+  // Ở đây không có gì để đo nên nhánh này im lặng trả về, còn `glide` thì khác: bên đó phép
+  // cuộn vẫn phải xảy ra, chỉ là không trôi.
+  if (typeof requestAnimationFrame !== 'function') return;
   requestAnimationFrame(() => {
     const wrap = document.querySelector('.mbd-stage .mb-wrap');
     const slot = document.getElementById('mbd-meas');

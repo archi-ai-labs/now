@@ -31,6 +31,19 @@ export function badgeOf(s, now = Date.now(), pet = null) {
   const hot = s?.stats?.hotDecisions ?? 0;
   const why = degradedKey(q);
 
+  // Một bậc ngồi-lâu, dùng chung cho cả `rest` lẫn `alert` bên dưới. Tính một lần ở đây vì
+  // hai trường ấy từng hỏi `doing` theo hai luật khác nhau: `rest` chỉ im khi người dùng
+  // đang đi bộ, `alert` im với mọi việc đang chạy. Cùng một payload cho ra "đã ngồi quá một
+  // chu kỳ" ở trường này và "không có gì để nhắc" ở trường kia, mà một câu hỏi có hai luật
+  // thì lần sửa sau chỉ sửa được một nửa.
+  //
+  // Luật giữ lại là luật hẹp hơn, của `rest`: chỉ động tác NGHỈ (`kind: 'move'`) mới bịt
+  // lời nhắc, vì đó đúng là việc người dùng vừa bấm để chữa cơn ngồi lâu. Bát phở chữa cơn
+  // đói chứ không cắt mạch ngồi, và từ lượt gỡ `starving` khỏi thang đèn thì đèn do một
+  // mình số phút ngồi bật. Bịt lời nhắc trong lúc ăn chỉ khiến icon tắt đi một phút mỗi lần
+  // cho ăn, và một kênh nhấp nháy là kênh dạy mắt bỏ qua nó.
+  const restStage = pet?.on && pet.doing?.kind !== 'move' ? restStageOf(pet.satMin) : null;
+
   return {
     ok: true,
     at: now,
@@ -69,44 +82,48 @@ export function badgeOf(s, now = Date.now(), pet = null) {
     // "câm đúng lúc cần lên tiếng nhất" đã ghi ở chú thích PET_MS bên server.js: mốc nghỉ
     // được ĐO đều đặn rồi, nhưng chưa có đường BÁO nào.
     //
-    // `stage` là quyết định đã tính xong (thang ở restStageOf — ba bậc SUY từ FOCUS_MS,
-    // hạ nhịp là ba mốc tự đi theo), app Swift chỉ in lại — cùng ranh giới "app không
-    // biết luật nào" đã khai ở đầu
-    // NowMenuBar.swift. Đang giữa một động tác nghỉ thì bậc về null: người vừa bấm "đi bộ"
-    // mà icon vẫn giục là cái huy hiệu cãi lại chính cú bấm nó vừa xin. Trò chơi tắt
+    // `stage` là quyết định đã tính xong (thang ở restStageOf — ba bậc SUY từ FOCUS_MS, hạ
+    // nhịp là ba mốc tự đi theo), app Swift chỉ in lại, đúng ranh giới "app không biết luật
+    // nào" đã khai ở đầu NowMenuBar.swift. Bậc ấy là `restStage` khai phía trên, dùng chung
+    // với `alert`: đang giữa một động tác nghỉ thì nó về null, vì người vừa bấm "đi bộ" mà
+    // icon vẫn giục là cái huy hiệu cãi lại chính cú bấm nó vừa xin. Trò chơi tắt
     // (`on: false`) thì cả trường về null — tắt trò chơi là tắt mọi bề mặt của nó, không
     // riêng gì popover.
-    rest: pet?.on
-      ? { satMin: pet.satMin, stage: pet.doing?.kind === 'move' ? null : restStageOf(pet.satMin) }
-      : null,
+    rest: pet?.on ? { satMin: pet.satMin, stage: restStage } : null,
     // ── Huy hiệu trên icon — server chốt HÌNH, app chỉ vẽ ─────────────────────
     //
-    // Ra đời một ngày sau `rest`, vì người dùng ngồi trước một icon câm với con thú đói
-    // kiệt (`full = 0`) và hỏi đúng câu phải hỏi: *"Tôi đã đói + mệt rồi mà vẫn chưa có
-    // thông báo gì"* (9/8, kèm ảnh). Thang `rest` chỉ đọc số phút ngồi — tức icon hiện
-    // được bậc HẠNG BA của `stateOf` (`spent`) mà câm với bậc HẠNG HAI (`starving`);
-    // một cái icon cãi lại chính bảng xếp hạng của mô hình nó đang vẽ.
+    // Ra đời một ngày sau `rest`, khi người dùng ngồi trước một icon câm và hỏi đúng câu
+    // phải hỏi: *"Tôi đã đói + mệt rồi mà vẫn chưa có thông báo gì"* (9/8, kèm ảnh). Vế
+    // trả lời được của câu ấy là vế MỆT: thang `rest` đã đo số phút ngồi từ hôm trước,
+    // nhưng chưa có đường nào đưa nó ra khỏi popover.
     //
     // `level` là HÌNH, không phải nguyên nhân: `dot` chấm vàng 7pt · `bang` đĩa đỏ 11pt
     // mang dấu chấm than · `flood` đĩa đỏ cộng nhuộm đỏ cả chữ. Nguyên nhân nằm trọn
-    // trong `say` (câu cho tooltip, server soạn bằng i18n) — app Swift vì thế vẫn không
-    // biết một luật nào, đúng ranh giới đã khai ở đầu NowMenuBar.swift, và thêm nguồn
-    // báo thứ ba sau này không phải dựng lại app.
+    // trong `say` (câu cho tooltip, server soạn bằng i18n), nên app Swift vẫn không biết
+    // một luật nào, đúng ranh giới đã khai ở đầu NowMenuBar.swift, và thêm nguồn báo thứ
+    // ba sau này không phải dựng lại app.
     //
-    // Ghép bậc: `starving` đứng ngang `spent` (đĩa đỏ) theo đúng thứ hạng của `stateOf`
-    // — nó là bậc duy nhất mà chính CON VẬT đang hỏng; `over` vẫn là mức mạnh nhất. ĐÓI
-    // THƯỜNG thì không bao giờ lên icon: chu kỳ no dài hàng chục giờ nên "đang đói" là chuyện mỗi
-    // ngày một lần — một huy hiệu nổ hằng ngày là cái đèn đỏ luôn sáng, đúng thứ mà chú
-    // thích FULL_MS đã gỡ một lần. Đang làm gì đó (`doing`) thì im hết: ăn dở là cơn đói
-    // đang được chữa, nghỉ dở mà icon vẫn giục là cãi lại chính cú bấm vừa xong.
+    // Chỉ thang `rest` được bật đèn, còn cơn đói thì không. Bản 9/8 từng cho `starving`
+    // đứng ngang `spent`, và phép đo ngày 10/9 cho thấy cái giá của nó: `fedAt` trong sổ
+    // pet đứng từ 7/9, tức icon mang đĩa đỏ hơn hai ngày liền vì một trạng thái trò chơi
+    // mà chủ máy vẫn không cho ăn. `bang` là kênh mà hạn mức token và thang ngồi-lâu dùng
+    // để nói "cần làm gì đó thật", nên một mục đỏ bị lờ đi hai ngày dạy mắt bỏ qua cả
+    // kênh ấy. Hàng rào 4 của brief 6/8 (briefs/brief-quan-gia-cua-hang-game-feel.md) đã
+    // chốt luật cho ca này: trò chơi không đứng trên mặt số liệu.
+    //
+    // Cơn đói vẫn được NÓI, chỉ là không tự bật được đèn. Khi đã có một bậc `rest` thật
+    // thì `say` kèm thêm câu `badge.starve`, nên người mở tooltip vẫn biết quản gia đang
+    // đói. Trò chơi tắt hay đang giữa một động tác nghỉ thì `restStage` đã là null từ trên
+    // kia, và đó là cửa duy nhất bịt được trường này — xem lý do ở chỗ khai `restStage`.
     alert: (() => {
-      if (!pet?.on) return null;
-      const stage = pet.doing ? null : restStageOf(pet.satMin);
-      const starving = !pet.doing && pet.mood === 'starving';
       const level =
-        stage === 'over' ? 'flood' : starving || stage === 'spent' ? 'bang' : stage === 'dip' ? 'dot' : null;
+        restStage === 'over' ? 'flood' : restStage === 'spent' ? 'bang' : restStage === 'dip' ? 'dot' : null;
       if (!level) return null;
-      const say = [starving ? t('badge.starve') : null, stage ? t('badge.sat', { n: pet.satMin }) : null]
+      // Tới dòng này thì chắc chắn có bậc ngồi-lâu, nên câu ngồi-lâu đứng TRƯỚC vì nó là thứ
+      // vừa bật đèn, còn câu đói đi sau ở vai một tin kèm. Thứ tự ấy là quyết định chứ không
+      // phải tình cờ: tooltip đọc từ trên xuống, và dòng đầu phải trả lời được "vì sao icon
+      // đang sáng". `test/badge.test.js` khoá lại đúng thứ tự này.
+      const say = [t('badge.sat', { n: pet.satMin }), pet.mood === 'starving' ? t('badge.starve') : null]
         .filter(Boolean)
         .join('\n');
       return { level, say };

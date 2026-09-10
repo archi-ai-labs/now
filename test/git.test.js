@@ -5,6 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { collectGit } from '../src/collect/git.js';
+import { integrity } from '../public/views/shared.js';
+import { renderHealth } from '../public/views/health.js';
+import { rawText } from '../public/lib/dom.js';
+import { t } from '../public/lib/i18n.js';
 
 /**
  * Test trên repo git THẬT, không phải mock.
@@ -99,6 +103,12 @@ test('mốc board đã bị rebase/amend mất → unknownCommit, KHÔNG phải 
   const g = await collectGit(repo, 'deadbeefdeadbeef');
   assert.equal(g.unknownCommit, true);
   assert.equal(g.driftCommits, null, 'trả 0 ở đây là làm board cũ trông tươi — đúng cái bẫy cần chặn');
+  assert.equal(
+    g.degraded,
+    null,
+    'git chạy được và trả lời "mốc này không có trong lịch sử": `degraded` để trống chính là ' +
+      'chỗ giao diện phân biệt ca này với ca không hỏi được git câu nào',
+  );
 });
 
 test('không phải repo git thì nói thẳng, không ném', async () => {
@@ -154,6 +164,147 @@ test('worktree trong thư mục tạm hệ thống không bị báo nhầm là "
   const g = await collectGit(repo);
   assert.equal(g.isRepo, true);
   assert.equal(g.nestedIn, undefined);
+});
+
+/**
+ * C4 — `run()` trả chuỗi rỗng ở MỌI ca hỏng, và `parseStatusV2('')` cho `branch: null`, nên
+ * thẻ dự án từng in "detached, 0 file bẩn" cho một repo mà nó không hỏi được git lấy một câu.
+ *
+ * Dựng ca hỏng bằng cách rút `git` khỏi `PATH` chứ không phải bằng timeout: `execFile` tra
+ * `PATH` lúc spawn nên ca này chắc chắn xảy ra và chỉ mất vài chục mili giây, còn ép hết giờ
+ * 4 giây thì phải có một repo đủ to để treo, thứ không dựng được trong test. Hai kiểu hỏng
+ * đi chung một đường: `reason` khác `exit` nghĩa là ta không đọc được gì.
+ */
+test('git không chạy được → "không đọc được", KHÔNG phải "detached, sạch"', async () => {
+  const { repo } = await fixture;
+  const pathCũ = process.env.PATH;
+  process.env.PATH = '/now-dash-khong-co-thu-muc-nay';
+  try {
+    const g = await collectGit(repo, 'deadbeefdeadbeef');
+    assert.equal(g.degraded, 'not-found', 'phải nói ra kiểu hỏng để màn Sức khoẻ kể được');
+    assert.equal(g.branch, null, '"detached" ở đây là một khẳng định bịa ra');
+    assert.equal(g.dirty, null, '0 file bẩn nghĩa là "đã đếm và thấy sạch" — mà ta chưa đếm được gì');
+    assert.equal(g.driftCommits, null);
+    assert.equal(
+      g.unknownCommit,
+      true,
+      'độ lệch chưa đo được thì phải nói ra bằng cờ này: `integrity()` ở public/views/shared.js ' +
+        'chỉ nghe nó, còn `driftCommits ?? 0` thì chấm cho repo câm đúng điểm của board vừa cập nhật',
+    );
+    assert.deepEqual(g.worktrees, []);
+  } finally {
+    process.env.PATH = pathCũ;
+  }
+});
+
+/**
+ * Lưới phía TIÊU THỤ của hình dạng trên: hình dạng đúng chưa đủ, vì thứ người ta nhìn thấy
+ * là do hai màn quyết định, và cả hai từng quy `null` về 0. Đo lại trước khi sửa, trên đúng
+ * repo dựng ở đây với `git` rút khỏi PATH và board 1 ngày tuổi: `integrity()` chấm 93/100
+ * (nhánh `driftCommits ?? 0` coi "chưa đo được" là "lệch 0 commit"), bảng ở màn Sức khoẻ in
+ * số 0 vào cột Lệch và để trống ô Bẩn, còn danh sách việc cần dọn thì khẳng định mốc board
+ * đã biến mất khỏi lịch sử git — bốn câu bịa cho một lượt quét không hỏi được git chữ nào.
+ *
+ * Test nằm ở đây chứ không ở `test/views.test.js` vì nó khoá một dây chuyền: `collectGit`
+ * trả gì thì hai màn kia được phép in gì. Lưới bên ấy chỉ soát "vẽ được, không ném".
+ */
+test('repo không đọc được: không màn nào được quy null về 0', async () => {
+  const { repo } = await fixture;
+  const pathCũ = process.env.PATH;
+  process.env.PATH = '/now-dash-khong-co-thu-muc-nay';
+  let git;
+  try {
+    git = await collectGit(repo, 'deadbeefdeadbeef');
+  } finally {
+    process.env.PATH = pathCũ;
+  }
+
+  const thresholds = { driftDays: 3, driftCommits: 5, staleDays: 7, staleCommits: 15 };
+  const p = {
+    id: 'local/du-an-cam',
+    name: 'dự án câm',
+    path: repo,
+    now: { updatedAtCommit: 'deadbeefdeadbeef' },
+    git,
+    ageDays: 1,
+    health: 'unknown',
+    hasMd: true,
+    parseError: null,
+    buildFailed: false,
+    schemaErrors: [],
+    counts: { awake: 0, sessions: 0 },
+  };
+
+  assert.equal(
+    integrity(p, thresholds),
+    25,
+    'board 1 ngày tuổi trên một repo câm mà được 93/100 thì thanh sức khoẻ đang bảo đảm cho thứ nó chưa đo',
+  );
+
+  const state = {
+    projects: [p],
+    thresholds,
+    orphans: [],
+    stats: { projects: 1, orphans: 0 },
+    buildMs: 1,
+    runFailures: { sinceMs: 30_000, rows: [] },
+  };
+  const out = rawText(renderHealth(state, ''));
+
+  assert.ok(out.includes('<td>?</td>'), `cột Lệch phải nói "chưa đo được", nhận: ${out.match(/<td>[^<]*<\/td>/g)}`);
+  assert.ok(out.includes('<td>—</td>'), 'ô Bẩn phải là gạch ngang, không phải chuỗi rỗng');
+  assert.ok(!out.includes('<td>0</td>'), 'không ô nào được in số 0 cho một lượt quét câm');
+  assert.ok(
+    !out.includes(t('health.unknownCommit', { name: p.name })),
+    'chưa đọc được repo thì không có cơ sở nào để nói mốc board đã biến mất khỏi lịch sử git',
+  );
+});
+
+/**
+ * `git status` thoát khác 0 là ca duy nhất trong file này mà `exit` KHÔNG phải một câu trả
+ * lời: thư mục không phải repo thì `rev-parse` đã chặn từ trên, nên tới đây mà git nói
+ * "không" thì nghĩa là repo có vấn đề. Bản cũ đọc chuỗi rỗng của lệnh hỏng thành "sạch",
+ * tức thẻ dự án khoe 0 file chưa commit cho một repo chưa đếm được file nào.
+ *
+ * Dựng ca này bằng cách khoá quyền đọc `.git/index`, và bỏ qua khi phép khoá không ăn —
+ * chạy test bằng quyền root thì không có cách nào làm `git status` hỏng mà `rev-parse` vẫn
+ * chạy được, và một test không dựng nổi cảnh cần kiểm thì đỏ cũng không nói lên điều gì.
+ */
+test('`git status` hỏng thì cả thẻ là "không đọc được", không phải "sạch"', async (t) => {
+  const { base } = await fixture;
+  const repo = path.join(base, 'repo-khoa-index');
+  await fs.mkdir(repo, { recursive: true });
+  await sh(repo, '-c', 'init.defaultBranch=main', 'init');
+  await fs.writeFile(path.join(repo, 'a.txt'), 'một\n');
+  await sh(repo, 'add', '.');
+  await commit(repo, 'commit đầu');
+
+  const index = path.join(repo, '.git', 'index');
+  await fs.chmod(index, 0o000);
+  try {
+    const đọcĐược = await sh(repo, 'status', '--porcelain=v2').then(() => true, () => false);
+    if (đọcĐược) {
+      t.skip('quyền hiện tại vẫn đọc được .git/index (chạy bằng root?) — không dựng được ca cần kiểm');
+      return;
+    }
+    const g = await collectGit(repo);
+    assert.equal(g.degraded, 'exit', '`exit` ở đây là repo có vấn đề, không phải câu trả lời "không"');
+    assert.equal(g.dirty, null, '0 nghĩa là "đã đếm và thấy sạch" — mà lệnh đếm vừa hỏng');
+    assert.equal(g.branch, null);
+    assert.equal(g.unknownCommit, true);
+  } finally {
+    await fs.chmod(index, 0o644);
+  }
+});
+
+test('thư mục không phải repo vẫn là câu trả lời thật, không phải "không đọc được"', async () => {
+  const { base } = await fixture;
+  const trơ = path.join(base, 'khong-phai-repo-2');
+  await fs.mkdir(trơ, { recursive: true });
+  const g = await collectGit(trơ);
+  // `git rev-parse --show-toplevel` thoát 128 ở đây: git CHẠY ĐƯỢC và trả lời "không".
+  assert.equal(g.isRepo, false);
+  assert.equal(g.degraded, undefined, 'exit 128 là câu trả lời, không phải trục trặc của máy');
 });
 
 test('dọn thư mục tạm', async () => {

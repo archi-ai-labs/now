@@ -51,3 +51,52 @@ jobs:
       # round-trip to the registry. `node:test` ships with Node itself.
       - name: npm test
         run: npm test
+
+  # GitHub runners are UTC, so the matrix above can only ever prove the suite passes at
+  # offset 0. A date test that slices the first ten characters off an ISO string is right
+  # at UTC and wrong everywhere else, and this job exists because that happened: the suite
+  # was red across the whole of the Americas and Europe while CI stayed green, and the
+  # breakage was found by hand rather than by a check. The repo is public, so a clone in
+  # Los Angeles has to be able to run `npm test`.
+  #
+  # A second required check only helps if it is required. When `test` is marked required,
+  # mark this one at the same time. A regression that only shows up off UTC passes `test`
+  # green, which is exactly how the last one shipped.
+  #
+  # One Node version is enough here on purpose. Timezone handling lives in the ICU data
+  # and the `Date` getters, neither of which differs across the matrix, so repeating all
+  # four versions per zone would quadruple the runtime to re-prove the same thing. Adding
+  # a zone is the cheaper thing to do, and the bar for adding one is that the whole suite
+  # has been run there by hand first, since a zone that goes red on arrival teaches people
+  # to ignore the job rather than to fix the bug.
+  #
+  # All three below cleared that bar on 2026-09-10 at 635/635, together with UTC,
+  # Europe/Berlin and Asia/Ho_Chi_Minh, which are covered by the offsets already listed.
+  test-tz:
+    runs-on: ubuntu-latest
+
+    strategy:
+      # Same reasoning as the matrix above: one red zone must not hide the others.
+      fail-fast: false
+      matrix:
+        # Three shapes of wrongness, not three zones. Los Angeles is west of UTC, so any
+        # "local day equals the UTC day" assumption is off by one for most of the day.
+        # Kiritimati is the far east mirror at UTC+14, which breaks the same assumption in
+        # the opposite direction and is the only zone that can be a full day ahead of UTC.
+        # Chatham is UTC+12:45, so it also catches anything that assumes offsets land on a
+        # whole hour.
+        tz: ["America/Los_Angeles", "Pacific/Kiritimati", "Pacific/Chatham"]
+
+    name: node 22 · TZ ${{ matrix.tz }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: npm test
+        run: npm test
+        env:
+          TZ: ${{ matrix.tz }}

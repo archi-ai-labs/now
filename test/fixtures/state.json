@@ -1,0 +1,3550 @@
+{
+ "$comment": "Bản chụp GET /api/state, ĐÃ THAY TOÀN BỘ NỘI DUNG bằng dữ liệu bịa. Giữ nguyên: hình dạng khoá, kiểu dữ liệu, mọi con số, mọi mốc thời gian, và tính nhất quán tham chiếu (cùng một dự án vẫn mang cùng một id ở mọi chỗ). Thay hết: tên dự án, tên nhánh, đường dẫn, tiêu đề, câu hỏi quyết định, ghi chú, id phiên. Cách thay là CHẶN MẶC ĐỊNH — mọi chuỗi đều bị thay trừ khi khoá của nó nằm trong danh sách kỹ thuật (ngày, enum, tên model, SHA) — nên một khoá mới xuất hiện sau này sẽ tự động bị thay chứ không lọt. Chụp lại: curl -s localhost:4400/api/state rồi chạy lại phép thay ấy. KHÔNG dán thẳng payload thật vào đây, repo này công khai.",
+ "generatedAt": 1789052588124,
+ "buildMs": 30987,
+ "roots": [
+  "/Users/dev/Projects"
+ ],
+ "thresholds": {
+  "driftCommits": 5,
+  "driftDays": 3,
+  "staleCommits": 15,
+  "staleDays": 7
+ },
+ "projects": [
+  {
+   "id": "contoso/driftwood",
+   "name": "Dựng lại chỉ.",
+   "folder": "Gộp về khối.",
+   "path": "/Users/dev/Projects/contoso/driftwood",
+   "group": "local",
+   "now": {
+    "$comment": "Hoãn tới ô tìm kiếm vì số đo cũ đã lệch tách ra chỉ số vì số đo cũ đã lệch dựng lại ô tìm ki.",
+    "schemaVersion": 1,
+    "project": "Dựng lại chỉ.",
+    "branch": "acme/pinnacle",
+    "updatedAt": "2026-07-30",
+    "updatedAtCommit": "e1d0238",
+    "updatedBy": "claude",
+    "focus": {
+     "title": "Tách ra khối tổng sau khi nghiệm thu trên máy thật kiểm bằng tay sổ ghi trước k.",
+     "context": "Chốt trước bản ghi trước mốc cuối tháng gộp về bộ nhớ đệm vì số đo cũ đã lệch khoá lại bản ghi sau khi nghiệm thu trên máy thật tách ra biểu đồ cột để lần sau còn so được chốt trước bộ nhớ đệm để lần sau còn so được kiểm bằng tay ô tìm kiếm để lần sau còn so được gộp về khối tổng sau khi nghiệm thu trên máy thật chốt trước hàng đợi sau khi nghiệm thu trên máy thật dựng lại sổ ghi trước khi phát hà.",
+     "refs": [
+      {
+       "label": "Kiểm bằng tay chỉ số trước mốc cuối tháng ho.",
+       "ref": "docs/BEACON.md"
+      },
+      {
+       "label": "Chốt trước bản ghi nếu bộ test vẫn xanh bỏ đi bản ghi.",
+       "ref": "docs/TESSERA.md"
+      },
+      {
+       "label": "Kiểm bằng tay lượt quét sau khi nghiệm thu.",
+       "ref": "docs/QUARRY.md"
+      }
+     ],
+     "nextAction": "Bỏ đi tiến trình nền nếu bộ test vẫn xanh viết test cho biểu đồ cột để lần sau còn so được kiểm bằng tay lượt quét rồi mới.",
+     "laterSteps": [
+      "Dựng lại phép gộp trong cùng một lượt khoá lại hàng đợi sau khi nghiệm t.",
+      "Viết test cho ô tìm kiếm nếu bộ test vẫn xanh bỏ đi lớp đọc trước khi phát hành gộp về lượt ghi đĩa sau khi nghiệm thu trên máy thật khoá lại p.",
+      "Tách ra tiến trình nền trước khi phát hành tách ra thẻ dự án nếu bộ test vẫn xanh tách ra."
+     ],
+     "blockedBy": [
+      {
+       "id": "d-30",
+       "note": "Đo lại chỉ số trước khi phát hành đo lại bộ nhớ đệm rồi m."
+      },
+      {
+       "id": "d-30",
+       "note": "Gộp về lớp đọc nếu bộ te."
+      }
+     ],
+     "resume": {
+      "workingState": "Gộp về chỉ số sau khi nghiệm thu trên máy thật hoãn tới ô tìm kiếm trước mốc cuối tháng hoãn tới bản ghi rồi mới đụng phần còn lại dựng lại lượt quét trong cùn.",
+      "howToContinue": "Chốt trước bản ghi trước khi phát hành tách ra tiến trình nền rồi mới đụng phần còn lại khoá lại phép gộp nếu bộ test vẫn xanh khoá l."
+     },
+     "confidence": "confirmed"
+    },
+    "decisionsNeeded": [
+     {
+      "id": "d-30",
+      "title": "Chốt trước hàng đợi trước mốc cuối tháng dựng lạ.",
+      "heat": "now",
+      "blocks": "Gộp về lớp đọc trong cùng một lượt khoá lại tiến trình nền rồi mới đụng phần còn lại dựng lại ô tìm kiếm để lần sau còn so được viết test cho.",
+      "question": "Bỏ đi bộ nhớ đệm rồi mới đụng phần còn lại tách ra sổ ghi trong cùng một lượt đo lại ô tìm kiếm nếu bộ test vẫn xanh đo lại thẻ dự án để lần sau còn so được gộp về bộ nhớ đệm để lần sau còn so được h.",
+      "ref": "docs/VELLUM.md",
+      "since": "2026-07-30"
+     },
+     {
+      "id": "d-30",
+      "title": "Kiểm bằng tay tiến trình nền trước mốc cuối tháng đo lạ.",
+      "heat": "now",
+      "blocks": "Đo lại bản ghi trong cùng một lượt gộp về.",
+      "question": "Chốt trước bảng số vì số đo cũ đã lệch chốt trước bản ghi trước khi phát hành kiểm bằng tay bản ghi nếu bộ test vẫn xanh chốt trước tiến trình nền trước khi phát hành đo lại sổ ghi trong c.",
+      "ref": "docs/TESSERA.md",
+      "since": "2026-07-30"
+     },
+     {
+      "id": "d-65",
+      "title": "Bỏ đi thẻ dự án nếu bộ test vẫn xanh chốt trước tiến trình nền trư.",
+      "heat": "now",
+      "blocks": "Viết test cho thẻ dự án nếu bộ test vẫn xanh kiểm bằng tay ngưỡng cảnh báo trong cùng một lượt tách ra thẻ dự án vì số đo cũ đã lệch tách ra lượt quét để lần sau.",
+      "question": "Khoá lại biểu đồ cột để lần sau còn so được chốt trước tiến trình nền nếu bộ test vẫn xanh gộp về ô tìm kiếm trong cùng một lượt khoá lại khối tổng trước mốc cuối tháng kiểm bằng tay chỉ số vì.",
+      "ref": "docs/VELLUM.md",
+      "since": "2026-07-30"
+     },
+     {
+      "id": "d-84",
+      "title": "Hoãn tới hàng đợi trước khi phát hành hoãn tới tiến trình nền sa.",
+      "heat": "soon",
+      "blocks": "Chốt trước lớp đọc vì số đo cũ đã lệch kiểm bằng tay lượt quét vì số đo cũ đã lệch tác.",
+      "question": "Bỏ đi lớp đọc rồi mới đụng phần còn lại viết test cho thẻ dự án sau khi nghiệm thu trên máy thật chốt trước bản ghi trước mốc cuối tháng khoá lại ngưỡng cảnh báo trước khi phát hành bỏ đi phép gộp rồi mới đụng phần còn lại chố.",
+      "ref": "docs/BEACON.md",
+      "since": "2026-07-30"
+     },
+     {
+      "id": "d-16",
+      "title": "Bỏ đi lượt quét trước mốc cuối tháng tách ra chỉ số nếu bộ test vẫn xanh đo lại biểu đồ.",
+      "heat": "soon",
+      "blocks": "Gộp về lượt ghi đĩa trong cùng một lượt dựng lại biểu đồ cột vì số đo cũ đã lệch đo lại ngưỡng cảnh báo nếu bộ test vẫn xanh kiểm bằng tay bảng số để lần sau còn so được khoá lại khối tổng sau khi nghiệm thu trên máy thật khoá lại lớp đọc trước mốc cuối tháng chốt trước sổ ghi rồi mới đụng ph.",
+      "question": "Bỏ đi bộ nhớ đệm trước mốc cuối tháng khoá lại phép gộp nếu bộ test vẫn xanh hoãn tới hàng đợi trước mốc cuối tháng gộp về hàng đợi sau khi nghiệm thu trên máy thật đo.",
+      "ref": "docs/VELLUM.md",
+      "since": "2026-07-30"
+     }
+    ],
+    "waitingOn": [],
+    "upNext": [
+     {
+      "title": "Kiểm bằng tay phép gộp để lần sau còn so được dựng lại lớp đọc trước khi phát hành khoá lại bảng số trước k.",
+      "ref": "docs/COBALT.md"
+     },
+     {
+      "title": "Bỏ đi biểu đồ cột nếu bộ test vẫn xanh viết test cho ô tìm kiếm để lần sau còn so được tách ra bộ nhớ đệm sau khi nghiệm thu trên máy thật.",
+      "ref": "docs/QUARRY.md"
+     },
+     {
+      "title": "Dựng lại tiến trình nền trước khi phát hành dựng lại phép gộp sau khi nghiệm thu trên máy thật.",
+      "ref": "docs/TESSERA.md"
+     },
+     {
+      "title": "Dựng lại chỉ số rồi mới đụng phần còn lại viết test cho bộ nhớ đệm để lần sau còn so được gộp.",
+      "ref": "docs/TESSERA.md"
+     },
+     {
+      "title": "Đo lại bảng số vì số đo cũ đã lệch gộp về khối tổng trước mốc cuối tháng bỏ đi ô tìm kiếm để lần sau còn so được gộp về lớp đọc trong c.",
+      "ref": "docs/BEACON.md"
+     }
+    ],
+    "recentlyDone": [
+     {
+      "date": "2026-07-30",
+      "title": "Gộp về ngưỡng cảnh báo trước mốc cuối tháng hoãn tới lượt ghi đĩa để lần sau còn so được hoãn tới biểu đồ cột trong cùng một lượt hoãn tới ngưỡng cảnh báo trước mốc cuối tháng dựng lại ô tìm kiếm trong cùng một lượt gộp về lượt ghi đĩa trước khi phát hành dựng lại ô tìm kiếm rồi mới đụng phần còn lại chốt trước bộ nhớ đệm nếu bộ test vẫn xanh hoãn tới lượt ghi đĩa trong cùng một lượt viết test cho.",
+      "ref": "docs/VELLUM.md"
+     },
+     {
+      "date": "2026-07-30",
+      "title": "Hoãn tới ô tìm kiếm vì số đo cũ đã lệch viết test cho chỉ số vì số đo cũ đã lệch chốt trước biểu đồ cột vì số đo cũ đã lệch tách ra sổ ghi trong cùng một lượt bỏ đi biểu đồ cột nếu bộ test vẫn xanh tách ra hàng đợi sau khi nghiệm thu trên máy thật dựng lại bộ nhớ đệm t.",
+      "ref": "docs/TESSERA.md"
+     },
+     {
+      "date": "2026-07-30",
+      "title": "Viết test cho bảng số sau khi nghiệm thu trên máy thật khoá lại lượt ghi đĩa sau khi nghiệm thu trên máy thật hoãn tới sổ ghi vì số đo cũ đã lệch bỏ đi bản ghi sau khi nghiệm thu trên máy thật viết test cho phép gộp nếu bộ test vẫn xanh dựng lại lớp đọc sau kh.",
+      "ref": "docs/QUARRY.md"
+     },
+     {
+      "date": "2026-07-30",
+      "title": "Dựng lại bản ghi trong cùng một lượt kiểm bằng tay hàng đợi trước khi phát hành bỏ đi lượt quét trước mốc cuối tháng chốt trước ngưỡng cảnh báo nếu bộ test vẫn xanh chốt trước chỉ số rồi mới đụng phần còn lại chốt trước tiến trình nền trong cùng một lượt gộp về lượt ghi đĩa để lần s.",
+      "ref": "docs/BEACON.md"
+     },
+     {
+      "date": "2026-07-30",
+      "title": "Đo lại phép gộp vì số đo cũ đã lệch chốt trước tiến trình nền để lần sau còn so được chốt trước bảng số sau khi nghiệm thu trên máy thật hoãn tới phép gộp trước mốc cuối tháng bỏ đi khối tổng nếu bộ test vẫn xanh tách ra sổ ghi trước m.",
+      "ref": "Dựng lại lượt quét để lầ."
+     }
+    ]
+   },
+   "hasMd": true,
+   "parseError": null,
+   "schemaErrors": [],
+   "git": {
+    "isRepo": true,
+    "branch": "main",
+    "head": "d83b096",
+    "dirty": 5,
+    "dirtyFiles": [
+     "LANTERN.md",
+     "docs/HARBOR.md",
+     "docs/PINNACLE.html",
+     "docs/TESSERA.html",
+     "docs/VELLUM.html"
+    ],
+    "lastCommitAt": 1785484771000,
+    "lastCommit": {
+     "sha": "d83b096",
+     "subject": "Bỏ đi lượt ghi đĩa sau khi nghiệm thu trên máy thật tách."
+    },
+    "upstream": "origin/main",
+    "ahead": 0,
+    "behind": 0,
+    "driftCommits": 5,
+    "unknownCommit": false,
+    "worktrees": []
+   },
+   "ageDays": 42,
+   "health": "stale",
+   "counts": {
+    "decisions": 5,
+    "hot": 3,
+    "waiting": 0,
+    "queue": 5,
+    "done": 5,
+    "sideTracks": 0,
+    "worktrees": 0,
+    "worktreeWarn": 0,
+    "sessions": 0,
+    "awake": 0,
+    "convos": 0,
+    "convosAwake": 0
+   },
+   "blockerIds": [
+    "d-30",
+    "d-30"
+   ],
+   "sessions": [],
+   "openIn": [],
+   "convoIds": []
+  },
+  {
+   "id": "contoso/harbor",
+   "name": "Hoãn tới lượ.",
+   "folder": "Hoãn tới lượ.",
+   "path": "/Users/dev/Projects/contoso/harbor",
+   "group": "Hoãn tới ô t.",
+   "now": {
+    "$comment": "Viết test cho bản ghi sau khi nghiệm thu trên máy thật tách ra bản ghi trước mốc cuối tháng kiểm bằng tay hàng đợi rồi mới đụng phần còn lại chốt trước lớp đọc để lần sau còn so được hoãn tới lớp đọc để lần sau còn so được viết test cho lượt quét vì số đo.",
+    "schemaVersion": 1,
+    "project": "Hoãn tới lượ.",
+    "updatedAt": "2026-08-16",
+    "updatedAtCommit": "5493124",
+    "updatedBy": "claude-852349e0",
+    "branch": "acme/driftwood",
+    "focus": {
+     "title": "Hoãn tới chỉ số trong cùng một lượt dựng lại lượt quét nếu bộ test vẫn xanh dựng lại ô tìm kiế.",
+     "context": "Bỏ đi hàng đợi trong cùng một lượt viết test cho bản ghi trước mốc cuối tháng tách ra thẻ dự án để lần sau còn so được hoãn tới lớp đọc trong cùng một lượt đo lại biểu đồ cột trong cùng một lượt gộp về biểu đồ cột nếu bộ test vẫn xanh kiểm bằng tay sổ ghi rồi mới đụng phần còn lại dựng lại thẻ dự án nếu bộ test vẫn xanh khoá lại hàng đợi nếu bộ test vẫn xanh hoãn tới lớp đọc trong cùng một lượt ho.",
+     "refs": [
+      {
+       "label": "Dựng lại ngưỡng cảnh.",
+       "ref": "Dựng lại hàng đợi rồi mới đụng phần còn lại bỏ."
+      },
+      {
+       "label": "Chốt trước tiến trình nền rồi mớ.",
+       "ref": "docs/ORCHARD.md"
+      },
+      {
+       "label": "Dựng lại phép.",
+       "ref": "docs/DRIFTWOOD.md"
+      }
+     ],
+     "nextAction": "Tách ra tiến trình nền trong cùng một lượt kiểm bằng tay bộ nhớ đệm vì số đo cũ đã lệch bỏ đi phép gộp trước khi phát hành tách ra hàng đợi trước khi phát hành kiểm bằng tay khối tổng nếu bộ test vẫn xanh chốt trước bản ghi trước mốc cuối tháng kiểm bằng tay bảng số trước mốc cuối tháng hoãn tới biểu đồ cột sau khi nghiệm thu trên máy thật bỏ đi chỉ số trước khi phát hành dựng lại lớp đọc sau khi.",
+     "laterSteps": [
+      "Hoãn tới phép gộp trong cùng một lượt dựng lại tiến trình nền rồi mới đụng phần còn lại tách ra lượt quét tr.",
+      "Bỏ đi bảng số vì số đo cũ đã lệch viết test cho lượt quét nếu bộ test vẫn xanh viết test cho thẻ dự án trước khi phát hành bỏ đi sổ ghi trong cùng một lượt dựng lại ô tìm kiếm sau khi nghiệm thu trên máy thật khoá lại sổ ghi rồi mới đụng phần còn lại kiểm bằng tay bộ nhớ đệm trước khi phát hành khoá lại lớp đọc nếu bộ test vẫn xanh tách ra biểu đồ cột vì số đo cũ đã lệch đo lại lượt ghi đĩa vì số.",
+      "Hoãn tới lượt quét sau khi nghiệm thu trên máy thật viết test cho sổ ghi sau khi nghiệm thu trên máy thật đo lại bộ nhớ đệm để lần sau còn so được bỏ đi sổ ghi vì số đo cũ đã lệch bỏ đi phép gộp trong cùng một lượt."
+     ],
+     "blockedBy": [
+      {
+       "id": "d-90",
+       "note": "Gộp về chỉ số rồi mới đụng phần còn lại gộp về bộ nhớ đệm sau."
+      },
+      {
+       "id": "13c",
+       "note": "Bỏ đi thẻ dự án rồi mới đụng phần còn lại khoá lại thẻ dự án nếu bộ test vẫn xanh đo lại phép gộ."
+      }
+     ],
+     "resume": {
+      "workingState": "Chốt trước ô tìm kiếm để lần sau còn so được tách ra phép gộp trước khi phát hành hoãn tới bản ghi trước khi phát hành tách ra hàng đợi trước mốc cuối tháng đo lại chỉ số vì số đo cũ đã lệch bỏ đi tiến trình nền sau khi nghiệm thu trên máy thật gộp về ngưỡng cảnh báo rồi mới đụng ph.",
+      "howToContinue": "Dựng lại hàng đợi trước mốc cuối tháng hoãn tới chỉ số trước khi phát hành viết test cho lượt ghi đĩa sau khi nghiệm thu trên máy thật tách ra bảng số rồi mới đụng phần còn lại gộp về lượt quét vì số đo cũ đã lệch bỏ đi bộ nhớ đệm."
+     },
+     "confidence": "confirmed"
+    },
+    "sideTracks": [],
+    "decisionsNeeded": [
+     {
+      "id": "d-90",
+      "title": "Khoá lại ngưỡng cảnh báo vì số đo cũ đã lệch bỏ đi tiế.",
+      "heat": "now",
+      "blocks": "Đo lại lượt quét sau khi nghiệm thu trên máy thật bỏ đi lượt ghi đĩa trước mốc cuối tháng đo lại tiến trình nề.",
+      "question": "Gộp về bảng số trước mốc cuối tháng hoãn tới phép gộp trước mốc cuối tháng đo lại biểu đồ cột trước khi phát hành hoãn tới lượt quét nếu bộ test vẫn xanh chốt trước ô tìm kiếm rồi mới đụng phần còn lại gộp về sổ ghi trước khi phát hành hoãn tới ngưỡng cảnh báo vì số đo cũ đã lệch tách ra ngưỡng cảnh báo để lần sau còn so được chốt trước thẻ dự á.",
+      "ref": "Dựng lại hàng đợi rồi mới đụng phần còn lại bỏ.",
+      "since": "2026-08-16"
+     },
+     {
+      "id": "13c",
+      "title": "Viết test cho phép gộp rồi mới đụng phần còn lại tách ra bảng số.",
+      "heat": "soon",
+      "blocks": "Hoãn tới lớp đọc để lần sau còn so đượ.",
+      "question": "Bỏ đi hàng đợi để lần sau còn so được khoá lại sổ ghi sau khi nghiệm thu trên máy thật chốt trước bộ nhớ đệm vì số đo cũ đã lệch gộp về lớp đọc trước.",
+      "ref": "docs/DRIFTWOOD.md",
+      "since": "2026-08-06"
+     },
+     {
+      "id": "d-36",
+      "title": "Dựng lại lượt ghi đĩa nếu bộ test vẫn xanh hoãn tới sổ ghi trước kh.",
+      "heat": "soon",
+      "blocks": "Bỏ đi bộ nhớ đệm vì số đo cũ đã lệch gộp về bộ nhớ đệm sau khi nghiệm thu trên máy thật dựng lại khối tổng trước mốc.",
+      "question": "Chốt trước hàng đợi sau khi nghiệm thu trên máy thật viết test cho biểu đồ cột trong cùng một lượt dựng lại ô tìm kiếm rồi mới đụng phần còn lại khoá lại bảng số trong cùng một lượt tách ra khối tổ.",
+      "ref": "docs/DRIFTWOOD.md",
+      "since": "2026-08-15"
+     },
+     {
+      "id": "Tách ra lượt.",
+      "title": "Đo lại lượt ghi đĩa sau khi nghiệm thu trên máy.",
+      "heat": "soon",
+      "blocks": "Bỏ đi bản ghi trong cùng một lượt kiểm bằng tay bản ghi trước khi phát hành kiểm bằng tay hàng đợi vì số đo cũ đã.",
+      "question": "Chốt trước bộ nhớ đệm trước mốc cuối tháng đo lại bộ nhớ đệm trước khi phát hành chốt trước lớp đọc để lần sau còn so được đo lại sổ ghi trước mốc cuối tháng khoá lại hàng đợi vì số đo cũ đã lệch dựng lại ngưỡng cảnh báo sau khi nghiệm thu trên máy thật tách ra hàng đợi trong cùng một lượt viết test cho sổ ghi sau khi.",
+      "ref": "Chốt trước phép gộp trong cùng m.",
+      "since": "2026-08-16"
+     },
+     {
+      "id": "13e",
+      "title": "Đo lại ngưỡng cảnh báo trước mốc cuối tháng hoãn tới lớp đọc trong cùng m.",
+      "heat": "soon",
+      "blocks": "Bỏ đi biểu đ.",
+      "question": "Khoá lại hàng đợi nếu bộ test vẫn xanh hoãn tới lượt ghi đĩa trước khi phát hành đo lại lượt ghi đĩa trước khi phát hành k.",
+      "ref": "docs/QUARRY.md",
+      "since": "2026-08-06"
+     }
+    ],
+    "waitingOn": [
+     {
+      "what": "Chốt trước bộ nhớ đệm sau khi nghiệm thu trên máy thật bỏ đi phép gộp trước mốc cuối tháng gộp về lượt ghi đĩa trước.",
+      "who": "Đo lại thẻ d.",
+      "since": "2026-07-21",
+      "ref": "docs/DRIFTWOOD.md"
+     },
+     {
+      "who": "Khoá lại thẻ.",
+      "what": "Bỏ đi tiến trình nền để lần sau còn so được khoá lại hàng đợi sau khi nghiệm thu trên máy thật chốt trước ngưỡng cảnh báo trước khi phát.",
+      "since": "2026-07-23"
+     },
+     {
+      "who": "Đo lại khối t.",
+      "what": "Dựng lại lượt quét trước mốc cuối tháng đo lại lượt ghi đĩa trước khi phát hành dựng lại h.",
+      "since": "2026-08-13",
+      "ref": "Kiểm bằng tay biểu đồ cột rồi mớ."
+     }
+    ],
+    "upNext": [
+     {
+      "title": "Khoá lại khối tổng rồi mới đụng phần còn lại kiểm bằng tay ngưỡng cảnh báo nếu bộ test vẫn.",
+      "ref": "docs/QUARRY.ts"
+     },
+     {
+      "title": "Bỏ đi phép gộp để lần sau còn so được viết test cho lớp đọc trước khi phát hành dựng lại thẻ dự án sau khi nghiệm thu trên máy thật kiểm bằng tay lượt.",
+      "ref": "docs/DRIFTWOOD.md"
+     },
+     {
+      "title": "Gộp về biểu đồ cột nếu bộ test vẫn xanh dựng lại phép gộp để lần sau còn so được bỏ đi bảng số trong cùng một lượt chốt trước lớp đọc trước mốc cuối th.",
+      "ref": "docs/DRIFTWOOD.md"
+     },
+     {
+      "title": "Bỏ đi bản ghi để lần sau còn so được bỏ đi khối tổng sau khi nghiệm thu trên máy thật chốt trước lớp đọc trong cùng một lượt t.",
+      "ref": "docs/COBALT.md"
+     }
+    ],
+    "recentlyDone": [
+     {
+      "date": "2026-08-16",
+      "title": "Khoá lại bảng số nếu bộ test vẫn xanh kiểm bằng tay thẻ dự án nếu bộ test vẫn xanh gộp về chỉ số rồi mới đụng phần còn lại đo lại bộ nhớ đệm nếu bộ test vẫn xanh bỏ đi biểu đồ cột vì số đo cũ đã lệch chốt trước ngưỡng cảnh báo trước mốc cuối tháng gộp về hàng đợi trong cùng một lượt bỏ đi ngưỡng cảnh báo rồi mới đụng phần còn lại đo lại bảng số trước khi phát hành dựng lại lượt ghi đĩa rồi mới đụn.",
+      "ref": "Dựng lại hàng đợi rồi mới đụng phần còn lại bỏ."
+     },
+     {
+      "date": "2026-08-16",
+      "title": "Dựng lại sổ ghi trước mốc cuối tháng tách ra chỉ số vì số đo cũ đã lệch khoá lại thẻ dự án trước mốc cuố.",
+      "ref": "Kiểm bằng tay bộ nhớ đệm rồi mới đụng phần còn."
+     },
+     {
+      "date": "2026-08-16",
+      "title": "Hoãn tới ngưỡng cảnh báo trước khi phát hành tách ra tiến trình nền rồi mới đụng phần còn lại dựng lại khối tổng nếu bộ test vẫn xanh tách ra bảng số để lần sau còn so được tách ra biểu đồ cột rồi mới đụng phần còn lại kiểm bằng tay bảng số nếu bộ test vẫn xanh bỏ đi bảng số vì số đo cũ đã lệch dựng lại sổ ghi để lần sau còn so được tách ra biểu đồ cột để lần sau còn so được viết test cho sổ ghi r.",
+      "ref": "Kiểm bằng tay bộ nhớ đệm rồi mới đụng phần còn."
+     },
+     {
+      "date": "2026-08-15",
+      "title": "Dựng lại ngưỡng cảnh báo trước khi phát hành khoá lại chỉ số rồi mới đụng phần còn lại hoãn tới hàng đợi trước mốc cuối tháng dựng lại lượt ghi đĩa trước khi phát hành khoá lại tiến trình nền trước mốc cuối tháng viết t.",
+      "ref": "Gộp về lượt ghi đĩa trước khi phát hành kiểm bằ."
+     },
+     {
+      "date": "2026-08-15",
+      "title": "Gộp về lượt quét trước khi phát hành gộp về hàng đợi để lần sau còn so được chốt trước ô tìm kiếm sau khi nghiệm thu trên máy thật viết test cho tiến trình nền trong cùng một lượt hoãn tới sổ ghi để lần sau còn so được ki.",
+      "ref": "Gộp về chỉ số rồi mới đụng phần còn lại chốt tr."
+     }
+    ]
+   },
+   "hasMd": true,
+   "parseError": null,
+   "schemaErrors": [],
+   "git": {
+    "isRepo": true,
+    "branch": "detached",
+    "head": "4bcf6246",
+    "dirty": 0,
+    "dirtyFiles": [],
+    "lastCommitAt": 1787060076000,
+    "lastCommit": {
+     "sha": "4bcf6246",
+     "subject": "Tách ra bộ nhớ đệm vì số đo cũ đã lệch chốt trước sổ ghi trướ."
+    },
+    "upstream": null,
+    "ahead": null,
+    "behind": null,
+    "driftCommits": 18,
+    "unknownCommit": false,
+    "worktrees": []
+   },
+   "ageDays": 25,
+   "health": "stale",
+   "counts": {
+    "decisions": 5,
+    "hot": 1,
+    "waiting": 3,
+    "queue": 4,
+    "done": 5,
+    "sideTracks": 0,
+    "worktrees": 0,
+    "worktreeWarn": 0,
+    "sessions": 0,
+    "awake": 0,
+    "convos": 0,
+    "convosAwake": 0
+   },
+   "blockerIds": [
+    "d-90",
+    "13c"
+   ],
+   "sessions": [],
+   "openIn": [],
+   "convoIds": []
+  },
+  {
+   "id": "contoso/quarry",
+   "name": "Dựng lại bản ghi vì số đo cũ đã lệ.",
+   "folder": "Hoãn tới bản ghi t.",
+   "path": "/Users/dev/Projects/contoso/quarry",
+   "group": "Bỏ đi phép g.",
+   "now": {
+    "schemaVersion": 1,
+    "project": "Dựng lại bản ghi vì số đo cũ đã lệ.",
+    "branch": "main",
+    "updatedAt": "2026-07-29",
+    "updatedAtCommit": "f1d8236",
+    "updatedBy": "Gộp về chỉ số trước khi phát hành bỏ.",
+    "focus": {
+     "title": "Bỏ đi bộ nhớ đệm trước khi phát hành tách ra phép gộp sau khi nghiệm thu.",
+     "context": "Khoá lại lớp đọc trước khi phát hành tách ra ngưỡng cảnh báo sau khi nghiệm thu trên máy thật gộp về bảng số sau khi nghiệm thu trên máy thật dựng lại bộ nhớ đệm sau khi nghiệm thu trên máy thật bỏ đi sổ ghi vì số đo cũ đã lệch chốt trước tiến trình nền trong cùng một lượt khoá lại thẻ dự án trước mốc cuối tháng khoá lại lượt quét trước mốc cuối tháng viết test cho lượt ghi đĩa trong cùng một lượt.",
+     "refs": [
+      {
+       "label": "Dựng lại thẻ.",
+       "ref": "Gộp về sổ ghi trước mốc cuối tháng v."
+      },
+      {
+       "label": "Viết test cho lượ.",
+       "ref": "docs/LANTERN.md"
+      },
+      {
+       "label": "Đo lại lượt ghi đ.",
+       "ref": "Chốt trước bảng số nếu bộ."
+      }
+     ],
+     "nextAction": "Khoá lại bộ nhớ đệm nếu bộ test vẫn xanh kiểm bằng tay ô tìm kiếm để lần sau còn so được viết test cho thẻ dự án trước mốc.",
+     "laterSteps": [
+      "Viết test cho bản ghi sau khi nghiệm thu trên máy thật kiểm bằng tay sổ ghi trong cùng một lượt khoá lại ngưỡng cảnh báo nếu bộ test vẫn xan.",
+      "Gộp về tiến trình nền trước khi phát hành đo lại lượt ghi đĩa sau khi nghiệm thu trên máy thật gộp về chỉ số trước khi phát hành gộp về hàng đợi để lần sau còn so được tách ra bộ nhớ đệm rồi mới đụng.",
+      "Dựng lại lớp đọc vì số đo cũ đã lệch đo lại bảng số rồi mới đụng phần còn lại hoãn tới bản ghi nếu bộ test vẫn xanh bỏ đi lớp đọc rồi mới đụng phần còn lại kiểm bằng tay ô tìm kiếm vì số đo cũ đã l."
+     ],
+     "blockedBy": [
+      {
+       "id": "Tách ra bộ n.",
+       "note": "Bỏ đi chỉ số trước khi phát hành gộp về tiến trình nền trong cùng một lượt bỏ đi."
+      }
+     ],
+     "resume": {
+      "workingState": "Viết test cho bộ nhớ đệm để lần sau còn so được gộp về thẻ dự án trước mốc cuối tháng khoá lại hàng đợi sau khi nghiệm thu trên máy thật chốt trước thẻ dự án trước mốc cuối tháng tách ra lượt ghi đĩa trước mốc cuối tháng viết test cho ô tìm kiếm trước mốc cuối tháng đo lại hàng đợi.",
+      "howToContinue": "Đo lại chỉ số rồi mới đụng phần còn lại viết test cho khối tổng sau khi nghiệm thu trên máy thật tách ra phép gộp vì."
+     },
+     "confidence": "inferred"
+    },
+    "decisionsNeeded": [
+     {
+      "id": "Tách ra bộ n.",
+      "title": "Tách ra biểu đồ cột trong cùng một lượt hoãn.",
+      "heat": "later",
+      "blocks": "Kiểm bằng tay lượt ghi đĩa trong cùng một lượt bỏ đi bảng số trong cùn.",
+      "question": "Tách ra bảng số trước mốc cuối tháng hoãn tới biểu đồ cột để lần sau còn so được viết test cho tiến trình nền vì số đo cũ đã lệch hoãn tới khối tổng trướ.",
+      "ref": "docs/QUARRY.ts",
+      "since": "2026-07-23"
+     },
+     {
+      "id": "Kiểm bằng ta.",
+      "title": "Hoãn tới chỉ số trước mốc cuối.",
+      "heat": "later",
+      "blocks": "Viết test cho phép gộp trong cùng một lượt bỏ đi.",
+      "question": "Khoá lại lượt ghi đĩa trước khi phát hành đo lại lượt quét sau khi nghiệm thu trên máy thật đo lại p.",
+      "ref": "northwind/pinnacle",
+      "since": "2026-07-23"
+     }
+    ],
+    "upNext": [
+     {
+      "title": "Tách ra ô tìm kiếm trước khi phát hành khoá lại ô tìm kiếm trước khi phát hành kiểm bằng tay hàng đợi để lần sau còn so được kiểm bằng tay lớp đọc sau khi nghiệm thu trên máy thật viết test cho ngưỡng cảnh báo trước mốc cuối tháng gộp về chỉ số trong cùng một lượt khoá lại lớp đọc để lần sau còn so được ki.",
+      "ref": "docs/LANTERN.md"
+     },
+     {
+      "title": "Khoá lại khối tổng trong cùng một lượt hoãn tới hàng đợi trong cùng một lượt chốt trước ngưỡng cảnh báo để lần sau còn so được kiểm bằng tay hàng đợi trước khi p.",
+      "ref": "docs/LANTERN.md"
+     },
+     {
+      "title": "Hoãn tới hàng đợi rồi mới đụng phần còn lại khoá lại thẻ dự án vì số đo cũ đã lệch hoãn tới bộ nhớ đệm trước khi phát hành viết test cho chỉ số vì số đo cũ đã lệch chốt trước lượt ghi đĩa tr.",
+      "ref": "docs/LANTERN.md"
+     }
+    ],
+    "recentlyDone": [
+     {
+      "date": "2026-07-28",
+      "title": "Viết test cho ô tìm kiếm trước khi phát hành bỏ đi phép gộp để lần sau còn so được tách ra sổ ghi để lần sau còn so được hoãn tới thẻ dự án trước mốc cuối thá.",
+      "ref": "docs/LANTERN.md"
+     },
+     {
+      "date": "2026-07-24",
+      "title": "Khoá lại khối tổng để lần sau còn so được khoá lại ngưỡng cảnh báo nếu bộ test vẫn xanh dựng lại chỉ số trước khi phát hành đo lại sổ ghi trong cùng một lượt gộp về tiến trình nền trước.",
+      "ref": "f1d8236"
+     },
+     {
+      "date": "2026-07-24",
+      "title": "Hoãn tới ô tìm kiếm trước mốc cuối tháng khoá lại phép gộp trước mốc cuối tháng bỏ đi ngưỡng cảnh báo trong cùng một lượt kiểm.",
+      "ref": "338c419"
+     },
+     {
+      "date": "2026-07-24",
+      "title": "Đo lại ngưỡng cảnh báo trước mốc cuối tháng viết test cho bản ghi trước mốc cuối tháng kiểm bằng tay khố.",
+      "ref": "0a0962d"
+     },
+     {
+      "date": "2026-07-23",
+      "title": "Viết test cho tiến trình nền rồi mới đụng phần còn lại khoá lại lượt quét nếu bộ test vẫn xanh gộp về ô tìm kiếm vì số đ.",
+      "ref": "50495e8"
+     }
+    ]
+   },
+   "hasMd": true,
+   "parseError": null,
+   "schemaErrors": [],
+   "git": {
+    "isRepo": true,
+    "branch": "main",
+    "head": "e58bc11",
+    "dirty": 0,
+    "dirtyFiles": [],
+    "lastCommitAt": 1788458662000,
+    "lastCommit": {
+     "sha": "e58bc11",
+     "subject": "Chốt trước biểu đồ cột nếu bộ test vẫn xanh dựng lại ô tìm."
+    },
+    "upstream": "origin/main",
+    "ahead": 2,
+    "behind": 0,
+    "driftCommits": 5,
+    "unknownCommit": false,
+    "worktrees": []
+   },
+   "ageDays": 43,
+   "health": "stale",
+   "counts": {
+    "decisions": 2,
+    "hot": 0,
+    "waiting": 0,
+    "queue": 3,
+    "done": 5,
+    "sideTracks": 0,
+    "worktrees": 0,
+    "worktreeWarn": 0,
+    "sessions": 1,
+    "awake": 0,
+    "convos": 0,
+    "convosAwake": 0
+   },
+   "blockerIds": [
+    "Tách ra bộ n."
+   ],
+   "sessions": [
+    {
+     "id": "3f039328-a7f7-85cf-172b-4a76a3166cbb",
+     "short": "3348d568",
+     "pid": 29751,
+     "title": "Dựng lại sổ.",
+     "name": "Gộp về lớp đọc sau kh.",
+     "cwd": "/Users/dev/Projects/contoso/quarry",
+     "folder": "Hoãn tới bản ghi t.",
+     "entrypoint": "claude-desktop",
+     "host": "claude-desktop",
+     "kind": "interactive",
+     "version": "2.1.260",
+     "status": null,
+     "startedAt": 1789000582981,
+     "lastActivityAt": 1789000583626.247,
+     "idleMs": 51974773.75292969,
+     "humanAt": 1785331084093,
+     "humanIdleMs": 3721474307,
+     "sleeping": true,
+     "transcriptBytes": 258740,
+     "todos": null,
+     "resumeCmd": "claude --resume 3f039328-a7f7-85cf-172b-4a76a3166cbb",
+     "ccdId": "local_b284f1eb-d793-8838-d779-e78dc5061408",
+     "projectId": "contoso/quarry",
+     "viaWorktree": null
+    }
+   ],
+   "openIn": [
+    "claude-desktop"
+   ],
+   "convoIds": []
+  },
+  {
+   "id": "contoso/lantern",
+   "name": "Viết test cho.",
+   "folder": "Chốt trước bản g.",
+   "path": "/Users/dev/Projects/contoso/lantern",
+   "group": "Bỏ đi phép g.",
+   "now": {
+    "$comment": "Khoá lại bảng số trước khi phát hành chốt trước ngưỡng cảnh b.",
+    "schemaVersion": 1,
+    "project": "Viết test cho.",
+    "branch": "main",
+    "updatedAt": "2026-07-29",
+    "updatedAtCommit": "4e9f0cc",
+    "updatedBy": "claude",
+    "focus": {
+     "title": "Chốt trước chỉ số rồi mới đụng phần còn lại tách ra khối tổng trước mốc cuối t.",
+     "context": "Khoá lại bản ghi để lần sau còn so được gộp về lớp đọc rồi mới đụng phần còn lại khoá lại biểu đồ cột trước khi phát hành bỏ đi chỉ số sau khi nghiệm thu trên máy thật kiểm bằng tay bản ghi trong cùng một lượt bỏ đi biểu đồ cột trước mốc cuối tháng dựng lại thẻ dự án trước khi phát hành gộp về tiến trình nền trong cùng một lượt đo lại tiến trình nền để lần sau còn so được bỏ đi khối tổng vì số đo.",
+     "refs": [
+      {
+       "label": "Bỏ đi hàng đợi.",
+       "ref": "docs/BEACON.md"
+      },
+      {
+       "label": "Đo lại bảng số sau.",
+       "ref": "acme/driftwood"
+      },
+      {
+       "label": "Dựng lại khố.",
+       "ref": "docs/COBALT.js"
+      }
+     ],
+     "nextAction": "Kiểm bằng tay ô tìm kiếm sau khi nghiệm thu trên máy thật tách ra thẻ dự án trong cùng một lượt kiểm bằng tay lượt quét nếu bộ test vẫn xanh tách ra phép gộp trước khi phát hành dựng lại lớp đọc nếu bộ test vẫn xanh khoá lại biểu đồ cột vì số đo cũ.",
+     "laterSteps": [
+      "Khoá lại ô tìm kiếm trước mốc cuối tháng dựng lại thẻ dự án vì số đo cũ đã lệch dựng lại lượt ghi đĩa vì số đo cũ đã lệch gộp về bản ghi vì số đo cũ đã lệch khoá lại bảng.",
+      "Chốt trước lớp đọc nếu bộ test vẫn xanh viết test cho phép gộp nếu bộ test vẫn xanh viết test cho bản ghi để lần sau còn so được gộp về chỉ số rồi mới đụng phần còn lại gộp về bảng số để lần sau còn so được t."
+     ],
+     "resume": {
+      "workingState": "Gộp về ô tìm kiếm để lần sau còn so được gộp về ngưỡng cảnh báo trong cùng một lượt viết test cho chỉ số để lần sau còn so được dựng lại bảng số để lần sau còn so được viết test cho phép gộp trước mốc cuối tháng kiểm bằng tay ngưỡng cảnh báo sau khi nghiệm thu trên máy thật khoá lại lượt quét nếu bộ test vẫn xanh khoá lại lớp đọc rồi mới đụng phần còn lại đo lại ngưỡng cảnh báo vì số đo cũ đã lệch.",
+      "howToContinue": "Hoãn tới lượt quét trước khi phát hành tách ra khối tổng nếu bộ test vẫn xanh tách ra."
+     },
+     "confidence": "inferred"
+    },
+    "decisionsNeeded": [
+     {
+      "id": "Khoá lại bộ.",
+      "title": "Bỏ đi hàng đợi trước khi phát hành hoãn tới bản g.",
+      "heat": "later",
+      "blocks": "Kiểm bằng tay tiến trình nền rồi mới đụng phần còn.",
+      "question": "Bỏ đi bảng số vì số đo cũ đã lệch chốt trước khối tổng nếu b.",
+      "ref": "docs/BEACON.md",
+      "since": "2026-07-21"
+     }
+    ],
+    "upNext": [
+     {
+      "title": "Bỏ đi sổ ghi sau khi nghiệm thu trên máy thật đo lại lớp đọc trước khi phát hành.",
+      "ref": "docs/BEACON.js"
+     },
+     {
+      "title": "Hoãn tới lượt quét nếu bộ test vẫn xanh viết test cho bản ghi trước khi.",
+      "ref": "docs/DRIFTWOOD.js"
+     },
+     {
+      "title": "Viết test cho bảng số để lần sau còn so được viết te.",
+      "ref": "docs/BEACON.js"
+     },
+     {
+      "title": "Viết test cho biểu đồ cột trong cùng một lượt chốt tr.",
+      "ref": "docs/VELLUM.js"
+     }
+    ],
+    "recentlyDone": [
+     {
+      "date": "2026-07-27",
+      "title": "Kiểm bằng tay thẻ dự án sau khi nghiệm thu trên máy thật hoãn tới bản ghi trước mốc cuối tháng dựng lại hàng đợi trước khi phát hành kiểm bằng tay lớp đọc vì số đo cũ đã lệch bỏ đi phép gộp trước khi phát hành viết test cho th.",
+      "ref": "acme/harbor"
+     },
+     {
+      "date": "2026-07-27",
+      "title": "Chốt trước thẻ dự án sau khi nghiệm thu trên máy thật bỏ đi phép gộp sau khi nghiệm thu trên máy thật viết test cho khối tổng rồi mới đụng phần còn lại dựng lại thẻ dự á.",
+      "ref": "docs/VELLUM.js"
+     },
+     {
+      "date": "2026-07-26",
+      "title": "Khoá lại thẻ dự án trước mốc cuối tháng hoãn tới biểu đồ cột nếu bộ test vẫn xanh dựng lại hàng đợi trong cùng một lượt khoá lại bảng số nếu bộ test vẫn xanh tách ra chỉ số nếu bộ test vẫn xanh chốt trước phép.",
+      "ref": "docs/BEACON.js"
+     },
+     {
+      "date": "2026-07-24",
+      "title": "Gộp về thẻ dự án sau khi nghiệm thu trên máy thật chốt trước chỉ số nếu bộ test vẫn xanh chốt trước lớp đọc sau khi nghiệm thu trên máy thật khoá l.",
+      "ref": "docs/BEACON.js"
+     },
+     {
+      "date": "2026-07-24",
+      "title": "Kiểm bằng tay bảng số vì số đo cũ đã lệch hoãn tới hàng đợi trong cùng một lượt hoãn tới bảng số nếu bộ test vẫn xanh tách ra khối tổng trước khi phát hành hoãn tới lượt.",
+      "ref": "docs/COBALT.js"
+     }
+    ]
+   },
+   "hasMd": true,
+   "parseError": null,
+   "schemaErrors": [],
+   "git": {
+    "isRepo": true,
+    "branch": "main",
+    "head": "0fdcc03",
+    "dirty": 0,
+    "dirtyFiles": [],
+    "lastCommitAt": 1788347374000,
+    "lastCommit": {
+     "sha": "0fdcc03",
+     "subject": "Viết test cho bảng số rồi mới đụng phần còn lại viết test cho ô tìm."
+    },
+    "upstream": "origin/main",
+    "ahead": 0,
+    "behind": 0,
+    "driftCommits": 13,
+    "unknownCommit": false,
+    "worktrees": []
+   },
+   "ageDays": 43,
+   "health": "stale",
+   "counts": {
+    "decisions": 1,
+    "hot": 0,
+    "waiting": 0,
+    "queue": 4,
+    "done": 5,
+    "sideTracks": 0,
+    "worktrees": 0,
+    "worktreeWarn": 0,
+    "sessions": 0,
+    "awake": 0,
+    "convos": 0,
+    "convosAwake": 0
+   },
+   "blockerIds": [],
+   "sessions": [],
+   "openIn": [],
+   "convoIds": []
+  },
+  {
+   "id": "contoso/orchard",
+   "name": "contoso/orchard",
+   "folder": "Chốt trước p.",
+   "path": "/Users/dev/Projects/contoso/orchard",
+   "group": "Hoãn tới ô t.",
+   "now": {
+    "schemaVersion": 1,
+    "project": "contoso/orchard",
+    "branch": "dev",
+    "updatedAt": "2026-07-29",
+    "updatedAtCommit": "0cbddfaad",
+    "updatedBy": "cursor-2c097b2d",
+    "focus": {
+     "title": "Đo lại biểu đồ cột trước khi phát hành khoá lại bảng số rồi mới đụng phần.",
+     "context": "Khoá lại lượt ghi đĩa trước khi phát hành kiểm bằng tay biểu đồ cột để lần sau còn so được hoãn tới chỉ số nếu bộ test vẫn xanh khoá lại thẻ dự án trong cùng một lượt khoá lại hàng đợi nếu bộ test vẫn xanh dựng lại ô tìm kiếm rồi mới đụng phần còn lại dựng lại bảng số trong cùng một lượt hoãn tới khối tổng trong cùng một lượt hoãn tới bộ nhớ đệm trước mốc cuối tháng đo lại tiến trình nền trước mốc.",
+     "refs": [
+      {
+       "label": "Hoãn tới ô tìm kiếm trong.",
+       "ref": "docs/BEACON.md"
+      },
+      {
+       "label": "Tách ra sổ ghi rồi mớ.",
+       "ref": "docs/COBALT.md"
+      },
+      {
+       "label": "Viết test cho tiến trình nề.",
+       "ref": "docs/TESSERA.md"
+      }
+     ],
+     "nextAction": "Đo lại ô tìm kiếm trước mốc cuối tháng bỏ đi ngưỡng cảnh báo trước khi phát hành gộp về phép gộp trước khi phát hành tách ra bộ nhớ đệm sau khi nghiệm thu trên máy thật viết test cho bộ nhớ đệm để lần sau còn so được khoá.",
+     "laterSteps": [
+      "Kiểm bằng tay ô tìm kiếm trong cùng một lượt hoãn tới ngưỡng cảnh báo để lần sau còn so được kiểm bằng tay bảng số vì số đo cũ đã lệch dựng lại lượt ghi đĩa rồi mới đụng phần còn lại kiểm bằng tay lượt ghi đĩa rồi mới đụng phần còn lại kiểm bằng ta.",
+      "Hoãn tới ô tìm kiếm vì số đo cũ đã lệch gộp về bộ nhớ đệm vì số đo cũ đã lệch đo lại khối tổng vì số đo cũ đã lệch khoá lại ngưỡng cảnh báo trong cùng một lượt khoá lại tiến trình nền rồi mới đụng phần còn lại.",
+      "Chốt trước bộ nhớ đệm sau khi nghiệm thu trên máy thật đo lại lượt quét sau khi nghiệm thu trên máy thật đo."
+     ],
+     "resume": {
+      "workingState": "Khoá lại lượt quét trước khi phát hành kiểm bằng tay lượt ghi đĩa trước mốc cuối tháng chốt trước khối tổng để lần sau còn so được bỏ đi bản ghi sau khi nghiệm thu trên máy thật đo.",
+      "howToContinue": "Tách ra lượt quét trước mốc cuối tháng đo lại ô tìm kiếm trong cùng một lượt đo lại bộ nhớ đệm nếu bộ test vẫn."
+     },
+     "confidence": "inferred"
+    },
+    "sideTracks": [
+     {
+      "id": "Chốt trước bộ nh.",
+      "title": "Bỏ đi khối tổng vì số đo cũ đã lệch kiểm bằng tay hàng đợi trước khi phát hành c.",
+      "state": "Dựng lại lớp đọc để lần sau còn so được gộp về ngưỡng cảnh báo để lần s.",
+      "detail": "Hoãn tới bảng số trước khi phát hành khoá lại phép gộp rồi mới đụng phần còn lại dựng lại hàng đợi trước khi phát hành bỏ đi ngưỡng cảnh báo trước khi phát hành bỏ đi bảng số sau khi nghiệm thu trên máy thật viết test cho lượt quét nếu bộ test vẫn xanh kiểm bằng tay tiến trình nền trước khi phát hành kiểm bằng.",
+      "ref": "docs/QUARRY.md",
+      "since": "2026-08-10"
+     }
+    ],
+    "recentlyDone": [
+     {
+      "date": "2026-07-29",
+      "title": "Tách ra lớp đọc trước mốc cuối tháng chốt trước ngưỡng cảnh báo để lần sau còn so được viết test cho lượt quét trước khi phát hành gộp về bảng số vì số đo cũ đã lệch chốt trước lượt ghi đĩa để lần sau còn so được khoá lại biểu đồ cột trước mốc cuối tháng gộp về bản ghi rồi mới đụng ph.",
+      "ref": "docs/TESSERA.md"
+     },
+     {
+      "date": "2026-07-28",
+      "title": "Hoãn tới chỉ số nếu bộ test vẫn xanh khoá lại chỉ số sau khi nghiệm thu trên máy thật khoá lại bản ghi rồi mới đụng phần còn lại viết test cho bản ghi vì số đo cũ đã lệch bỏ đi sổ ghi vì số đo cũ đã lệch gộp về thẻ dự án sau khi nghiệm thu trên máy thật khoá lại sổ ghi trước khi phát hành kiểm bằng tay lớp đọc trong cùng một lượt bỏ đi khối tổng trước khi phát hành đo lại lượt ghi đĩa trong cùng m.",
+      "ref": "Đo lại lượt ghi đĩa để lần sau còn so được chố."
+     },
+     {
+      "date": "2026-07-27",
+      "title": "Kiểm bằng tay khối tổng nếu bộ test vẫn xanh đo lại khối tổng trước khi phát hành viết test cho lượt quét để lần sau còn so được viết test cho hàng đợi để lần sau còn so được dựng lại ngưỡng cảnh báo để lần sau còn.",
+      "ref": "docs/QUARRY.md"
+     },
+     {
+      "date": "2026-07-27",
+      "title": "Chốt trước khối tổng nếu bộ test vẫn xanh dựng lại hàng đợi trong cùng một lượt gộp về bảng số trong cùng một lượt hoãn tới ngưỡng cảnh báo vì số đo cũ đã lệch kiểm bằng tay chỉ số vì số đo cũ đã lệch bỏ đi bảng số trước khi phát hành chốt trước bản ghi trong cùng một lượt gộp về phép gộp trước khi phát hành viết test cho bộ nhớ đệm trước mốc cuối tháng khoá lại biểu đồ cột trong cùng một lượt viế.",
+      "ref": "docs/HARBOR.md"
+     },
+     {
+      "date": "2026-07-26",
+      "title": "Đo lại bảng số rồi mới đụng phần còn lại bỏ đi sổ ghi trong cùng một lượt bỏ đi sổ ghi nếu bộ test vẫn xanh hoãn tới ngưỡng cảnh báo để lần sau còn so được đo lại sổ ghi nếu bộ test vẫn xanh đo lại chỉ số trước mốc cuối tháng bỏ đi tiến trình nền trước khi phát hành tách ra lượt ghi đĩa để lần sau còn so được bỏ đi sổ ghi nếu bộ.",
+      "ref": "docs/LANTERN.md"
+     }
+    ],
+    "decisionsNeeded": [
+     {
+      "id": "Dựng lại lượ.",
+      "title": "Khoá lại biểu đồ cột trước khi phát hành đo lại lượt ghi đĩa trước mốc cuối t.",
+      "heat": "later",
+      "blocks": "Tách ra lớp đọc nếu bộ test vẫn xanh đo lại bảng.",
+      "question": "Viết test cho hàng đợi nếu bộ test vẫn xanh kiểm bằng tay thẻ dự án để lần sau còn so được kiểm bằng tay lượt ghi đĩa trước khi phát hành đo lại bảng số nếu bộ test vẫn xanh viết test cho thẻ dự án sau khi nghiệm thu trên máy thật bỏ đi chỉ số trước khi phát hành khoá lại bảng số trước.",
+      "ref": "docs/PINNACLE.md",
+      "since": "2026-07-28"
+     },
+     {
+      "id": "Tách ra ngưỡ.",
+      "title": "Kiểm bằng tay lượt quét nếu bộ test vẫn xanh dựng lại ngưỡng.",
+      "heat": "soon",
+      "blocks": "Bỏ đi lượt quét nếu bộ test vẫn xanh bỏ đi phép gộp trong cùng một lượt hoãn tới ô tìm kiếm để lần sau còn so được khoá.",
+      "question": "Khoá lại sổ ghi rồi mới đụng phần còn lại khoá lại biểu đồ cột vì số đo cũ đã lệch hoãn tới tiến trình nền trước khi phát hành viết test cho biểu đồ cột vì số đo cũ đã lệch dựng lại ngưỡng cảnh báo trong cùng một lượt chốt trước biểu đồ cột trước mốc cuối tháng kiểm bằng tay lớp đọc trong cùng một lượt gộp về khối tổng sau khi nghiệm thu trên máy thật kiểm bằng tay ô tìm kiếm vì số đo cũ đã lệch v.",
+      "ref": "docs/COBALT.md",
+      "since": "2026-07-26"
+     },
+     {
+      "id": "Hoãn tới thẻ d.",
+      "title": "Chốt trước ngưỡng cảnh báo vì số đo cũ đã lệch bỏ đi tiến trình nền rồi mới đụn.",
+      "heat": "soon",
+      "blocks": "Chốt trước khối tổng vì số đo cũ đã lệch khoá lại sổ ghi trước mốc cuối tháng viết test cho phép gộp để lần sau còn so được dựng lại ô tìm kiếm rồi mới đụng phần còn lại c.",
+      "question": "Chốt trước khối tổng trước mốc cuối tháng hoãn tới ngưỡng cảnh báo sau khi nghiệm thu trên máy thật dựng lại bảng số trước mốc cuối tháng khoá lại sổ ghi t.",
+      "ref": "docs/BEACON.md",
+      "since": "2026-07-24"
+     },
+     {
+      "id": "Viết test ch.",
+      "title": "Hoãn tới ô tìm kiếm vì số đo cũ đã lệch tách ra ngưỡng cảnh báo trư.",
+      "heat": "soon",
+      "blocks": "Đo lại hàng đợi vì số đo cũ đã lệch chốt trước biểu đồ cột nếu bộ test vẫn xanh kiểm bằng tay bản ghi nếu.",
+      "question": "Gộp về ô tìm kiếm trước mốc cuối tháng đo lại khối tổng sau khi nghiệm thu trên máy thật kiểm bằng tay ngưỡng cảnh báo để lần sau còn so được gộ.",
+      "ref": "Dựng lại sổ ghi nếu bộ test vẫn xanh khoá lại sổ.",
+      "since": "2026-07-21"
+     },
+     {
+      "id": "Gộp về biểu.",
+      "title": "Dựng lại chỉ số rồi mới đụng phần còn lại kiểm bằng tay ô tìm kiếm.",
+      "heat": "later",
+      "blocks": "Khoá lại biểu đồ cột trong cùng một lượt hoãn tới phép gộp rồi mới đụng phần còn lại kiểm bằng tay bảng số trước khi phát hành bỏ đi biểu đồ cột để lần sau c.",
+      "question": "Kiểm bằng tay lớp đọc sau khi nghiệm thu trên máy thật dựng lại ngưỡng cảnh báo vì số đo cũ đã lệch bỏ đi bộ nhớ đệm nếu.",
+      "ref": "docs/QUARRY.md",
+      "since": "2026-07-19"
+     }
+    ],
+    "waitingOn": [
+     {
+      "who": "Tách ra tiến.",
+      "what": "Dựng lại bộ nhớ đệm sau khi nghiệm thu trên máy thật đo lại phép gộp nếu bộ test vẫn xanh viết test cho bảng số rồi mới đụng phần còn lại đo lại sổ ghi trong cùng một lượt đo lại chỉ số để lần sau còn so được bỏ đi khối tổng sau khi nghiệm thu trên máy thật bỏ đi biểu đồ cột sau khi nghiệm thu trên máy thật ki.",
+      "since": "2026-07-29",
+      "ref": "docs/TESSERA.md"
+     },
+     {
+      "what": "Viết test cho bảng số trước mốc cuối tháng viết test cho lượt ghi đĩa trước mốc cuối tháng kiểm bằng tay chỉ số trước khi phát hành hoãn tới khối tổng sau khi nghiệm thu trên máy thật gộp về bản ghi rồi mới đụng phần còn lại hoãn tới chỉ số trước mốc cuối tháng viết test cho biểu đồ cột rồi mới đụng phần còn lại khoá lại sổ ghi để lần sau còn so được hoãn tới hàng đợi rồi mới đụng phần còn lại kho.",
+      "since": "2026-07-31",
+      "ref": "docs/VELLUM.md"
+     },
+     {
+      "who": "Bỏ đi thẻ dự.",
+      "what": "Tách ra lượt ghi đĩa rồi mới đụng phần còn lại kiểm bằng tay lớp đọc sau khi nghiệm thu trên máy thật tách ra chỉ số trong cùng một lượt gộp về khối tổng nếu bộ test vẫn xanh khoá lại phép gộp vì số đo cũ đã lệch khoá lại lượt ghi đĩa trước khi phát hành viết test cho sổ ghi trong cùng một lượt viết test cho bộ nhớ đệm rồi mới đụng phần còn lại tách ra bảng số để lần sau còn so được đo lại tiến tr.",
+      "since": "2026-08-10",
+      "ref": "docs/LANTERN.md"
+     }
+    ],
+    "upNext": [
+     {
+      "title": "Khoá lại phép gộp để lần sau còn so được viết test cho lượt ghi đĩa vì số đo cũ đã lệch chốt trước bản ghi trước khi phát hành kiểm bằng tay lượt ghi đĩa rồi mới đụng phần còn lại kiểm bằng tay khối tổng nếu bộ test.",
+      "ref": "docs/VELLUM.md"
+     },
+     {
+      "title": "Gộp về chỉ số sau khi nghiệm thu trên máy thật tách ra bảng số trong cùng một lượt gộp về bảng số trước mốc cuối tháng chốt trước chỉ số vì số đo cũ đã lệch gộp về bản ghi sau khi nghiệm thu trên máy thật gộp về phép gộp trong cùng một lượt viết test cho phép gộp rồi mới đụng phần còn lại khoá lại bộ nhớ đệm sau khi nghiệm thu trên máy thật chốt trước sổ gh.",
+      "ref": "docs/COBALT.md"
+     },
+     {
+      "title": "Khoá lại tiến trình nền trước mốc cuối tháng tách ra lớp đọc rồi mới đụng phần còn lại dựng lại lớp đọc trước khi phát hành khoá lại tiến trình nền trước khi phát hành viết test cho lượt quét trước mốc cuối tháng tách ra thẻ dự án để lần sau còn so được gộp về lớp đọc trước mốc cuối tháng dựng lại khối tổng vì số đo cũ đã lệch kiểm bằng tay bản ghi rồi mới đụng phần.",
+      "ref": "docs/COBALT.md"
+     },
+     {
+      "title": "Gộp về sổ ghi để lần sau còn so được tách ra ngưỡng cảnh báo trước mốc cuối tháng chốt trước lớp đọc nếu bộ test vẫn xanh viết test cho phép gộp để lần sau còn so được viết test cho hàng đợi vì số đo cũ đã lệch.",
+      "ref": "docs/COBALT.md"
+     },
+     {
+      "title": "Hoãn tới ô tìm kiếm trong cùng một lượt chốt trước biểu đồ cột rồi mới đụng phần còn lại chốt trước lượt ghi đĩa để lần sau còn so được chốt trước bản ghi trước khi phát hành khoá lại bảng số trong cùng một lượt đo lại phép gộp sau khi nghiệm thu trên máy thật tách ra lượt quét nếu bộ test vẫn xanh hoãn tới bảng số trong cùng một lượt hoãn tới bản ghi trước khi phát hành tách ra n.",
+      "ref": "docs/HARBOR.md"
+     }
+    ]
+   },
+   "hasMd": true,
+   "parseError": null,
+   "schemaErrors": [],
+   "git": {
+    "isRepo": true,
+    "branch": "detached",
+    "head": "f256cb272",
+    "dirty": 0,
+    "dirtyFiles": [],
+    "lastCommitAt": 1786935478000,
+    "lastCommit": {
+     "sha": "f256cb272",
+     "subject": "Đo lại hàng đợi vì số đo cũ đã lệch k."
+    },
+    "upstream": null,
+    "ahead": null,
+    "behind": null,
+    "driftCommits": 10,
+    "unknownCommit": false,
+    "worktrees": []
+   },
+   "ageDays": 43,
+   "health": "stale",
+   "counts": {
+    "decisions": 5,
+    "hot": 0,
+    "waiting": 3,
+    "queue": 6,
+    "done": 5,
+    "sideTracks": 1,
+    "worktrees": 0,
+    "worktreeWarn": 0,
+    "sessions": 0,
+    "awake": 0,
+    "convos": 0,
+    "convosAwake": 0
+   },
+   "blockerIds": [],
+   "sessions": [],
+   "openIn": [],
+   "convoIds": []
+  }
+ ],
+ "sessions": [
+  {
+   "id": "c5074ec1-cadc-6b53-b362-44660a53d165",
+   "short": "34b9c694",
+   "pid": 98727,
+   "title": "Chốt trước lượt ghi đĩa sau.",
+   "name": "Hoãn tới ô t.",
+   "cwd": "/Users/dev/Projects/contoso/lantern",
+   "folder": "Hoãn tới phé.",
+   "entrypoint": "claude-desktop",
+   "host": "claude-desktop",
+   "kind": "interactive",
+   "version": "2.1.260",
+   "status": null,
+   "startedAt": 1789002821453,
+   "lastActivityAt": 1789052552816.2158,
+   "idleMs": 5583.7841796875,
+   "humanAt": 1789052125380,
+   "humanIdleMs": 433020,
+   "sleeping": false,
+   "transcriptBytes": 1782336,
+   "todos": null,
+   "resumeCmd": "claude --resume c5074ec1-cadc-6b53-b362-44660a53d165",
+   "ccdId": "local_134c3aab-7d53-8c50-236f-a3b4b2b6a224",
+   "projectId": null
+  },
+  {
+   "id": "a1710273-3552-bdc6-1966-27397e87c5f0",
+   "short": "3711fa98",
+   "pid": 36272,
+   "title": "Hoãn tới khối t.",
+   "name": "Khoá lại bản.",
+   "cwd": "/Users/dev/Projects/contoso/orchard",
+   "folder": "Tách ra tiến.",
+   "entrypoint": "claude-desktop",
+   "host": "claude-desktop",
+   "kind": "interactive",
+   "version": "2.1.260",
+   "status": null,
+   "startedAt": 1789052191681,
+   "lastActivityAt": 1789052529787.3025,
+   "idleMs": 28612.697509765625,
+   "humanAt": 1789052197510,
+   "humanIdleMs": 360890,
+   "sleeping": false,
+   "transcriptBytes": 9123079,
+   "todos": null,
+   "resumeCmd": "claude --resume a1710273-3552-bdc6-1966-27397e87c5f0",
+   "ccdId": "local_7bd05a3e-ba03-c20c-c642-5dc1a894396c",
+   "projectId": null
+  },
+  {
+   "id": "0323155b-9ef3-4666-3908-035471c0a98e",
+   "short": "47c12cd4",
+   "pid": 86208,
+   "title": "Bỏ đi phép gộp vì số đo cũ đã.",
+   "name": "Hoãn tới lượ.",
+   "cwd": "/Users/dev/Projects/contoso/tessera",
+   "folder": "Hoãn tới bộ.",
+   "entrypoint": "claude-desktop",
+   "host": "claude-desktop",
+   "kind": "interactive",
+   "version": "2.1.260",
+   "status": null,
+   "startedAt": 1789051354459,
+   "lastActivityAt": 1789052385441.089,
+   "idleMs": 172958.91088867188,
+   "humanAt": 1789051649684,
+   "humanIdleMs": 908716,
+   "sleeping": false,
+   "transcriptBytes": 1608138,
+   "todos": null,
+   "resumeCmd": "claude --resume 0323155b-9ef3-4666-3908-035471c0a98e",
+   "ccdId": "local_48f2e81a-bc68-e0d0-06eb-e4d93748b950",
+   "projectId": null
+  },
+  {
+   "id": "1b88b3d7-3892-b4f0-7318-259c62a4a8d3",
+   "short": "0bad580f",
+   "pid": 32421,
+   "title": "Viết test ch.",
+   "name": "Hoãn tới sổ.",
+   "cwd": "/Users/dev/Projects/contoso/tessera",
+   "folder": "Hoãn tới bộ.",
+   "entrypoint": "cli",
+   "host": "claude-desktop",
+   "kind": "interactive",
+   "version": "2.1.267",
+   "status": "idle",
+   "startedAt": 1789048307973,
+   "lastActivityAt": 1789051955959,
+   "idleMs": 602441,
+   "humanAt": 1789048528780,
+   "humanIdleMs": 4029620,
+   "sleeping": false,
+   "transcriptBytes": 218253,
+   "todos": null,
+   "resumeCmd": "claude --resume 1b88b3d7-3892-b4f0-7318-259c62a4a8d3",
+   "ccdId": null,
+   "projectId": null
+  },
+  {
+   "id": "3f039328-a7f7-85cf-172b-4a76a3166cbb",
+   "short": "3348d568",
+   "pid": 29751,
+   "title": "Dựng lại sổ.",
+   "name": "Gộp về lớp đọc sau kh.",
+   "cwd": "/Users/dev/Projects/contoso/quarry",
+   "folder": "Hoãn tới bản ghi t.",
+   "entrypoint": "claude-desktop",
+   "host": "claude-desktop",
+   "kind": "interactive",
+   "version": "2.1.260",
+   "status": null,
+   "startedAt": 1789000582981,
+   "lastActivityAt": 1789000583626.247,
+   "idleMs": 51974773.75292969,
+   "humanAt": 1785331084093,
+   "humanIdleMs": 3721474307,
+   "sleeping": true,
+   "transcriptBytes": 258740,
+   "todos": null,
+   "resumeCmd": "claude --resume 3f039328-a7f7-85cf-172b-4a76a3166cbb",
+   "ccdId": "local_b284f1eb-d793-8838-d779-e78dc5061408",
+   "projectId": "contoso/quarry",
+   "viaWorktree": null
+  }
+ ],
+ "unassignedSessions": [
+  {
+   "id": "c5074ec1-cadc-6b53-b362-44660a53d165",
+   "short": "34b9c694",
+   "pid": 98727,
+   "title": "Chốt trước lượt ghi đĩa sau.",
+   "name": "Hoãn tới ô t.",
+   "cwd": "/Users/dev/Projects/contoso/lantern",
+   "folder": "Hoãn tới phé.",
+   "entrypoint": "claude-desktop",
+   "host": "claude-desktop",
+   "kind": "interactive",
+   "version": "2.1.260",
+   "status": null,
+   "startedAt": 1789002821453,
+   "lastActivityAt": 1789052552816.2158,
+   "idleMs": 5583.7841796875,
+   "humanAt": 1789052125380,
+   "humanIdleMs": 433020,
+   "sleeping": false,
+   "transcriptBytes": 1782336,
+   "todos": null,
+   "resumeCmd": "claude --resume c5074ec1-cadc-6b53-b362-44660a53d165",
+   "ccdId": "local_134c3aab-7d53-8c50-236f-a3b4b2b6a224",
+   "projectId": null
+  },
+  {
+   "id": "a1710273-3552-bdc6-1966-27397e87c5f0",
+   "short": "3711fa98",
+   "pid": 36272,
+   "title": "Hoãn tới khối t.",
+   "name": "Khoá lại bản.",
+   "cwd": "/Users/dev/Projects/contoso/orchard",
+   "folder": "Tách ra tiến.",
+   "entrypoint": "claude-desktop",
+   "host": "claude-desktop",
+   "kind": "interactive",
+   "version": "2.1.260",
+   "status": null,
+   "startedAt": 1789052191681,
+   "lastActivityAt": 1789052529787.3025,
+   "idleMs": 28612.697509765625,
+   "humanAt": 1789052197510,
+   "humanIdleMs": 360890,
+   "sleeping": false,
+   "transcriptBytes": 9123079,
+   "todos": null,
+   "resumeCmd": "claude --resume a1710273-3552-bdc6-1966-27397e87c5f0",
+   "ccdId": "local_7bd05a3e-ba03-c20c-c642-5dc1a894396c",
+   "projectId": null
+  },
+  {
+   "id": "0323155b-9ef3-4666-3908-035471c0a98e",
+   "short": "47c12cd4",
+   "pid": 86208,
+   "title": "Bỏ đi phép gộp vì số đo cũ đã.",
+   "name": "Hoãn tới lượ.",
+   "cwd": "/Users/dev/Projects/contoso/tessera",
+   "folder": "Hoãn tới bộ.",
+   "entrypoint": "claude-desktop",
+   "host": "claude-desktop",
+   "kind": "interactive",
+   "version": "2.1.260",
+   "status": null,
+   "startedAt": 1789051354459,
+   "lastActivityAt": 1789052385441.089,
+   "idleMs": 172958.91088867188,
+   "humanAt": 1789051649684,
+   "humanIdleMs": 908716,
+   "sleeping": false,
+   "transcriptBytes": 1608138,
+   "todos": null,
+   "resumeCmd": "claude --resume 0323155b-9ef3-4666-3908-035471c0a98e",
+   "ccdId": "local_48f2e81a-bc68-e0d0-06eb-e4d93748b950",
+   "projectId": null
+  },
+  {
+   "id": "1b88b3d7-3892-b4f0-7318-259c62a4a8d3",
+   "short": "0bad580f",
+   "pid": 32421,
+   "title": "Viết test ch.",
+   "name": "Hoãn tới sổ.",
+   "cwd": "/Users/dev/Projects/contoso/tessera",
+   "folder": "Hoãn tới bộ.",
+   "entrypoint": "cli",
+   "host": "claude-desktop",
+   "kind": "interactive",
+   "version": "2.1.267",
+   "status": "idle",
+   "startedAt": 1789048307973,
+   "lastActivityAt": 1789051955959,
+   "idleMs": 602441,
+   "humanAt": 1789048528780,
+   "humanIdleMs": 4029620,
+   "sleeping": false,
+   "transcriptBytes": 218253,
+   "todos": null,
+   "resumeCmd": "claude --resume 1b88b3d7-3892-b4f0-7318-259c62a4a8d3",
+   "ccdId": null,
+   "projectId": null
+  },
+  {
+   "id": "74cc5349-d8de-dfbb-1e3d-87d693b589cc",
+   "short": "c4f6a2d8",
+   "pid": 83611,
+   "title": "Tách ra phép gộp nếu bộ test vẫn xanh bỏ đi lượt ghi đĩ.",
+   "name": "Đo lại ô tìm ki.",
+   "cwd": "/Users/dev/Projects/contoso/vellum",
+   "folder": "Khoá lại lượ.",
+   "entrypoint": "claude-desktop",
+   "host": "claude-desktop",
+   "kind": "interactive",
+   "version": "2.1.260",
+   "status": null,
+   "startedAt": 1789002463282,
+   "lastActivityAt": 1789051112576.0444,
+   "idleMs": 1445823.9555664062,
+   "humanAt": 1789040330078,
+   "humanIdleMs": 12228322,
+   "sleeping": false,
+   "transcriptBytes": 6038091,
+   "todos": null,
+   "resumeCmd": "claude --resume 74cc5349-d8de-dfbb-1e3d-87d693b589cc",
+   "ccdId": "local_85c6bf3f-3453-c5fb-e3ae-f9a9faffc6d5",
+   "projectId": null
+  }
+ ],
+ "ghostSessionFiles": 0,
+ "decisions": [
+  {
+   "id": "d-30",
+   "title": "Chốt trước hàng đợi trước mốc cuối tháng dựng lạ.",
+   "heat": "now",
+   "blocks": "Gộp về lớp đọc trong cùng một lượt khoá lại tiến trình nền rồi mới đụng phần còn lại dựng lại ô tìm kiếm để lần sau còn so được viết test cho.",
+   "question": "Bỏ đi bộ nhớ đệm rồi mới đụng phần còn lại tách ra sổ ghi trong cùng một lượt đo lại ô tìm kiếm nếu bộ test vẫn xanh đo lại thẻ dự án để lần sau còn so được gộp về bộ nhớ đệm để lần sau còn so được h.",
+   "ref": "docs/VELLUM.md",
+   "since": "2026-07-30",
+   "project": "Dựng lại chỉ.",
+   "projectId": "contoso/driftwood",
+   "projectPath": "/Users/dev/Projects/contoso/driftwood",
+   "ageDays": 42,
+   "blocksFocus": true
+  },
+  {
+   "id": "d-30",
+   "title": "Kiểm bằng tay tiến trình nền trước mốc cuối tháng đo lạ.",
+   "heat": "now",
+   "blocks": "Đo lại bản ghi trong cùng một lượt gộp về.",
+   "question": "Chốt trước bảng số vì số đo cũ đã lệch chốt trước bản ghi trước khi phát hành kiểm bằng tay bản ghi nếu bộ test vẫn xanh chốt trước tiến trình nền trước khi phát hành đo lại sổ ghi trong c.",
+   "ref": "docs/TESSERA.md",
+   "since": "2026-07-30",
+   "project": "Dựng lại chỉ.",
+   "projectId": "contoso/driftwood",
+   "projectPath": "/Users/dev/Projects/contoso/driftwood",
+   "ageDays": 42,
+   "blocksFocus": true
+  },
+  {
+   "id": "d-90",
+   "title": "Khoá lại ngưỡng cảnh báo vì số đo cũ đã lệch bỏ đi tiế.",
+   "heat": "now",
+   "blocks": "Đo lại lượt quét sau khi nghiệm thu trên máy thật bỏ đi lượt ghi đĩa trước mốc cuối tháng đo lại tiến trình nề.",
+   "question": "Gộp về bảng số trước mốc cuối tháng hoãn tới phép gộp trước mốc cuối tháng đo lại biểu đồ cột trước khi phát hành hoãn tới lượt quét nếu bộ test vẫn xanh chốt trước ô tìm kiếm rồi mới đụng phần còn lại gộp về sổ ghi trước khi phát hành hoãn tới ngưỡng cảnh báo vì số đo cũ đã lệch tách ra ngưỡng cảnh báo để lần sau còn so được chốt trước thẻ dự á.",
+   "ref": "Dựng lại hàng đợi rồi mới đụng phần còn lại bỏ.",
+   "since": "2026-08-16",
+   "project": "Hoãn tới lượ.",
+   "projectId": "contoso/harbor",
+   "projectPath": "/Users/dev/Projects/contoso/harbor",
+   "ageDays": 25,
+   "blocksFocus": true
+  },
+  {
+   "id": "d-65",
+   "title": "Bỏ đi thẻ dự án nếu bộ test vẫn xanh chốt trước tiến trình nền trư.",
+   "heat": "now",
+   "blocks": "Viết test cho thẻ dự án nếu bộ test vẫn xanh kiểm bằng tay ngưỡng cảnh báo trong cùng một lượt tách ra thẻ dự án vì số đo cũ đã lệch tách ra lượt quét để lần sau.",
+   "question": "Khoá lại biểu đồ cột để lần sau còn so được chốt trước tiến trình nền nếu bộ test vẫn xanh gộp về ô tìm kiếm trong cùng một lượt khoá lại khối tổng trước mốc cuối tháng kiểm bằng tay chỉ số vì.",
+   "ref": "docs/VELLUM.md",
+   "since": "2026-07-30",
+   "project": "Dựng lại chỉ.",
+   "projectId": "contoso/driftwood",
+   "projectPath": "/Users/dev/Projects/contoso/driftwood",
+   "ageDays": 42,
+   "blocksFocus": false
+  },
+  {
+   "id": "claude-dir",
+   "title": "Chốt trước sổ ghi trong cùng một lượt đo lại thẻ.",
+   "heat": "soon",
+   "blocks": "Gộp về chỉ số trong cùng một lượt gộp về hàng đợi trong cùng một lượt gộp về.",
+   "question": "Đo lại hàng đợi trước khi phát hành kiểm bằng tay chỉ số nếu bộ test vẫn xanh đo lại chỉ số nếu bộ test vẫn xanh kiểm bằng tay lượt ghi đĩa sau khi nghiệm thu trên má.",
+   "ref": "docs/HARBOR.json",
+   "since": "2026-07-24",
+   "project": "Đo lại bộ nh.",
+   "projectId": "contoso/cobalt",
+   "projectPath": "/Users/dev/Projects/contoso/cobalt",
+   "ageDays": 48,
+   "blocksFocus": true
+  }
+ ],
+ "waiting": [
+  {
+   "what": "Chốt trước bộ nhớ đệm sau khi nghiệm thu trên máy thật bỏ đi phép gộp trước mốc cuối tháng gộp về lượt ghi đĩa trước.",
+   "who": "Đo lại thẻ d.",
+   "since": "2026-07-21",
+   "ref": "docs/DRIFTWOOD.md",
+   "project": "Hoãn tới lượ.",
+   "projectId": "contoso/harbor",
+   "ageDays": 51,
+   "nudge": true
+  },
+  {
+   "who": "Khoá lại thẻ.",
+   "what": "Bỏ đi tiến trình nền để lần sau còn so được khoá lại hàng đợi sau khi nghiệm thu trên máy thật chốt trước ngưỡng cảnh báo trước khi phát.",
+   "since": "2026-07-23",
+   "project": "Hoãn tới lượ.",
+   "projectId": "contoso/harbor",
+   "ageDays": 49,
+   "nudge": true
+  },
+  {
+   "who": "Tách ra tiến.",
+   "what": "Dựng lại bộ nhớ đệm sau khi nghiệm thu trên máy thật đo lại phép gộp nếu bộ test vẫn xanh viết test cho bảng số rồi mới đụng phần còn lại đo lại sổ ghi trong cùng một lượt đo lại chỉ số để lần sau còn so được bỏ đi khối tổng sau khi nghiệm thu trên máy thật bỏ đi biểu đồ cột sau khi nghiệm thu trên máy thật ki.",
+   "since": "2026-07-29",
+   "ref": "docs/TESSERA.md",
+   "project": "contoso/orchard",
+   "projectId": "contoso/orchard",
+   "ageDays": 43,
+   "nudge": true
+  },
+  {
+   "what": "Viết test cho bảng số trước mốc cuối tháng viết test cho lượt ghi đĩa trước mốc cuối tháng kiểm bằng tay chỉ số trước khi phát hành hoãn tới khối tổng sau khi nghiệm thu trên máy thật gộp về bản ghi rồi mới đụng phần còn lại hoãn tới chỉ số trước mốc cuối tháng viết test cho biểu đồ cột rồi mới đụng phần còn lại khoá lại sổ ghi để lần sau còn so được hoãn tới hàng đợi rồi mới đụng phần còn lại kho.",
+   "since": "2026-07-31",
+   "ref": "docs/VELLUM.md",
+   "project": "contoso/orchard",
+   "projectId": "contoso/orchard",
+   "ageDays": 41,
+   "nudge": true
+  },
+  {
+   "who": "Bỏ đi thẻ dự.",
+   "what": "Tách ra lượt ghi đĩa rồi mới đụng phần còn lại kiểm bằng tay lớp đọc sau khi nghiệm thu trên máy thật tách ra chỉ số trong cùng một lượt gộp về khối tổng nếu bộ test vẫn xanh khoá lại phép gộp vì số đo cũ đã lệch khoá lại lượt ghi đĩa trước khi phát hành viết test cho sổ ghi trong cùng một lượt viết test cho bộ nhớ đệm rồi mới đụng phần còn lại tách ra bảng số để lần sau còn so được đo lại tiến tr.",
+   "since": "2026-08-10",
+   "ref": "docs/LANTERN.md",
+   "project": "contoso/orchard",
+   "projectId": "contoso/orchard",
+   "ageDays": 31,
+   "nudge": true
+  }
+ ],
+ "queue": [
+  {
+   "title": "docs/HARBOR.js",
+   "ref": "docs/VELLUM.js",
+   "rank": 1,
+   "project": "Đo lại chỉ số.",
+   "projectId": "northwind/quarry"
+  },
+  {
+   "title": "Dựng lại hàng đợi rồi mới đụng phần còn lại đo lại thẻ dự án rồi mới đụng phần còn lại khoá lại tiến trình nền vì số đo cũ đã lệch viết test cho khối tổng sau khi nghiệm thu trên máy thật hoãn tớ.",
+   "ref": "COBALT.md",
+   "rank": 2,
+   "project": "Đo lại chỉ số.",
+   "projectId": "northwind/quarry"
+  },
+  {
+   "title": "Đo lại sổ ghi để lần sau còn so được đo lại khối tổng vì số đo cũ đã lệch viết test cho khối tổng vì số đo cũ đã lệch tách ra phép gộp rồi mới đụng phần còn lại bỏ đi biểu đồ cột trước mốc cuối tháng dựng lại tiến trình nề.",
+   "ref": "COBALT.md",
+   "rank": 3,
+   "project": "Đo lại chỉ số.",
+   "projectId": "northwind/quarry"
+  },
+  {
+   "title": "Tách ra lượt ghi đĩa nếu bộ test vẫn xanh tách ra phép gộp nếu bộ test vẫn xanh viết test cho phép gộp vì số đo cũ đã lệch dựng lại phép gộp sau khi nghiệm thu trên máy thật gộp về ô tìm kiếm sau khi nghiệm thu trên máy thật gộp về bản ghi t.",
+   "ref": "COBALT.md",
+   "rank": 4,
+   "project": "Đo lại chỉ số.",
+   "projectId": "northwind/quarry"
+  },
+  {
+   "title": "Đo lại khối tổng để lần sau còn so được đo lại lượt ghi đĩa vì số đo cũ đã lệch gộp về thẻ dự án để lần sau còn so được viết test cho phép gộp sau khi nghiệm thu trên máy thật hoãn tới lượt quét trước khi phát hành dựng l.",
+   "ref": "QUARRY.json",
+   "rank": 1,
+   "project": "Đo lại bộ nh.",
+   "projectId": "contoso/cobalt"
+  }
+ ],
+ "timeline": [
+  {
+   "date": "2026-09-04",
+   "ageDays": 6,
+   "items": [
+    {
+     "date": "2026-09-04",
+     "title": "Kiểm bằng tay khối tổng vì số đo cũ đã lệch tách ra sổ ghi để lần sau còn so được chốt trước ô tìm kiếm sau khi nghiệm thu trên máy thật tách ra sổ ghi để lần sau còn so được hoãn tới ô tìm kiếm vì số đo cũ đã lệch đo lại bảng số rồi mới đụng phần còn lại gộp về biểu đồ cột trước mốc cuối tháng gộp về chỉ số trong cùng một lượt bỏ đi thẻ dự án trước mốc cuối tháng dựng lại bảng số nếu bộ test vẫn.",
+     "ref": "docs/ORCHARD.js",
+     "project": "Viết test cho lớp.",
+     "projectId": "contoso/driftwood",
+     "group": "local"
+    },
+    {
+     "date": "2026-09-04",
+     "title": "Khoá lại thẻ dự án rồi mới đụng phần còn lại viết test cho phép gộp rồi mới đụng phần còn lại viết test cho tiến trình nền nếu bộ test vẫn xanh kiểm bằng tay lượt ghi đĩa để lần sau còn so được tách ra chỉ số trước khi phát hành bỏ đi lượt quét trước mốc cuối tháng hoãn tới lượt ghi đĩa nếu bộ test vẫn xanh tách ra bản ghi trước mốc cuối tháng viết test cho ô tìm kiếm sau khi nghiệm thu trên.",
+     "ref": "Gộp về thẻ dự án vì số.",
+     "project": "Viết test cho lớp.",
+     "projectId": "contoso/driftwood",
+     "group": "local"
+    }
+   ]
+  },
+  {
+   "date": "2026-08-30",
+   "ageDays": 11,
+   "items": [
+    {
+     "date": "2026-08-30",
+     "title": "Bỏ đi ô tìm kiếm sau khi nghiệm thu trên máy thật khoá lại bản ghi nếu bộ test vẫn xanh dựng lại biểu đồ cột vì số đo cũ đã lệch bỏ đi lớp đọc trước mốc cuối tháng chốt trước ô tìm kiếm rồi mới đụng phần còn lại dựng lại ngưỡng cảnh báo trong cùng một lượt k.",
+     "ref": "Tách ra tiến trình nền vì số đo cũ đã lệch tách ra lượt quét.",
+     "project": "Viết test cho lớp.",
+     "projectId": "contoso/driftwood",
+     "group": "local"
+    },
+    {
+     "date": "2026-08-30",
+     "title": "Dựng lại ô tìm kiếm trước mốc cuối tháng bỏ đi khối tổng vì số đo cũ đã lệch viết test cho tiến trình nền sau khi nghiệm thu trên máy thật hoãn tới sổ ghi trước khi phát hành dựng lại lượt quét nếu bộ test vẫn xanh dựng lại biểu đồ cột sau khi nghiệm thu trên máy thật đo lại lớp đọc trước khi phát hành dựng lại bộ nhớ đệm rồi mới đụng phần còn lại hoãn tới sổ ghi trong cùng một lượt khoá lại ngưỡn.",
+     "ref": "Kiểm bằng tay ngưỡng.",
+     "project": "Viết test cho lớp.",
+     "projectId": "contoso/driftwood",
+     "group": "local"
+    }
+   ]
+  },
+  {
+   "date": "2026-08-16",
+   "ageDays": 25,
+   "items": [
+    {
+     "date": "2026-08-16",
+     "title": "Khoá lại bảng số nếu bộ test vẫn xanh kiểm bằng tay thẻ dự án nếu bộ test vẫn xanh gộp về chỉ số rồi mới đụng phần còn lại đo lại bộ nhớ đệm nếu bộ test vẫn xanh bỏ đi biểu đồ cột vì số đo cũ đã lệch chốt trước ngưỡng cảnh báo trước mốc cuối tháng gộp về hàng đợi trong cùng một lượt bỏ đi ngưỡng cảnh báo rồi mới đụng phần còn lại đo lại bảng số trước khi phát hành dựng lại lượt ghi đĩa rồi mới đụn.",
+     "ref": "Dựng lại hàng đợi rồi mới đụng phần còn lại bỏ.",
+     "project": "Hoãn tới lượ.",
+     "projectId": "contoso/harbor",
+     "group": "Hoãn tới ô t."
+    },
+    {
+     "date": "2026-08-16",
+     "title": "Dựng lại sổ ghi trước mốc cuối tháng tách ra chỉ số vì số đo cũ đã lệch khoá lại thẻ dự án trước mốc cuố.",
+     "ref": "Kiểm bằng tay bộ nhớ đệm rồi mới đụng phần còn.",
+     "project": "Hoãn tới lượ.",
+     "projectId": "contoso/harbor",
+     "group": "Hoãn tới ô t."
+    },
+    {
+     "date": "2026-08-16",
+     "title": "Hoãn tới ngưỡng cảnh báo trước khi phát hành tách ra tiến trình nền rồi mới đụng phần còn lại dựng lại khối tổng nếu bộ test vẫn xanh tách ra bảng số để lần sau còn so được tách ra biểu đồ cột rồi mới đụng phần còn lại kiểm bằng tay bảng số nếu bộ test vẫn xanh bỏ đi bảng số vì số đo cũ đã lệch dựng lại sổ ghi để lần sau còn so được tách ra biểu đồ cột để lần sau còn so được viết test cho sổ ghi r.",
+     "ref": "Kiểm bằng tay bộ nhớ đệm rồi mới đụng phần còn.",
+     "project": "Hoãn tới lượ.",
+     "projectId": "contoso/harbor",
+     "group": "Hoãn tới ô t."
+    }
+   ]
+  },
+  {
+   "date": "2026-08-15",
+   "ageDays": 26,
+   "items": [
+    {
+     "date": "2026-08-15",
+     "title": "Dựng lại ngưỡng cảnh báo trước khi phát hành khoá lại chỉ số rồi mới đụng phần còn lại hoãn tới hàng đợi trước mốc cuối tháng dựng lại lượt ghi đĩa trước khi phát hành khoá lại tiến trình nền trước mốc cuối tháng viết t.",
+     "ref": "Gộp về lượt ghi đĩa trước khi phát hành kiểm bằ.",
+     "project": "Hoãn tới lượ.",
+     "projectId": "contoso/harbor",
+     "group": "Hoãn tới ô t."
+    },
+    {
+     "date": "2026-08-15",
+     "title": "Gộp về lượt quét trước khi phát hành gộp về hàng đợi để lần sau còn so được chốt trước ô tìm kiếm sau khi nghiệm thu trên máy thật viết test cho tiến trình nền trong cùng một lượt hoãn tới sổ ghi để lần sau còn so được ki.",
+     "ref": "Gộp về chỉ số rồi mới đụng phần còn lại chốt tr.",
+     "project": "Hoãn tới lượ.",
+     "projectId": "contoso/harbor",
+     "group": "Hoãn tới ô t."
+    }
+   ]
+  },
+  {
+   "date": "2026-08-03",
+   "ageDays": 38,
+   "items": [
+    {
+     "date": "2026-08-03",
+     "title": "Khoá lại tiến trình nền nếu bộ test vẫn xanh tách ra lớp đọc nếu bộ test vẫn xanh bỏ đi lượt ghi đĩa trước khi phát hành dựng lại ô tìm kiếm sau khi nghiệm thu trên máy thật viết test cho phép gộp rồi mới đụng phần còn lại hoãn tới bảng số trước mốc cuối tháng gộp về biểu đồ cột trước mốc cuối tháng hoãn tới lượt quét trước khi phát hành dựng lại biểu đồ cột nếu bộ test vẫn xanh khoá lại hàng đợi.",
+     "ref": "contoso/pinnacle",
+     "project": "Đo lại chỉ số.",
+     "projectId": "northwind/quarry",
+     "group": "Dựng lại lượt."
+    }
+   ]
+  }
+ ],
+ "orphans": [
+  {
+   "id": "contoso/tessera",
+   "name": "Hoãn tới bộ.",
+   "path": "/Users/dev/Projects/contoso/tessera",
+   "group": "Bỏ đi phép g.",
+   "branch": "main",
+   "lastCommitAt": 1789039590000,
+   "ageDays": 0,
+   "sessions": 4
+  },
+  {
+   "id": "contoso/quarry",
+   "name": "Tách ra khối t.",
+   "path": "/Users/dev/Projects/contoso/quarry",
+   "group": "Bỏ đi phép g.",
+   "branch": null,
+   "lastCommitAt": 1789023431000,
+   "ageDays": 0,
+   "sessions": 0
+  },
+  {
+   "id": "contoso/lantern",
+   "name": "Viết test cho th.",
+   "path": "/Users/dev/Projects/contoso/lantern",
+   "group": "Bỏ đi phép g.",
+   "branch": null,
+   "lastCommitAt": 1789039590000,
+   "ageDays": 0,
+   "sessions": 0
+  },
+  {
+   "id": "contoso/pinnacle",
+   "name": "Kiểm bằng tay tiến.",
+   "path": "/Users/dev/Projects/contoso/pinnacle",
+   "group": "Bỏ đi phép g.",
+   "branch": null,
+   "lastCommitAt": 1789021607000,
+   "ageDays": 0,
+   "sessions": 0
+  },
+  {
+   "id": "contoso/orchard",
+   "name": "Khoá lại bản ghi để l.",
+   "path": "/Users/dev/Projects/contoso/orchard",
+   "group": "Bỏ đi phép g.",
+   "branch": null,
+   "lastCommitAt": 1789028350000,
+   "ageDays": 0,
+   "sessions": 0
+  }
+ ],
+ "usage": {
+  "ok": true,
+  "scannedAt": 1789052563087,
+  "hostCount": 1133,
+  "winSig": "five:1789052400055:|seven:1788458400055:|scoped-0:1788458400056:Fable",
+  "spentIn": {
+   "five": {
+    "cost": 4.8036265,
+    "out": 2582,
+    "msgs": 32,
+    "unpriced": 0,
+    "partial": false
+   },
+   "seven": {
+    "cost": 353.2975073500004,
+    "out": 1988523,
+    "msgs": 2618,
+    "unpriced": 547,
+    "partial": false
+   },
+   "scoped-0": {
+    "cost": 0,
+    "out": 342157,
+    "msgs": 458,
+    "unpriced": 458,
+    "partial": false
+   }
+  },
+  "scanMs": 3824,
+  "files": 1446,
+  "requests": 51026,
+  "duplicates": 87535,
+  "series": [
+   {
+    "day": "2026-07-28",
+    "msgs": 2051,
+    "inTok": 35746,
+    "out": 2020954,
+    "cw5": 135340,
+    "cw1": 8464671,
+    "cr": 440044700,
+    "cost": 435.54214519999994,
+    "byModel": {
+     "claude-sonnet-5": {
+      "msgs": 189,
+      "inTok": 378,
+      "out": 209828,
+      "cw5": 0,
+      "cw1": 976588,
+      "cr": 28621532,
+      "cost": 11.7296944
+     },
+     "claude-fable-5": {
+      "msgs": 532,
+      "inTok": 15563,
+      "out": 723603,
+      "cw5": 0,
+      "cw1": 3258885,
+      "cr": 92823350,
+      "cost": 194.33683
+     },
+     "claude-opus-5": {
+      "msgs": 1327,
+      "inTok": 14848,
+      "out": 1087517,
+      "cw5": 94514,
+      "cw1": 4229198,
+      "cr": 318536905,
+      "cost": 229.41331
+     },
+     "claude-haiku-4-5": {
+      "msgs": 3,
+      "inTok": 4957,
+      "out": 6,
+      "cw5": 40826,
+      "cw1": 0,
+      "cr": 62913,
+      "cost": 0.0623108
+     }
+    }
+   },
+   {
+    "day": "2026-07-29",
+    "msgs": 466,
+    "inTok": 4981,
+    "out": 470589,
+    "cw5": 0,
+    "cw1": 2121143,
+    "cr": 48296750,
+    "cost": 63.715454300000005,
+    "byModel": {
+     "claude-fable-5": {
+      "msgs": 119,
+      "inTok": 1028,
+      "out": 207516,
+      "cw5": 0,
+      "cw1": 974523,
+      "cr": 16120822,
+      "cost": 45.997362
+     },
+     "claude-sonnet-5": {
+      "msgs": 278,
+      "inTok": 2774,
+      "out": 197315,
+      "cw5": 0,
+      "cw1": 846494,
+      "cr": 27952169,
+      "cost": 10.9551078
+     },
+     "claude-opus-5": {
+      "msgs": 69,
+      "inTok": 1179,
+      "out": 65758,
+      "cw5": 0,
+      "cw1": 300126,
+      "cr": 4223759,
+      "cost": 6.7629845
+     }
+    }
+   },
+   {
+    "day": "2026-08-02",
+    "msgs": 13,
+    "inTok": 17,
+    "out": 14979,
+    "cw5": 0,
+    "cw1": 461581,
+    "cr": 867028,
+    "cost": 7.153193999999999,
+    "byModel": {
+     "claude-fable-5": {
+      "msgs": 3,
+      "inTok": 4,
+      "out": 3453,
+      "cw5": 0,
+      "cw1": 155770,
+      "cr": 170530,
+      "cost": 3.45862
+     },
+     "claude-opus-5": {
+      "msgs": 9,
+      "inTok": 11,
+      "out": 10931,
+      "cw5": 0,
+      "cw1": 295227,
+      "cr": 681399,
+      "cost": 3.5662995
+     },
+     "claude-opus-4-8": {
+      "msgs": 1,
+      "inTok": 2,
+      "out": 595,
+      "cw5": 0,
+      "cw1": 10584,
+      "cr": 15099,
+      "cost": 0.1282745
+     }
+    }
+   },
+   {
+    "day": "2026-08-06",
+    "msgs": 4483,
+    "inTok": 185209,
+    "out": 2660161,
+    "cw5": 6193245,
+    "cw1": 8880034,
+    "cr": 938158612,
+    "cost": 709.32628585,
+    "byModel": {
+     "claude-opus-5": {
+      "msgs": 4168,
+      "inTok": 171291,
+      "out": 2337366,
+      "cw5": 5454824,
+      "cw1": 6280737,
+      "cr": 880805011,
+      "cost": 596.5931305
+     },
+     "<synthetic>": {
+      "msgs": 1,
+      "inTok": 0,
+      "out": 0,
+      "cw5": 0,
+      "cw1": 0,
+      "cr": 0,
+      "cost": null
+     },
+     "claude-fable-5": {
+      "msgs": 254,
+      "inTok": 9073,
+      "out": 302215,
+      "cw5": 544734,
+      "cw1": 1686226,
+      "cr": 51740620,
+      "cost": 107.475795
+     },
+     "claude-haiku-4-5": {
+      "msgs": 18,
+      "inTok": 144,
+      "out": 462,
+      "cw5": 96341,
+      "cw1": 21251,
+      "cr": 518451,
+      "cost": 0.21722735
+     },
+     "claude-sonnet-5": {
+      "msgs": 42,
+      "inTok": 4701,
+      "out": 20118,
+      "cw5": 97346,
+      "cw1": 891820,
+      "cr": 5094530,
+      "cost": 5.040133
+     }
+    }
+   },
+   {
+    "day": "2026-09-02",
+    "msgs": 2026,
+    "inTok": 210251,
+    "out": 1388375,
+    "cw5": 12810182,
+    "cw1": 8665018,
+    "cr": 299690175,
+    "cost": 210.2745363,
+    "byModel": {
+     "claude-fable-5-1": {
+      "msgs": 606,
+      "inTok": 207507,
+      "out": 674812,
+      "cw5": 6863402,
+      "cw1": 3643075,
+      "cr": 87420745,
+      "cost": null
+     },
+     "claude-opus-5": {
+      "msgs": 1306,
+      "inTok": 2612,
+      "out": 703337,
+      "cw5": 5926359,
+      "cw1": 4880375,
+      "cr": 210369779,
+      "cost": 208.62486825
+     },
+     "<synthetic>": {
+      "msgs": 48,
+      "inTok": 0,
+      "out": 0,
+      "cw5": 0,
+      "cw1": 0,
+      "cr": 0,
+      "cost": null
+     },
+     "claude-sonnet-5": {
+      "msgs": 66,
+      "inTok": 132,
+      "out": 10226,
+      "cw5": 20421,
+      "cw1": 141568,
+      "cr": 1899651,
+      "cost": 1.64966805
+     }
+    }
+   }
+  ],
+  "droppedDays": 16,
+  "windowDays": 45,
+  "today": {
+   "msgs": 1593,
+   "inTok": 15266,
+   "out": 1066009,
+   "cw5": 7251552,
+   "cw1": 6092270,
+   "cr": 239644866,
+   "cost": 178.0733836,
+   "unpriced": 0
+  },
+  "d7": {
+   "msgs": 2962,
+   "inTok": 18004,
+   "out": 2121474,
+   "cw5": 9097067,
+   "cw1": 11586000,
+   "cr": 476512815,
+   "cost": 388.60790384999996,
+   "unpriced": 0
+  },
+  "d30": {
+   "msgs": 29927,
+   "inTok": 1138082,
+   "out": 16260088,
+   "cw5": 101427381,
+   "cw1": 63759801,
+   "cr": 4400170820,
+   "cost": 3850.14583065,
+   "unpriced": 0
+  },
+  "all": {
+   "msgs": 49510,
+   "inTok": 1740839,
+   "out": 32497778,
+   "cw5": 112917206,
+   "cw1": 121928006,
+   "cr": 8272021745,
+   "cost": 7234.20306435,
+   "unpriced": 0
+  },
+  "models": [
+   {
+    "key": "claude-opus-5",
+    "msgs": 43235,
+    "inTok": 1079284,
+    "out": 26585999,
+    "cw5": 87842552,
+    "cw1": 100484066,
+    "cr": 7677435343,
+    "cost": 6062.620676500061,
+    "unpriced": 0
+   },
+   {
+    "key": "claude-fable-5",
+    "msgs": 2725,
+    "inTok": 124775,
+    "out": 4076896,
+    "cw5": 3538857,
+    "cw1": 14014167,
+    "cr": 570312113,
+    "cost": 1099.9237154999983,
+    "unpriced": 0
+   },
+   {
+    "key": "claude-opus-4-8",
+    "msgs": 2960,
+    "inTok": 31209,
+    "out": 2438069,
+    "cw5": 0,
+    "cw1": 10208654,
+    "cr": 609775570,
+    "cost": 468.08209500000044,
+    "unpriced": 0
+   },
+   {
+    "key": "claude-fable-5-1",
+    "msgs": 1064,
+    "inTok": 220603,
+    "out": 1016969,
+    "cw5": 10772550,
+    "cw1": 5111075,
+    "cr": 140132765,
+    "cost": 0,
+    "unpriced": 1064
+   },
+   {
+    "key": "claude-sonnet-5",
+    "msgs": 818,
+    "inTok": 15366,
+    "out": 607688,
+    "cw5": 117767,
+    "cw1": 4206422,
+    "cr": 107755878,
+    "cost": 45.644828149999995,
+    "unpriced": 0
+   }
+  ],
+  "projects": [
+   {
+    "key": "Tách ra phép.",
+    "msgs": 15568,
+    "inTok": 728147,
+    "out": 6696958,
+    "cw5": 61884689,
+    "cw1": 19976681,
+    "cr": 2204737176,
+    "cost": 1903.417003050001,
+    "unpriced": 24,
+    "projectId": null,
+    "orphan": true
+   },
+   {
+    "key": "Hoãn tới phé.",
+    "msgs": 6702,
+    "inTok": 107180,
+    "out": 5746102,
+    "cw5": 2269985,
+    "cw1": 16390465,
+    "cr": 1749017246,
+    "cost": 1299.532785550002,
+    "unpriced": 272,
+    "projectId": null,
+    "orphan": true
+   },
+   {
+    "key": "Đo lại chỉ số.",
+    "msgs": 6904,
+    "inTok": 106088,
+    "out": 5570990,
+    "cw5": 0,
+    "cw1": 24903076,
+    "cr": 1433833072,
+    "cost": 1167.8618516000042,
+    "unpriced": 1,
+    "projectId": null,
+    "orphan": true
+   },
+   {
+    "key": "Hoãn tới bộ.",
+    "msgs": 5014,
+    "inTok": 66762,
+    "out": 4227167,
+    "cw5": 4680750,
+    "cw1": 21180289,
+    "cr": 915202489,
+    "cost": 820.3026157499997,
+    "unpriced": 76,
+    "projectId": null,
+    "orphan": true
+   },
+   {
+    "key": "Hoãn tới lượ.",
+    "msgs": 3349,
+    "inTok": 151271,
+    "out": 2587289,
+    "cw5": 3906725,
+    "cw1": 8501149,
+    "cr": 537750567,
+    "cost": 555.112432750001,
+    "unpriced": 0,
+    "projectId": "contoso/harbor",
+    "orphan": false
+   }
+  ],
+  "entrypoints": [
+   {
+    "key": "claude-desktop",
+    "msgs": 47743,
+    "inTok": 1326044,
+    "out": 32255969,
+    "cw5": 98654759,
+    "cw1": 127023046,
+    "cr": 8604941828,
+    "cost": 7158.122920400073,
+    "unpriced": 1231
+   },
+   {
+    "key": "cursor",
+    "msgs": 3283,
+    "inTok": 152394,
+    "out": 2477264,
+    "cw5": 3906725,
+    "cw1": 7110248,
+    "cr": 502807225,
+    "cost": 519.0074116500004,
+    "unpriced": 0
+   }
+  ],
+  "mcp": [
+   {
+    "key": "Dựng lại lớp đ.",
+    "msgs": 12315,
+    "inTok": 40323,
+    "out": 7591270,
+    "cw5": 604145,
+    "cw1": 13255005,
+    "cr": 3112024332,
+    "cost": 1897.255137200005,
+    "unpriced": 75
+   },
+   {
+    "key": "Chốt trước b.",
+    "msgs": 1104,
+    "inTok": 3565,
+    "out": 1158220,
+    "cw5": 23050,
+    "cw1": 1802767,
+    "cr": 223499979,
+    "cost": 171.73230200000003,
+    "unpriced": 7
+   },
+   {
+    "key": "Kiểm bằng ta.",
+    "msgs": 64,
+    "inTok": 126,
+    "out": 91176,
+    "cw5": 0,
+    "cw1": 252346,
+    "cr": 20010320,
+    "cost": 16.172184,
+    "unpriced": 0
+   },
+   {
+    "key": "Dựng lại sổ ghi.",
+    "msgs": 39,
+    "inTok": 99,
+    "out": 81278,
+    "cw5": 0,
+    "cw1": 529540,
+    "cr": 4319481,
+    "cost": 12.117337000000001,
+    "unpriced": 1
+   },
+   {
+    "key": "Tách ra ô tìm k.",
+    "msgs": 3,
+    "inTok": 6,
+    "out": 7356,
+    "cw5": 0,
+    "cw1": 6383,
+    "cr": 205023,
+    "cost": 0.35027149999999996,
+    "unpriced": 0
+   }
+  ],
+  "skills": [
+   {
+    "key": "Bỏ đi bản ghi.",
+    "msgs": 505,
+    "inTok": 36778,
+    "out": 681593,
+    "cw5": 526644,
+    "cw1": 2141685,
+    "cr": 51283001,
+    "cost": 60.27723749999994,
+    "unpriced": 20
+   },
+   {
+    "key": "Viết test cho ngưỡng cảnh báo t.",
+    "msgs": 801,
+    "inTok": 8056,
+    "out": 642299,
+    "cw5": 373262,
+    "cw1": 1822297,
+    "cr": 153074287,
+    "cost": 121.83134800000002,
+    "unpriced": 0
+   },
+   {
+    "key": "Đo lại lớp đ.",
+    "msgs": 476,
+    "inTok": 15382,
+    "out": 591029,
+    "cw5": 0,
+    "cw1": 1794841,
+    "cr": 57661206,
+    "cost": 63.176225700000025,
+    "unpriced": 0
+   },
+   {
+    "key": "claude-api",
+    "msgs": 275,
+    "inTok": 10245,
+    "out": 231574,
+    "cw5": 1537331,
+    "cw1": 2404727,
+    "cr": 47664448,
+    "cost": 45.31979085000002,
+    "unpriced": 178
+   },
+   {
+    "key": "Bỏ đi chỉ số để lần.",
+    "msgs": 130,
+    "inTok": 82196,
+    "out": 160933,
+    "cw5": 887512,
+    "cw1": 195584,
+    "cr": 14470823,
+    "cost": 2.301602,
+    "unpriced": 117
+   }
+  ],
+  "plugins": [
+   {
+    "key": "Hoãn tới bộ.",
+    "msgs": 811,
+    "inTok": 37469,
+    "out": 996995,
+    "cw5": 526644,
+    "cw1": 4463976,
+    "cr": 108262395,
+    "cost": 120.65878999999998,
+    "unpriced": 24
+   },
+   {
+    "key": "Gộp về chỉ số đ.",
+    "msgs": 801,
+    "inTok": 8056,
+    "out": 642299,
+    "cw5": 373262,
+    "cw1": 1822297,
+    "cr": 153074287,
+    "cost": 121.83134800000002,
+    "unpriced": 0
+   },
+   {
+    "key": "Viết test ch.",
+    "msgs": 62,
+    "inTok": 116,
+    "out": 146303,
+    "cw5": 0,
+    "cw1": 525395,
+    "cr": 11409094,
+    "cost": 14.616652000000002,
+    "unpriced": 0
+   },
+   {
+    "key": "Gộp về ô tìm kiế.",
+    "msgs": 22,
+    "inTok": 314,
+    "out": 86528,
+    "cw5": 0,
+    "cw1": 226091,
+    "cr": 2373839,
+    "cost": 3.4069675,
+    "unpriced": 5
+   },
+   {
+    "key": "Kiểm bằng tay biểu.",
+    "msgs": 11,
+    "inTok": 20,
+    "out": 41416,
+    "cw5": 0,
+    "cw1": 73046,
+    "cr": 977729,
+    "cost": 2.6921586,
+    "unpriced": 0
+   }
+  ],
+  "cacheHit": 0.9721945050621299,
+  "eff": {
+   "ok": true,
+   "from": "2026-07-21",
+   "to": "2026-09-10",
+   "requests": 51026,
+   "turns": {
+    "sessions": 132,
+    "minTurns": 50,
+    "bands": [
+     {
+      "lo": 1,
+      "hi": 20,
+      "msgs": 2640,
+      "cost": 392.09518105000035,
+      "out": 3216465,
+      "ctxMedian": 87459,
+      "unit": 121.90251753089194
+     },
+     {
+      "lo": 21,
+      "hi": 50,
+      "msgs": 3960,
+      "cost": 553.6720058,
+      "out": 3875977,
+      "ctxMedian": 136363,
+      "unit": 142.8470823743278
+     },
+     {
+      "lo": 51,
+      "hi": 100,
+      "msgs": 5589,
+      "cost": 850.0576392000002,
+      "out": 4504035,
+      "ctxMedian": 187395,
+      "unit": 188.73246748748625
+     },
+     {
+      "lo": 101,
+      "hi": null,
+      "msgs": 36451,
+      "cost": 5493.209149250054,
+      "out": 20351381,
+      "ctxMedian": 169985,
+      "unit": 269.9182502283287
+     }
+    ]
+   },
+   "rewarm": {
+    "calls": 160,
+    "tokens": 29460735,
+    "extra": 301.29473910000013,
+    "cold": 9289865,
+    "bands": [
+     {
+      "key": "Đo lại tiến.",
+      "cost": 8.711416750000001,
+      "calls": 11,
+      "tokens": 1469849
+     },
+     {
+      "key": "Dựng lại lớp.",
+      "cost": 0.91816575,
+      "calls": 4,
+      "tokens": 145851
+     },
+     {
+      "key": "Kiểm bằng ta.",
+      "cost": 199.40363360000006,
+      "calls": 96,
+      "tokens": 18387269
+     },
+     {
+      "key": "6h+",
+      "cost": 92.26152299999998,
+      "calls": 49,
+      "tokens": 9457766
+     }
+    ]
+   },
+   "sessions": {
+    "stats": {
+     "n": 281,
+     "total": 7677.130332050002,
+     "medianCost": 5.87064085,
+     "top10Share": 0.403103603214932,
+     "medianCtxPerOut": 157.36668313475877
+    },
+    "recent": [
+     {
+      "key": "0323155b-9ef3-4666-3908-035471c0a98e",
+      "msgs": 26,
+      "out": 28133,
+      "ctx": 6464189,
+      "cost": 4.339945,
+      "side": 0,
+      "unpriced": 0,
+      "cwd": "/Users/dev/Projects/contoso/tessera",
+      "t0": 1789051369768,
+      "t1": 1789052384015,
+      "ctxPerOut": 229.7724736075072,
+      "unit": 154.26527565492484,
+      "project": "Hoãn tới bộ."
+     },
+     {
+      "key": "788d7b14-b060-ecc6-efd1-32b79fda85dc",
+      "msgs": 5,
+      "out": 2727,
+      "ctx": 958928,
+      "cost": 0.662482,
+      "side": 0,
+      "unpriced": 0,
+      "cwd": "/Users/dev/Projects/contoso/tessera",
+      "t0": 1789048762175,
+      "t1": 1789048798315,
+      "ctxPerOut": 351.64209754308763,
+      "unit": 242.93436010267695,
+      "project": "Hoãn tới bộ."
+     },
+     {
+      "key": "1b88b3d7-3892-b4f0-7318-259c62a4a8d3",
+      "msgs": 1,
+      "out": 303,
+      "ctx": 42353,
+      "cost": 0.182575,
+      "side": 0,
+      "unpriced": 0,
+      "cwd": "/Users/dev/Projects/contoso/tessera",
+      "t0": 1789048536248,
+      "t1": 1789048536248,
+      "ctxPerOut": 139.77887788778878,
+      "unit": 602.5577557755776,
+      "project": "Hoãn tới bộ."
+     },
+     {
+      "key": "492922b7-1d5e-21ca-58d5-cef35d908851",
+      "msgs": 5,
+      "out": 3924,
+      "ctx": 364301,
+      "cost": 0.652591,
+      "side": 0,
+      "unpriced": 0,
+      "cwd": "/Users/dev/Projects/contoso/tessera",
+      "t0": 1789042617864,
+      "t1": 1789042655932,
+      "ctxPerOut": 92.83919469928644,
+      "unit": 166.30759429153923,
+      "project": "Hoãn tới bộ."
+     },
+     {
+      "key": "7e897660-49ee-7d29-fe23-a42ffb541755",
+      "msgs": 15,
+      "out": 3807,
+      "ctx": 1026352,
+      "cost": 0.9336425000000002,
+      "side": 0,
+      "unpriced": 0,
+      "cwd": "/Users/dev/Projects/contoso/tessera",
+      "t0": 1789040546463,
+      "t1": 1789040628885,
+      "ctxPerOut": 269.5960073548726,
+      "unit": 245.2436301549777,
+      "project": "Hoãn tới bộ."
+     }
+    ],
+    "top": [
+     {
+      "key": "032e7f69-4308-15e4-ad00-4b69c1ce833b",
+      "msgs": 6238,
+      "out": 2075949,
+      "ctx": 922562723,
+      "cost": 759.9665132500012,
+      "side": 5588,
+      "unpriced": 0,
+      "cwd": "/Users/dev/Projects/contoso/pinnacle",
+      "t0": 1786525072107,
+      "t1": 1786633846274,
+      "ctxPerOut": 444.4052927119115,
+      "unit": 366.0814948970332,
+      "project": "Tách ra phép."
+     },
+     {
+      "key": "da8866b0-1cb9-7d7b-3741-e79d23ec9e03",
+      "msgs": 2654,
+      "out": 2142287,
+      "ctx": 781666248,
+      "cost": 490.53922099999994,
+      "side": 0,
+      "unpriced": 2,
+      "cwd": "/Users/dev/Projects/contoso/lantern",
+      "t0": 1785952577525,
+      "t1": 1786095767536,
+      "ctxPerOut": 364.8746633854381,
+      "unit": 228.97922687296332,
+      "project": "Hoãn tới phé."
+     },
+     {
+      "key": "a3641db2-1e55-f3e2-16ff-373097cdcb02",
+      "msgs": 3518,
+      "out": 1727239,
+      "ctx": 509302439,
+      "cost": 397.57541450000144,
+      "side": 3435,
+      "unpriced": 0,
+      "cwd": "/Users/dev/Projects/contoso/pinnacle",
+      "t0": 1786844820590,
+      "t1": 1786855533709,
+      "ctxPerOut": 294.8650644178368,
+      "unit": 230.17973453586993,
+      "project": "Tách ra phép."
+     },
+     {
+      "key": "9512600f-a26b-968e-5e72-b07f2997a0b2",
+      "msgs": 1922,
+      "out": 1880432,
+      "ctx": 505709591,
+      "cost": 335.49231000000043,
+      "side": 0,
+      "unpriced": 0,
+      "cwd": "/Users/dev/Projects/contoso/lantern",
+      "t0": 1785896431652,
+      "t1": 1785945102768,
+      "ctxPerOut": 268.9326660044075,
+      "unit": 178.41235950037037,
+      "project": "Hoãn tới phé."
+     },
+     {
+      "key": "c4607b71-e90e-db24-19bb-b6b31ae67809",
+      "msgs": 3080,
+      "out": 601493,
+      "ctx": 415993520,
+      "cost": 302.09193875000005,
+      "side": 2791,
+      "unpriced": 2,
+      "cwd": "/Users/dev/Projects/contoso/pinnacle",
+      "t0": 1787064730918,
+      "t1": 1788140096636,
+      "ctxPerOut": 691.6015980235846,
+      "unit": 502.23683193320636,
+      "project": "Tách ra phép."
+     }
+    ]
+   },
+   "ratio": {
+    "sessions": 228,
+    "minOut": 5000,
+    "thin": 53,
+    "median": 156.43480311293297,
+    "bands": [
+     {
+      "lo": 0,
+      "hi": 80,
+      "sessions": 44,
+      "cost": 176.661356,
+      "out": 1445021,
+      "share": 0.023055453745045328
+     },
+     {
+      "lo": 80,
+      "hi": 150,
+      "sessions": 66,
+      "cost": 601.8784452000001,
+      "out": 3813764,
+      "share": 0.07854904415795608
+     },
+     {
+      "lo": 150,
+      "hi": 300,
+      "sessions": 85,
+      "cost": 3622.6697575000017,
+      "out": 18223425,
+      "share": 0.4727819197064006
+     },
+     {
+      "lo": 300,
+      "hi": null,
+      "sessions": 33,
+      "cost": 3261.2445380000017,
+      "out": 11157801,
+      "share": 0.42561358239059793
+     }
+    ]
+   },
+   "split": {
+    "side": {
+     "calls": 19210,
+     "cost": 1721.5989818500018,
+     "out": 3745316,
+     "ctx": 2186381717,
+     "unit": 459.6672168249626
+    },
+    "main": {
+     "calls": 31816,
+     "cost": 5955.531350200026,
+     "out": 30987917,
+     "ctx": 7159540552,
+     "unit": 192.188824766764
+    }
+   }
+  },
+  "retention": {
+   "firstToken": "2026-07-03",
+   "oldestOnDisk": "2026-07-21",
+   "oldestInRollup": "2026-07-12"
+  },
+  "rollupPath": "/Users/dev/.now-dashboard/northwind",
+  "rollupError": null
+ },
+ "quota": {
+  "ok": true,
+  "source": "api",
+  "at": 1789052467121,
+  "ageMs": 90018,
+  "stale": false,
+  "conservative": false,
+  "fiveHour": {
+   "used": 0,
+   "remaining": 100,
+   "resetsAt": 1789070400055,
+   "resetsInMs": 17842916,
+   "expired": false,
+   "windowMs": 18000000,
+   "elapsedFrac": 0.008726888888888888,
+   "forecast": {
+    "known": false,
+    "reason": "early",
+    "elapsedMs": 159207,
+    "leftMs": 17840793,
+    "frac": 0.008844833333333333
+   },
+   "spent": {
+    "cost": 4.8036265,
+    "out": 2582,
+    "msgs": 32,
+    "unpriced": 0,
+    "partial": false
+   }
+  },
+  "sevenDay": {
+   "used": 83,
+   "remaining": 17,
+   "resetsAt": 1789063200055,
+   "resetsInMs": 10642916,
+   "expired": false,
+   "windowMs": 604800000,
+   "elapsedFrac": 0.982402585978836,
+   "forecast": {
+    "known": true,
+    "elapsedMs": 594159207,
+    "leftMs": 10640793,
+    "frac": 0.9824060962301587,
+    "perHour": 0.5028955143330801,
+    "projected": 84.48644640795746,
+    "willExhaust": false,
+    "exhaustInMs": null,
+    "exhaustAt": null
+   },
+   "spent": {
+    "cost": 353.2975073500004,
+    "out": 1988523,
+    "msgs": 2618,
+    "unpriced": 547,
+    "partial": false
+   }
+  },
+  "scoped": [
+   {
+    "used": 39,
+    "remaining": 61,
+    "resetsAt": 1789063200056,
+    "resetsInMs": 10642917,
+    "expired": false,
+    "windowMs": 604800000,
+    "elapsedFrac": 0.9824025843253968,
+    "forecast": {
+     "known": true,
+     "elapsedMs": 594159206,
+     "leftMs": 10640794,
+     "frac": 0.9824060945767196,
+     "perHour": 0.236300302313249,
+     "projected": 39.698450788625834,
+     "willExhaust": false,
+     "exhaustInMs": null,
+     "exhaustAt": null
+    },
+    "model": "Fable",
+    "spent": {
+     "cost": 0,
+     "out": 342157,
+     "msgs": 458,
+     "unpriced": 458,
+     "partial": false
+    }
+   }
+  ],
+  "calls": 2818
+ },
+ "quotaCycles": {
+  "watchedEnough": 0.9,
+  "kinds": [
+   "five",
+   "seven",
+   "m:Fable"
+  ],
+  "cycles": [
+   {
+    "kind": "five",
+    "resetsAt": 1785240000000,
+    "used": 24,
+    "waste": 76,
+    "samples": 130,
+    "watchedTo": 0.9978677222222222,
+    "partial": false
+   },
+   {
+    "kind": "five",
+    "resetsAt": 1785258600000,
+    "used": 29,
+    "waste": 71,
+    "samples": 80,
+    "watchedTo": 0.5666307222222222,
+    "partial": true
+   },
+   {
+    "kind": "five",
+    "resetsAt": 1785301200000,
+    "used": 8,
+    "waste": 92,
+    "samples": 124,
+    "watchedTo": 0.9952486111111111,
+    "partial": false
+   },
+   {
+    "kind": "five",
+    "resetsAt": 1785319800000,
+    "used": 4,
+    "waste": 96,
+    "samples": 109,
+    "watchedTo": 0.9985657222222222,
+    "partial": false
+   },
+   {
+    "kind": "five",
+    "resetsAt": 1785338400000,
+    "used": 16,
+    "waste": 84,
+    "samples": 146,
+    "watchedTo": 0.9941016111111111,
+    "partial": false
+   }
+  ],
+  "solid": 112,
+  "path": "/Users/dev/.now-dashboard/contoso",
+  "error": null
+ },
+ "lookback": {
+  "ok": true,
+  "at": 1789052573402,
+  "claude": {
+   "planUsd": 200,
+   "cycleUsd": 45.9958932238193,
+   "sevens": [
+    {
+     "resetsAt": 1785434400000,
+     "windowMs": 604800000,
+     "used": 100,
+     "waste": 0,
+     "watchedTo": 0.999762337962963,
+     "partial": false,
+     "samples": 1801,
+     "wasteUsd": 0
+    },
+    {
+     "resetsAt": 1786039200000,
+     "windowMs": 604800000,
+     "used": 99,
+     "waste": 1,
+     "watchedTo": 0.9941139781746032,
+     "partial": false,
+     "samples": 3599,
+     "wasteUsd": 0.459958932238193
+    },
+    {
+     "resetsAt": 1786644000000,
+     "windowMs": 604800000,
+     "used": 98,
+     "waste": 2,
+     "watchedTo": 0.9998504910714285,
+     "partial": false,
+     "samples": 3569,
+     "wasteUsd": 0.919917864476386
+    },
+    {
+     "resetsAt": 1787248800000,
+     "windowMs": 604800000,
+     "used": 94,
+     "waste": 6,
+     "watchedTo": 0.9529367509920635,
+     "partial": false,
+     "samples": 3799,
+     "wasteUsd": 2.759753593429158
+    },
+    {
+     "resetsAt": 1787853600000,
+     "windowMs": 604800000,
+     "used": 99,
+     "waste": 1,
+     "watchedTo": 0.9999756233465609,
+     "partial": false,
+     "samples": 1319,
+     "wasteUsd": 0.459958932238193
+    }
+   ],
+   "money": {
+    "closed": 6,
+    "solid": 5,
+    "paidUsd": 229.97946611909651,
+    "wasteUsd": 4.59958932238193,
+    "worst": {
+     "resetsAt": 1787248800000,
+     "wasteUsd": 2.759753593429158
+    }
+   },
+   "fives": [
+    {
+     "resetsAt": 1788222000000,
+     "used": 12
+    },
+    {
+     "resetsAt": 1788240000000,
+     "used": 20
+    },
+    {
+     "resetsAt": 1788258000000,
+     "used": 13
+    },
+    {
+     "resetsAt": 1788276000000,
+     "used": 14
+    },
+    {
+     "resetsAt": 1788325200000,
+     "used": 100
+    }
+   ],
+   "fiveMax": 100,
+   "fiveCount": 120,
+   "openedAt": 1785074501912
+  },
+  "cursor": {
+   "planUsd": 20,
+   "cycles": [
+    {
+     "resetsAt": 1785742740000,
+     "windowMs": 2678400000,
+     "cents": 34571,
+     "planCents": 2000,
+     "bonusCents": 32571,
+     "watchedTo": 0.99988426859319,
+     "partial": false,
+     "over": true,
+     "wasteUsd": 0
+    },
+    {
+     "resetsAt": 1788421140000,
+     "windowMs": 2678400000,
+     "cents": 19362,
+     "planCents": 2000,
+     "bonusCents": 17362,
+     "watchedTo": 0.9999436327658303,
+     "partial": false,
+     "over": true,
+     "wasteUsd": 0
+    }
+   ],
+   "money": {
+    "closed": 2,
+    "solid": 2,
+    "paidUsd": 40,
+    "wasteUsd": 0,
+    "overCount": 2
+   },
+   "openedAt": 1785248364820
+  },
+  "ag": {
+   "planUsd": 20,
+   "cycleUsd": 4.59958932238193,
+   "gemini": [
+    {
+     "resetsAt": 1785287100000,
+     "windowMs": 604800000,
+     "used": 100,
+     "waste": 0,
+     "watchedTo": 0.9996087433862434,
+     "partial": false,
+     "samples": 128,
+     "wasteUsd": 0
+    },
+    {
+     "resetsAt": 1785891900000,
+     "windowMs": 604800000,
+     "used": 73.52896600000001,
+     "waste": 26.47103399999999,
+     "watchedTo": 0.9999668220899471,
+     "partial": false,
+     "samples": 1794,
+     "wasteUsd": 1.2175588533880897
+    },
+    {
+     "resetsAt": 1786496700000,
+     "windowMs": 604800000,
+     "used": 87.72995,
+     "waste": 12.270049999999998,
+     "watchedTo": 0.9995652116402116,
+     "partial": false,
+     "samples": 1626,
+     "wasteUsd": 0.5643719096509239
+    },
+    {
+     "resetsAt": 1787101500000,
+     "windowMs": 604800000,
+     "used": 87.955251,
+     "waste": 12.044748999999996,
+     "watchedTo": 0.9997482936507937,
+     "partial": false,
+     "samples": 1702,
+     "wasteUsd": 0.5540089889117041
+    },
+    {
+     "resetsAt": 1787706300000,
+     "windowMs": 604800000,
+     "used": 89.760053,
+     "waste": 10.239947,
+     "watchedTo": 0.9585451124338624,
+     "partial": false,
+     "samples": 388,
+     "wasteUsd": 0.4709955088295688
+    }
+   ],
+   "money": {
+    "closed": 7,
+    "solid": 6,
+    "paidUsd": 27.597535934291578,
+    "wasteUsd": 3.62801714989733,
+    "worst": {
+     "resetsAt": 1785891900000,
+     "wasteUsd": 1.2175588533880897
+    }
+   },
+   "threep": [
+    {
+     "resetsAt": 1785520380000,
+     "used": 100,
+     "partial": false
+    },
+    {
+     "resetsAt": 1786125180000,
+     "used": 0,
+     "partial": true
+    },
+    {
+     "resetsAt": 1786358520000,
+     "used": 100,
+     "partial": false
+    },
+    {
+     "resetsAt": 1786963320000,
+     "used": 94.59182659999999,
+     "partial": false
+    },
+    {
+     "resetsAt": 1787568120000,
+     "used": 99.967333334,
+     "partial": true
+    }
+   ],
+   "openedAt": 1785248289835
+  },
+  "gate": {
+   "open": true,
+   "openedAt": 1785248364820,
+   "opensAt": 1787062764820
+  }
+ },
+ "cursor": {
+  "ok": true,
+  "source": "api",
+  "at": 1789052507584,
+  "ageMs": 49556,
+  "stale": false,
+  "cycle": {
+   "startAt": 1788421139000,
+   "endAt": 1791013139000,
+   "windowMs": 2592000000,
+   "resetsInMs": 1960581860,
+   "elapsedFrac": 0.2436026774691358
+  },
+  "total": {
+   "key": "Tách ra bảng.",
+   "used": 8.612121212121213,
+   "remaining": 91.38787878787879,
+   "resetsAt": 1791013139000,
+   "resetsInMs": 1960581860,
+   "expired": false,
+   "windowMs": 2592000000,
+   "elapsedFrac": 0.2436026774691358,
+   "forecast": {
+    "known": true,
+    "elapsedMs": 631418140,
+    "leftMs": 1960581860,
+    "frac": 0.2436026774691358,
+    "perHour": 0.04910159274745633,
+    "projected": 35.35314677816856,
+    "willExhaust": false,
+    "exhaustInMs": null,
+    "exhaustAt": null
+   },
+   "cents": 4263,
+   "ceilCents": 49500,
+   "derived": true
+  },
+  "auto": {
+   "key": "Khoá lại sổ.",
+   "used": 9.473333333333333,
+   "remaining": 90.52666666666667,
+   "resetsAt": 1791013139000,
+   "resetsInMs": 1960581860,
+   "expired": false,
+   "windowMs": 2592000000,
+   "elapsedFrac": 0.2436026774691358,
+   "forecast": {
+    "known": true,
+    "elapsedMs": 631418140,
+    "leftMs": 1960581860,
+    "frac": 0.2436026774691358,
+    "perHour": 0.05401175202220196,
+    "projected": 38.88846145598541,
+    "willExhaust": false,
+    "exhaustInMs": null,
+    "exhaustAt": null
+   },
+   "cents": 36.4283,
+   "ceilCents": null,
+   "derived": false
+  },
+  "named": {
+   "key": "Tách ra tiến.",
+   "used": 0,
+   "remaining": 100,
+   "resetsAt": 1791013139000,
+   "resetsInMs": 1960581860,
+   "expired": false,
+   "windowMs": 2592000000,
+   "elapsedFrac": 0.2436026774691358,
+   "forecast": {
+    "known": true,
+    "elapsedMs": 631418140,
+    "leftMs": 1960581860,
+    "frac": 0.2436026774691358,
+    "perHour": 0,
+    "projected": 0,
+    "willExhaust": false,
+    "exhaustInMs": null,
+    "exhaustAt": null
+   },
+   "cents": 4226.96667,
+   "ceilCents": null,
+   "derived": false
+  },
+  "models": [
+   {
+    "model": "cursor-grok-4.6-xhigh-fast",
+    "auto": false,
+    "inTok": 2066190,
+    "out": 250110,
+    "cr": 26593216,
+    "cw": 0,
+    "cents": 3714.35907
+   },
+   {
+    "model": "cursor-grok-4.6-high-fast",
+    "auto": false,
+    "inTok": 359013,
+    "out": 43502,
+    "cr": 3168000,
+    "cw": 0,
+    "cents": 512.6076
+   },
+   {
+    "model": "composer-2.5-fast",
+    "auto": true,
+    "inTok": 47463,
+    "out": 7322,
+    "cr": 224128,
+    "cw": 0,
+    "cents": 36.4283
+   }
+  ],
+  "tokens": {
+   "inTok": 2472666,
+   "out": 300934,
+   "cr": 29985344,
+   "cw": 0
+  },
+  "bonusCents": 2263,
+  "planCents": 2000,
+  "analytics": {
+   "days": [
+    {
+     "at": 1781222400000,
+     "added": 3588,
+     "deleted": 55,
+     "accepted": 3588,
+     "acceptedDeleted": 55,
+     "applies": 101,
+     "accepts": 101,
+     "tabsShown": 33,
+     "tabsAccepted": 5
+    },
+    {
+     "at": 1781308800000,
+     "added": 4672,
+     "deleted": 912,
+     "accepted": 4672,
+     "acceptedDeleted": 912,
+     "applies": 84,
+     "accepts": 84,
+     "tabsShown": 16,
+     "tabsAccepted": 4
+    },
+    {
+     "at": 1781395200000,
+     "added": 3390,
+     "deleted": 741,
+     "accepted": 2890,
+     "acceptedDeleted": 331,
+     "applies": 126,
+     "accepts": 126,
+     "tabsShown": 3,
+     "tabsAccepted": 0
+    },
+    {
+     "at": 1781481600000,
+     "added": 1760,
+     "deleted": 451,
+     "accepted": 1760,
+     "acceptedDeleted": 451,
+     "applies": 28,
+     "accepts": 28,
+     "tabsShown": 42,
+     "tabsAccepted": 10
+    },
+    {
+     "at": 1781568000000,
+     "added": 672,
+     "deleted": 79,
+     "accepted": 672,
+     "acceptedDeleted": 79,
+     "applies": 36,
+     "accepts": 36,
+     "tabsShown": 2,
+     "tabsAccepted": 0
+    }
+   ],
+   "from": 1781222400000,
+   "to": 1788998400000,
+   "totals": {
+    "added": 167552,
+    "accepted": 164657,
+    "applies": 4817,
+    "accepts": 4806,
+    "tabsShown": 1033,
+    "tabsAccepted": 161
+   },
+   "exts": [
+    {
+     "name": "Hoãn tới bản.",
+     "count": 60
+    },
+    {
+     "name": "Gộp về biểu.",
+     "count": 44
+    },
+    {
+     "name": "Gộp về khối.",
+     "count": 34
+    },
+    {
+     "name": "Gộp về phép.",
+     "count": 16
+    },
+    {
+     "name": "Kiểm bằng ta.",
+     "count": 14
+    }
+   ]
+  },
+  "calls": 2308
+ },
+ "cursorEvents": {
+  "ok": true,
+  "warming": false,
+  "at": 1789051805437,
+  "ageMs": 751705,
+  "from": "2025-01-10",
+  "to": "2026-09-10",
+  "days": 181,
+  "series": [
+   {
+    "day": "2025-01-10",
+    "events": 24,
+    "errored": 0,
+    "cents": 0,
+    "inTok": 0,
+    "out": 0,
+    "cr": 0,
+    "cw": 0
+   },
+   {
+    "day": "2025-01-14",
+    "events": 13,
+    "errored": 0,
+    "cents": 0,
+    "inTok": 0,
+    "out": 0,
+    "cr": 0,
+    "cw": 0
+   },
+   {
+    "day": "2025-01-15",
+    "events": 4,
+    "errored": 0,
+    "cents": 0,
+    "inTok": 0,
+    "out": 0,
+    "cr": 0,
+    "cw": 0
+   },
+   {
+    "day": "2025-01-16",
+    "events": 1,
+    "errored": 0,
+    "cents": 0,
+    "inTok": 0,
+    "out": 0,
+    "cr": 0,
+    "cw": 0
+   },
+   {
+    "day": "2025-01-20",
+    "events": 2,
+    "errored": 0,
+    "cents": 0,
+    "inTok": 0,
+    "out": 0,
+    "cr": 0,
+    "cw": 0
+   }
+  ],
+  "convos": [
+   {
+    "id": "194f2828-43f8-64f3-f554-ad9b16e5065e",
+    "events": 19,
+    "cents": 2770.5874700000004,
+    "firstDay": "2026-09-08",
+    "lastDay": "2026-09-08"
+   },
+   {
+    "id": "d4d5e387-0f8b-72b6-7bde-a793901c2e03",
+    "events": 4,
+    "cents": 459.2312,
+    "firstDay": "2026-09-10",
+    "lastDay": "2026-09-10"
+   },
+   {
+    "id": "82e78a1b-af29-dc5f-8f3b-d1e6e969ee6f",
+    "events": 12,
+    "cents": 231.05679999999998,
+    "firstDay": "2026-09-08",
+    "lastDay": "2026-09-08"
+   },
+   {
+    "id": "9dc90070-fbac-f4dc-a497-54d3c43d6611",
+    "events": 2,
+    "cents": 55.711600000000004,
+    "firstDay": "2026-09-08",
+    "lastDay": "2026-09-08"
+   },
+   {
+    "id": "9772530c-b7c1-7252-6095-28001d8d678b",
+    "events": 1,
+    "cents": 21.1948,
+    "firstDay": "2026-09-08",
+    "lastDay": "2026-09-08"
+   }
+  ],
+  "convoCount": 7,
+  "convoDays": 3,
+  "totals": {
+   "events": 6546,
+   "errored": 92,
+   "cents": 106370.251702,
+   "inTok": 170955236,
+   "out": 24099300,
+   "cr": 1811667372,
+   "cw": 13033964
+  },
+  "loading": false,
+  "degraded": null,
+  "ttlMs": 900000
+ },
+ "surfaces": [
+  {
+   "key": "claude-desktop",
+   "name": "Viết test cho.",
+   "kind": "agent",
+   "running": true,
+   "folders": null,
+   "sessions": 9,
+   "awake": 5
+  },
+  {
+   "key": "cursor",
+   "name": "Cursor",
+   "kind": "ide",
+   "running": true,
+   "folders": [
+    "/Users/dev/Projects/contoso/lantern"
+   ],
+   "emptyWindows": 2,
+   "sessions": 0,
+   "awake": 0
+  },
+  {
+   "key": "Kiểm bằng ta.",
+   "name": "Đo lại lớp đ.",
+   "kind": "ide",
+   "running": true,
+   "folders": [
+    "/Users/dev/Projects/contoso/lantern",
+    "/Users/dev/Projects/contoso/meridian/driftwood"
+   ],
+   "sessions": 222,
+   "awake": 4,
+   "convos": true,
+   "degraded": null
+  },
+  {
+   "key": "Viết test ch.",
+   "name": "Bỏ đi khối t.",
+   "kind": "shell",
+   "running": true,
+   "folders": null,
+   "sessions": 1,
+   "awake": 0
+  }
+ ],
+ "antigravity": {
+  "ok": true,
+  "running": true,
+  "at": 1789052096581,
+  "convos": [
+   {
+    "id": "70ed998b-941e-0714-1e21-59f469d48ae1",
+    "title": "Dựng lại lớp đọc để lần sau còn so.",
+    "steps": 1027,
+    "cwd": "/Users/dev/Projects/contoso/lantern",
+    "createdAt": 1788658029581,
+    "updatedAt": 1788747660706,
+    "at": 1789052374035.1187,
+    "idleMs": 185228.88134765625,
+    "bytes": 12574720,
+    "sleeping": false,
+    "folder": "Bỏ đi bản ghi n.",
+    "projectId": null,
+    "project": null
+   },
+   {
+    "id": "2e8caefe-61ed-0fe9-c000-fe08132744b4",
+    "title": "Tách ra bộ nhớ đệm trướ.",
+    "steps": 66,
+    "cwd": "/Users/dev/Projects/contoso/lantern",
+    "createdAt": 1789047961133,
+    "updatedAt": 1789052078685,
+    "at": 1789052108745.857,
+    "idleMs": 450518.14306640625,
+    "bytes": 1077248,
+    "sleeping": false,
+    "folder": "Bỏ đi bản ghi n.",
+    "projectId": null,
+    "project": null
+   },
+   {
+    "id": "2b806c02-7a3a-1216-7c6b-860a2ff3cff3",
+    "title": "Dựng lại bảng số trư.",
+    "steps": 112,
+    "cwd": "/Users/dev/Projects/contoso/meridian/driftwood",
+    "createdAt": 1789047845677,
+    "updatedAt": 1789051856758,
+    "at": 1789051887190.0671,
+    "idleMs": 672073.9328613281,
+    "bytes": 2895872,
+    "sleeping": false,
+    "folder": "Kiểm bằng ta.",
+    "projectId": null,
+    "project": null
+   },
+   {
+    "id": "ab158743-fd56-e453-f216-dce62afd95dc",
+    "title": "Kiểm bằng tay bảng số nế.",
+    "steps": 198,
+    "cwd": "/Users/dev/Projects/contoso/meridian/driftwood",
+    "createdAt": 1789015884389,
+    "updatedAt": 1789051839462,
+    "at": 1789051870129.9075,
+    "idleMs": 689134.0925292969,
+    "bytes": 2719744,
+    "sleeping": false,
+    "folder": "Kiểm bằng ta.",
+    "projectId": null,
+    "project": null
+   },
+   {
+    "id": "9c7f2b13-17ac-2dea-964f-ca2ee8b9047f",
+    "title": "Dựng lại bảng số trước khi phát hành khoá lại tiến trình nền trong cùng một.",
+    "steps": 36,
+    "cwd": "/Users/dev/Projects/contoso/meridian/driftwood",
+    "createdAt": 1789048029895,
+    "updatedAt": 1789049614642,
+    "at": 1789049644737.1453,
+    "idleMs": 2914526.854736328,
+    "bytes": 1777664,
+    "sleeping": true,
+    "folder": "Kiểm bằng ta.",
+    "projectId": null,
+    "project": null
+   }
+  ],
+  "total": 871,
+  "keepDays": 14
+ },
+ "agTurns": {
+  "ok": true,
+  "at": 1789052573432,
+  "files": 222,
+  "unreadable": 0,
+  "convos": 222,
+  "scanMs": 53,
+  "turns": 0,
+  "out": 0,
+  "ctx": 0,
+  "ctxMedian": null,
+  "ctxKnown": 0,
+  "from": null,
+  "to": null,
+  "series": [],
+  "models": [],
+  "ctxBands": [
+   {
+    "key": "b0",
+    "lo": 0,
+    "hi": 25,
+    "turns": 0
+   },
+   {
+    "key": "b25",
+    "lo": 25,
+    "hi": 50,
+    "turns": 0
+   },
+   {
+    "key": "b50",
+    "lo": 50,
+    "hi": 75,
+    "turns": 0
+   },
+   {
+    "key": "b75",
+    "lo": 75,
+    "hi": 90,
+    "turns": 0
+   },
+   {
+    "key": "b90",
+    "lo": 90,
+    "hi": null,
+    "turns": 0
+   }
+  ],
+  "banded": 0,
+  "byConvo": {}
+ },
+ "agQuota": {
+  "ok": true,
+  "source": "ls-rpc",
+  "at": 1789052512807,
+  "ageMs": 46458,
+  "stale": false,
+  "groups": [
+   {
+    "key": "gemini",
+    "name": "Gộp về lượt q.",
+    "models": "Gemini Flash, Gemini Pro",
+    "buckets": [
+     {
+      "key": "gemini-weekly",
+      "label": "Viết test cho bộ nhớ đ.",
+      "window": "weekly",
+      "used": 56.35059499999999,
+      "remaining": 43.64940500000001,
+      "resetsAt": 1789136467000,
+      "resetsInMs": 83907735,
+      "expired": false,
+      "windowMs": 604800000,
+      "elapsedFrac": 0.8612636656746032,
+      "forecast": {
+       "known": true,
+       "elapsedMs": 520906401,
+       "leftMs": 83893599,
+       "frac": 0.8612870386904762,
+       "perHour": 0.45555326813933444,
+       "projected": 66.96670700011688,
+       "willExhaust": false,
+       "exhaustInMs": null,
+       "exhaustAt": null,
+       "paceMs": 86400000
+      },
+      "say": "You have used some of your weekly limit, it will fully refresh in 23 hours, 19 minutes."
+     },
+     {
+      "key": "gemini-5h",
+      "label": "Bỏ đi bộ nhớ đệm rồi mới.",
+      "window": "5h",
+      "used": 43.5925,
+      "remaining": 56.4075,
+      "resetsAt": 1789065493000,
+      "resetsInMs": 12933735,
+      "expired": false,
+      "windowMs": 18000000,
+      "elapsedFrac": 0.28145916666666665,
+      "forecast": {
+       "known": true,
+       "elapsedMs": 5080401,
+       "leftMs": 12919599,
+       "frac": 0.2822445,
+       "perHour": 30.88988447959128,
+       "projected": 154.4494223979564,
+       "willExhaust": true,
+       "exhaustInMs": 6573899.625107529,
+       "exhaustAt": 1789059147300.625
+      },
+      "say": "You have used some of your 5-hour limit, it will fully refresh in 3 hours, 36 minutes."
+     }
+    ]
+   },
+   {
+    "key": "3p",
+    "name": "Chốt trước lượt ghi đ.",
+    "models": "Claude Opus, Claude Sonnet, GPT-OSS",
+    "buckets": [
+     {
+      "key": "d-12",
+      "label": "Viết test cho bộ nhớ đ.",
+      "window": "weekly",
+      "used": 69.353905,
+      "remaining": 30.646095000000003,
+      "resetsAt": 1789382492000,
+      "resetsInMs": 329932735,
+      "expired": false,
+      "windowMs": 604800000,
+      "elapsedFrac": 0.45447629794973543,
+      "forecast": {
+       "known": true,
+       "elapsedMs": 274881401,
+       "leftMs": 329918599,
+       "frac": 0.45449967096560845,
+       "perHour": 0.9082973860424991,
+       "projected": 152.59396085513984,
+       "willExhaust": true,
+       "exhaustInMs": 121464559.62038614,
+       "exhaustAt": 1789174037960.6204
+      },
+      "say": "You have used some of your weekly limit, it will fully refresh in 3 days, 19 hours."
+     },
+     {
+      "key": "Viết test ch.",
+      "label": "Bỏ đi bộ nhớ đệm rồi mới.",
+      "window": "5h",
+      "used": 0,
+      "remaining": 100,
+      "resetsAt": 1789070513000,
+      "resetsInMs": 17953735,
+      "expired": false,
+      "windowMs": 18000000,
+      "elapsedFrac": 0.0025702777777777777,
+      "forecast": {
+       "known": false,
+       "reason": "early",
+       "elapsedMs": 60401,
+       "leftMs": 17939599,
+       "frac": 0.0033556111111111113
+      },
+      "say": null
+     }
+    ]
+   }
+  ],
+  "plan": {
+   "label": "Tách ra bảng.",
+   "raw": "TEAMS_TIER_PRO"
+  },
+  "note": "Khoá lại thẻ dự án vì số đo cũ đã lệch dựng lại ô tìm kiếm trước mốc cuối tháng đo lại hàng đợi để lần sau còn so được dựng lại ô tìm kiếm vì số đo cũ đã lệch dựng lại tiến trình nền sau khi nghiệm thu trên máy thật chốt trước thẻ dự án trong cùng một lượt khoá lại hàng đợi nếu bộ test vẫn xanh chốt trước khối tổng để lần sau còn so được hoãn tới chỉ số trước mốc cuối tháng gộ.",
+  "calls": 2316
+ },
+ "plans": {
+  "claude": {
+   "ok": true,
+   "label": "Chốt trước b.",
+   "raw": "default_claude_max_20x",
+   "derived": false,
+   "scope": "org",
+   "fetchedAt": 1789048377435
+  },
+  "cursor": {
+   "ok": true,
+   "label": "Tách ra bảng.",
+   "cents": 2000,
+   "derived": true
+  },
+  "antigravity": {
+   "ok": true,
+   "label": "Tách ra bảng.",
+   "raw": "TEAMS_TIER_PRO",
+   "derived": false
+  }
+ },
+ "unassignedConvoIds": [
+  "70ed998b-941e-0714-1e21-59f469d48ae1",
+  "2e8caefe-61ed-0fe9-c000-fe08132744b4",
+  "2b806c02-7a3a-1216-7c6b-860a2ff3cff3",
+  "ab158743-fd56-e453-f216-dce62afd95dc",
+  "9c7f2b13-17ac-2dea-964f-ca2ee8b9047f"
+ ],
+ "runFailures": {
+  "sinceMs": 39482,
+  "total": 5,
+  "broken": 2,
+  "rows": [
+   {
+    "cmd": "git",
+    "reason": "exit",
+    "code": 128,
+    "sample": "/Users/dev/Projects/contoso/driftwood",
+    "n": 3
+   },
+   {
+    "cmd": "git",
+    "reason": "timeout",
+    "code": null,
+    "sample": "/Users/dev/Projects/contoso/harbor",
+    "n": 2
+   }
+  ]
+ },
+ "stats": {
+  "projects": 9,
+  "sessions": 10,
+  "awake": 5,
+  "hotDecisions": 4,
+  "decisions": 29,
+  "waiting": 6,
+  "nudge": 6,
+  "needsUpdate": 8,
+  "drifting": 0,
+  "worktreeWarn": 0,
+  "orphans": 11,
+  "convos": 222,
+  "convosAwake": 4,
+  "surfaces": 4,
+  "schemaProblems": 1,
+  "tokensToday": 14425097
+ }
+}

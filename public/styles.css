@@ -1671,6 +1671,11 @@ ul.steps .blocked { color: var(--now); font-size: 12.5px; }
   .unit { grid-template-columns: 30px minmax(0, 1fr) auto; }
   .unit .u-cast { grid-column: 2 / -1; width: auto; }
   .unit.no-cast .u-cast { display: none; }
+  /* Hai nút resume/archive phải được ĐẶT Ô, không thả cho grid tự xếp. Cột tiến độ
+     chiếm trọn hàng dưới, nên tự xếp thì hai nút rơi xuống hàng ba và nằm trong cột
+     30px của avatar, bị cắt còn "esume ⧉" nên bấm vào cũng không trúng. Neo chúng vào
+     hàng 1 cột cuối thì phiên có todo hay không cũng đọc và bấm được như nhau. */
+  .unit .u-right { grid-row: 1; grid-column: 3 / -1; }
 }
 
 /* Màn hẹp: thanh trên KHÔNG chen title + ô tìm + hai nút vào một hàng — ép thế thì

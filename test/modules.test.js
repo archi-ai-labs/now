@@ -19,6 +19,11 @@ import { fileURLToPath } from 'node:url';
  *
  * Danh sách tự quét thư mục, không viết tay: file mới thêm vào là tự được che, không phải
  * nhớ cập nhật một danh sách — mà lưới chặn cần được nhớ mới hoạt động thì không phải lưới.
+ *
+ * NHẬP ĐƯỢC KHÔNG PHẢI LÀ VẼ ĐƯỢC, nên đừng ai coi file này là đủ. Một biến thiếu trong
+ * template literal vẫn nạp sạch và chỉ ném lúc thân hàm chạy, tức là lưới ở đây không thấy
+ * nó. Chỗ gọi THẬT từng hàm render với một bản chụp state thật là `test/views.test.js`, và
+ * lớp lỗi kia chỉ bị chặn hết khi cả hai file cùng còn.
  */
 
 // `import.meta.dirname` chỉ có từ Node 20.11, mà package.json khai sàn là 18.10 — trên 18

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { runDetail, run, drainRunFailures } from '../src/lib/sh.js';
+import { runDetail, run, drainRunFailures, mapLimit } from '../src/lib/sh.js';
 
 /**
  * Test trên tiến trình THẬT, cùng lý do như `git.test.js`: toàn bộ giá trị của `run()`
@@ -101,6 +101,31 @@ test('cùng một lệnh hỏng ở nhiều repo vẫn là MỘT dòng, kèm m�
   assert.equal(rows.length, 1, 'ba repo, một kiểu hỏng → một dòng');
   assert.equal(rows[0].n, 3);
   assert.ok(['/tmp', '/usr', '/etc'].includes(rows[0].sample), 'giữ đúng một chỗ làm ví dụ');
+});
+
+test('`mapLimit` nuốt exception thì phải ghi sổ — biến mất im lặng là kiểu hỏng tệ nhất', async () => {
+  fresh();
+  const out = await mapLimit(
+    ['a', 'b', 'c'],
+    2,
+    async (x) => {
+      if (x === 'b') throw new TypeError('b.id is not a function');
+      return x.toUpperCase();
+    },
+    'project',
+  );
+  assert.deepEqual(out, ['A', null, 'C'], 'một phần tử hỏng không được kéo cả lượt quét theo');
+
+  const book = drainRunFailures();
+  assert.equal(book.rows.length, 1);
+  assert.equal(book.rows[0].cmd, 'project', '`name` là để người đọc biết việc gì hỏng');
+  assert.equal(book.rows[0].reason, 'throw');
+  assert.equal(book.rows[0].n, 1);
+  assert.equal(book.broken, 1, '`throw` không phải câu trả lời hợp lệ, phải tính vào broken');
+  assert.ok(
+    !JSON.stringify(book).includes('is not a function'),
+    'message của exception không được vào sổ: `fn` có thể đang bọc lượt `run()` đọc token',
+  );
 });
 
 test('`sinceMs` là ĐỘ DÀI cửa sổ, không phải một mốc', async () => {

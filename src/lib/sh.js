@@ -126,14 +126,38 @@ export function runDetail(cmd, args, opts = {}) {
 // vào bề mặt lộ ra, mà lại là thứ duy nhất giúp phân biệt "một repo hỏng" với "git hỏng".
 export const git = (cwd, ...args) => run('git', ['-C', cwd, ...args], { label: cwd });
 
+/**
+ * Bản `runDetail` của `git()`, dành cho chỗ cần phân biệt "git trả lời không" với "không
+ * hỏi được git". `collectGit` là chỗ đầu tiên cần: chuỗi rỗng ở đó từng bị đọc thành
+ * "detached, 0 file bẩn", tức thẻ dự án khẳng định một điều nó không đo được.
+ */
+export const gitDetail = (cwd, ...args) => runDetail('git', ['-C', cwd, ...args], { label: cwd });
+
 export const lines = (out) =>
   String(out)
     .split('\n')
     .map((l) => l.trim())
     .filter(Boolean);
 
-/** Gom nhiều promise nhưng giới hạn số chạy song song — tránh spawn 50 tiến trình git một lúc. */
-export async function mapLimit(items, limit, fn) {
+/**
+ * Gom nhiều promise nhưng giới hạn số chạy song song — tránh spawn 50 tiến trình git một lúc.
+ *
+ * Callback ném thì phần tử đó thành `null` và lượt quét vẫn đi tiếp, vì một dự án hỏng
+ * không được phép làm sập cả trang. Nhưng "đi tiếp" không có nghĩa là "im lặng": bản trước
+ * nuốt trọn exception, mà `state.js` lọc `filter(Boolean)` ngay sau đó, nên một board sai
+ * kiểu lặng lẽ rời khỏi lưới dự án, bảng quyết định và thống kê mà không để lại dấu vết
+ * nào. Đó đúng là kiểu hỏng câm mà sổ này sinh ra để bắt.
+ *
+ * `name` hiện ở cột lệnh trong sổ, nên đặt theo VIỆC đang làm (`project`, `worktree`) chứ
+ * đừng đặt theo tên hàm. Thông điệp của exception KHÔNG được vào sổ: luật ở đầu file cấm
+ * chở output vào đây, mà `fn` hoàn toàn có thể đang bọc một lượt `run()` đọc token, và
+ * message của lỗi parse thường kèm luôn đoạn văn bản gây ra nó.
+ *
+ * Kiểu `throw` nằm ngoài năm kiểu của `reasonOf` vì nó không phải lỗi của tiến trình con.
+ * `public/views/health.js` hiện bỏ qua kiểu lạ, nên dòng này vào payload trước, lên màn
+ * Sức khoẻ khi bảng `RUN_WHY` bên đó có thêm một khoá cho nó.
+ */
+export async function mapLimit(items, limit, fn, name = 'mapLimit') {
   const out = new Array(items.length);
   let cursor = 0;
   const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
@@ -142,6 +166,7 @@ export async function mapLimit(items, limit, fn) {
       try {
         out[i] = await fn(items[i], i);
       } catch {
+        note(name, 'throw', null, null);
         out[i] = null;
       }
     }

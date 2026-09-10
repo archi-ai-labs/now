@@ -180,10 +180,10 @@ function latestOf(cycles, kind) {
 /**
  * Gộp lại những bản ghi vốn là MỘT cửa sổ lăn bị xé nhỏ. Hàm thuần, luỹ đẳng.
  *
- * Chạy trong `readCycles`, tức mỗi lần tiến trình mở sổ — nên sổ tự lành, không cần công cụ
- * riêng và KHÔNG nâng `LOG_VERSION`. Nâng phiên bản là vứt cả sổ, mà sổ Claude trong
- * `quota-cycles.json` thì chính file này khai là thứ duy nhất không dựng lại được; đổi cách
- * khoá của AG không phải lý do để đốt lịch sử Claude.
+ * Chạy trong `readCycles` (mỗi lần tiến trình mở sổ) và trong `writeCycles` (mỗi lượt ghi),
+ * nên sổ tự lành, không cần công cụ riêng và KHÔNG nâng `LOG_VERSION`. Nâng phiên bản là vứt
+ * cả sổ, mà sổ Claude trong `quota-cycles.json` thì chính file này khai là thứ duy nhất không
+ * dựng lại được; đổi cách khoá của AG không phải lý do để đốt lịch sử Claude.
  *
  * Đi theo thứ tự mốc reset, so từng bản ghi với NHÓM đang mở, dùng `firstAt`/`lastAt` thay
  * cho thời điểm đọc — cùng phép so của `rollsWith`, chỉ khác nguồn mốc.
@@ -288,6 +288,30 @@ export function bumpWindows(cycles, at, windows) {
         slot = last.key; // giữ NGUYÊN khoá cũ; chỉ chân trời trong bản ghi tiến lên
         prev = last.rec;
         rolling = true;
+      } else if (last && at <= last.rec.lastAt) {
+        // Vẫn là ảnh chụp cũ, chỉ khác là lượt trước đã gấp nó vào một cửa sổ LĂN.
+        //
+        // `at` là thời điểm FETCH và ảnh chụp AG sống 5 phút, còn nhịp gấp sổ là 30 giây,
+        // nên chín trên mười lượt gọi mang lại đúng `at` cũ. Lượt đầu của ảnh chụp ấy nằm
+        // dưới khoá CŨ nên khoá `kind|resetsAt` vẫn trống, và `rollsWith` lần này trả false
+        // vì `elapsed` bằng 0. Không có chốt này thì chốt `at <= prev.lastAt` ở dưới không
+        // chạy được (`prev` còn undefined) và mỗi ảnh chụp đẻ thêm một khoá `samples: 1`.
+        //
+        // Đo trên sổ AG máy này hôm 10/9: 511 bản ghi, 158 KB, trong đó `gemini-weekly` có
+        // 239 bản ghi mà 230 bản mang `samples: 1`. Phát lại riêng 230 bản rác ấy qua nhánh
+        // này thì chúng về đúng 1 khoá. Vì mốc reset của cửa sổ lăn luôn ở tương lai nên
+        // `trimCycles` miễn cắt cho tất cả; sau mốc reset chúng lại không mang cờ `rolling`
+        // nên lọt qua bộ lọc của `cyclesOf` và hiện ra như hàng trăm chu kỳ đã chốt 0%.
+        //
+        // Nhánh này an toàn chừng nào `at` còn tăng đơn điệu theo từng `kind`, và với một
+        // chuỗi ảnh chụp thật thì nó tăng, vì chu kỳ mới chỉ tới cùng một ảnh chụp mới. Có
+        // hai ca đã biết là phá được điều kiện đó. Thứ nhất, nếu hai group của AG cùng chứa
+        // một `bucketId` thì `agCycleWindows` đẩy ra hai cửa sổ cùng `kind` với cùng `at`,
+        // và cửa sổ thứ hai bị bỏ ở đây thay vì được mở khoá riêng. Thứ hai, đồng hồ bị NTP
+        // kéo lùi cũng cho `at < lastAt` đi kèm một `resetsAt` hoàn toàn mới. Cả hai ca đều
+        // làm MẤT một bản ghi chứ không làm sai bản ghi đang có, nên đây là chiều hỏng chấp
+        // nhận được: sổ thà thiếu một hàng còn hơn phồng lên hàng trăm hàng rác.
+        continue;
       }
     }
 
@@ -380,7 +404,8 @@ export async function readCycles(file = QUOTA_LOG) {
     // Sổ tự lành: bản ghi do bản cũ ghi ra — mỗi lượt đọc một "chu kỳ" — được gộp lại đúng
     // cửa sổ lăn của chúng. Luỹ đẳng, nên chạy mỗi lần mở sổ không tốn gì sau lần đầu.
     const { cycles, merged } = collapseRolling(raw);
-    if (merged) console.error(`quotalog: ${file} — gộp ${merged} bản ghi của cửa sổ lăn (${raw.size} → ${cycles.size})`);
+    // stdout, cùng lý do với dòng trong `writeCycles`: đây là báo dọn xong, không phải lỗi.
+    if (merged) console.log(`quotalog: ${file} — gộp ${merged} bản ghi của cửa sổ lăn (${raw.size} → ${cycles.size})`);
     return cycles;
   } catch {
     return new Map(); // chưa có sổ, hoặc sổ hỏng — bắt đầu lại, không có gì dựng lại được
@@ -422,14 +447,57 @@ export function packCycles(cycles, now) {
   );
 }
 
-/** Ghi tạm rồi đổi tên — cùng khuôn với `writeRollup`, cùng lý do. */
+/**
+ * Tên file tạm, RIÊNG cho từng lượt ghi.
+ *
+ * `writeCycles` được gọi từ một đường ghi không await (`trackQuota` ở cuối file này và
+ * `makeTracker` trong `collect/cycletrack.js`), nên hai lượt ghi cùng một sổ có thể chồng
+ * lên nhau. Nếu cả hai dùng chung một tên tạm thì lượt sau `rename` vào cái file mà lượt
+ * trước vừa dời đi, và nó ném `ENOENT`. Ngoài đời hai lượt ghi cách nhau 5 phút nên hầu như
+ * không đụng, còn test gọi chúng nối đuôi trong cùng một tick nên hỏng thấy rõ.
+ *
+ * `process.pid` tách hai tiến trình cùng mở một sổ, còn bộ đếm tách hai lượt ghi trong cùng
+ * một tiến trình vì chúng chung pid. `collect/hosts.js` và `collect/cursor.js` đặt tên theo
+ * cùng lối này; chúng không cần bộ đếm vì đường ghi của chúng có await.
+ */
+let tmpSeq = 0;
+export const cyclesTmpPath = (file) => `${file}.${process.pid}.${(tmpSeq += 1)}`;
+
+/**
+ * Ghi tạm rồi đổi tên — cùng khuôn với `writeRollup`, cùng lý do.
+ *
+ * Gộp cửa sổ lăn chạy ở ĐÂY chứ không chỉ ở `readCycles`. Sổ chỉ lành lúc mở nghĩa là một
+ * tiến trình chạy liền hai tuần thì hai tuần đó không ai dọn, mà bản ghi của cửa sổ lăn có
+ * mốc reset ở tương lai nên `trimCycles` cũng miễn cắt cho chúng. `collapseRolling` luỹ
+ * đẳng nên từ lượt ghi thứ hai trở đi nó không đổi gì.
+ *
+ * Giá đo trên sổ AG máy này hôm 10/9, trung vị của 200 lượt: 0,007 ms khi sổ đã lành (35 bản
+ * ghi) và 0,091 ms cho lượt dọn đầu (511 bản ghi). `JSON.stringify` ngay dưới tốn lần lượt
+ * 0,14 ms và 0,47 ms, tức phép gộp rẻ hơn chính cái việc đằng nào cũng phải làm.
+ *
+ * Map trả về là map ĐÃ gộp, vì `trackQuota` và `makeTracker` giữ chính nó làm bộ nhớ tiến
+ * trình. Trả về map chưa gộp thì đĩa sạch còn bộ nhớ vẫn bẩn, và lượt ghi sau chép lại đúng
+ * đống cũ.
+ */
 export async function writeCycles(cycles, file = QUOTA_LOG, now = Date.now()) {
-  const trimmed = trimCycles(cycles, QUOTA_CYCLES_KEEP, now);
+  const { cycles: healed, merged } = collapseRolling(cycles);
+  // Dọn xong là việc thường chứ không phải sự cố, nên dòng này đi stdout (`service.log`).
+  // Mọi dòng khác của nhánh sổ chu kỳ trên stderr đều là một lượt ghi hỏng, và trộn một
+  // dòng lành vào `service.err.log` làm người đọc log mất thời gian loại trừ nó.
+  if (merged) console.log(`quotalog: ${file} — gộp ${merged} bản ghi của cửa sổ lăn (${cycles.size} → ${healed.size})`);
+  const trimmed = trimCycles(healed, QUOTA_CYCLES_KEEP, now);
   const body = { version: LOG_VERSION, updatedAt: now, cycles: packCycles(trimmed, now) };
   await fs.mkdir(path.dirname(file), { recursive: true });
-  const tmp = `${file}.tmp`;
-  await fs.writeFile(tmp, JSON.stringify(body, null, 1));
-  await fs.rename(tmp, file);
+  const tmp = cyclesTmpPath(file);
+  try {
+    await fs.writeFile(tmp, JSON.stringify(body, null, 1));
+    await fs.rename(tmp, file);
+  } catch (err) {
+    // Tên tạm là duy nhất nên nó không còn được lượt ghi sau đè lên. Không dọn ở đây thì
+    // mỗi lượt ghi hỏng để lại một file rác nằm cạnh sổ vĩnh viễn.
+    await fs.rm(tmp, { force: true }).catch(() => {});
+    throw err; // chỗ gọi cần lỗi này để đặt `writeError` hoặc in ra log
+  }
   return trimmed;
 }
 
