@@ -1,4 +1,4 @@
-import { $, mount, copy, html, clock, esc, raw } from './lib/dom.js';
+import { $, mount, unchanged, copy, html, clock, esc, raw } from './lib/dom.js';
 import { t, getLang, setLang, nextLang, LANG_FLAG, LANG_LABEL, locale, applyStaticI18n, onLangChange } from './lib/i18n.js';
 import { briefing } from './lib/butler.js';
 import { quotaStrip, stripRows } from './lib/quota.js';
@@ -125,6 +125,18 @@ const MAX_STALE_MS = 5 * 60 * 1000;
  */
 let cached = false;
 
+/**
+ * Tab đang khuất thì không vẽ, chỉ ghi nhớ là còn nợ một lượt vẽ.
+ *
+ * Web app trên Dock sống cả ngày, phần lớn thời gian nằm sau cửa sổ khác, mà SSE vẫn đẩy 30
+ * giây một lần. Mỗi lượt vẽ lúc ấy dựng lại cả #view cho một màn không ai nhìn, và trên
+ * Safari mỗi lượt dựng lại còn để lại bộ nhớ (xem khối "Biến CSS nội tuyến" ở lib/dom.js).
+ * Nên lúc khuất chỉ cập nhật `app.state`; lượt vẽ nợ chạy đúng một lần khi tab hiện lại, và
+ * nó vẽ theo state MỚI NHẤT chứ không diễn lại từng lượt đã lỡ.
+ */
+let renderOwed = false;
+const hidden = () => document.visibilityState === 'hidden';
+
 function apply(state, opts = {}) {
   const print = fingerprint(state);
   const same = print === lastPrint && Date.now() - lastDrawAt < MAX_STALE_MS;
@@ -189,6 +201,9 @@ function setPulse(ok) {
     $('#offretry').hidden = cached;
     return;
   }
+  // Nhịp đập của chấm xanh là hoạt hình cho người đang nhìn, và nó mua bằng một lần ép bố cục
+  // (offsetWidth). Tab khuất thì không ai nhìn, nên bỏ hẳn nhịp ấy.
+  if (hidden()) return;
   el.classList.remove('beat');
   void el.offsetWidth;
   el.classList.add('beat');
@@ -216,6 +231,12 @@ const BOOT_DELAY_MS = 300;
 const BOOT_POLL_MS = 1500;
 let bootTimer = null;
 let bootPhase = null;
+/**
+ * Một lần hỏi /api/ping đang chờ trả lời. Giữa lúc ấy `bootTimer` là null, nên chỉ nhìn
+ * `bootTimer` thì `startBoot` tưởng vòng hỏi đã tắt và mở thêm một vòng thứ hai; tab ẩn rồi
+ * hiện lại đúng lúc ấy (`onVisible`) là đủ để thành hai vòng song song không bao giờ tắt.
+ */
+let bootProbing = false;
 
 function stopBoot() {
   clearTimeout(bootTimer);
@@ -230,20 +251,33 @@ function stopBoot() {
  * thật mới thấy nó.
  */
 function startBoot() {
-  if (bootTimer || app.state) return;
+  if (bootTimer || bootProbing || app.state) return;
   bootTimer = setTimeout(probeBoot, BOOT_DELAY_MS);
 }
 
 async function probeBoot() {
   bootTimer = null;
   if (app.state) return;
+  // Tab khuất thì thôi hỏi /api/ping: câu trả lời chỉ để vẽ màn chờ, mà màn chờ không ai nhìn.
+  // Lượt vẽ nợ khi tab hiện lại gọi lại startBoot, nên vòng hỏi nối tiếp từ đó.
+  if (hidden()) {
+    renderOwed = true;
+    return;
+  }
+  bootProbing = true;
   try {
     const r = await fetch('/api/ping');
     bootPhase = (await r.json()).ready ? 'wait' : 'scanning';
   } catch {
     bootPhase = 'down';
+  } finally {
+    bootProbing = false;
   }
   if (app.state) return;
+  if (hidden()) {
+    renderOwed = true;
+    return;
+  }
   renderBoot();
   bootTimer = setTimeout(probeBoot, BOOT_POLL_MS);
 }
@@ -415,7 +449,10 @@ let workCount = 0;
 
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
 
-const canSpin = () => workCount > 1 && !spinPaused && !reduceMotion();
+// `hidden()` vì một cú lật ở tab khuất là một lượt dựng lại #bslots không ai thấy, và quay
+// lại thì ô đã đứng ở một việc mình chưa từng đọc tới. Tab hiện lại thì `onVisible` dựng lại
+// khối, tức vạch chạy và đồng hồ cùng khởi động từ 0.
+const canSpin = () => workCount > 1 && !spinPaused && !reduceMotion() && !hidden();
 
 /**
  * Hẹn giờ bằng `setTimeout` bắc cầu, KHÔNG phải `setInterval`.
@@ -490,6 +527,12 @@ function bindSpinPause() {
 
 /** Quản gia chỉ nói ở màn Dự án — các màn khác đã là câu trả lời cho chính nó. */
 function renderButler(s) {
+  // Chặn cả ở đây chứ không chỉ ở `render()`: đồng hồ lật, nút ‹ › và `bindSpinPause` gọi
+  // thẳng hàm này. Tab hiện lại thì `onVisible` gọi lại nó.
+  if (hidden()) {
+    scheduleSpin();
+    return;
+  }
   const box = $('#butler');
   const onOverview = app.view === 'overview' && !app.query;
   box.hidden = !onOverview;
@@ -654,6 +697,11 @@ function stampClock() {
 }
 
 function render() {
+  if (hidden()) {
+    renderOwed = true;
+    return;
+  }
+  renderOwed = false;
   const s = app.state;
   renderNav();
   const v = VIEWS[app.view];
@@ -663,8 +711,29 @@ function render() {
 
   stampClock();
   renderButler(s);
-  keepUI(() => mount($('#view'), v.render(s, app.query)));
+  // Hàm vẽ của màn vẫn chạy ở mọi lượt, kể cả khi kết quả trùng: bench đo lại cỡ popover,
+  // pet hẹn nhịp một giây và hỏi lại sổ ngay trong lượt vẽ.
+  const tpl = v.render(s, app.query);
+  // Chuỗi y hệt lần mount trước thì giữ nguyên cây DOM. Màn Dự án vẽ ra đúng từng byte ở hầu
+  // hết các lượt đẩy (chỉ #bquota và giờ đổi), nên dựng lại chỉ làm mất focus, vệt bôi đen và
+  // các khối details đang mở. Giá trị bọc bằng `phase()` không được so, nên màn thị trấn chỉ khác
+  // đồng hồ tường cũng đi đường tắt này (xem khối "Giá trị pha" ở lib/dom.js). Khối quản gia KHÔNG đi đường tắt này: vạch chạy .bspin cần được
+  // dựng lại để khởi động cùng nhịp với đồng hồ lật (xem `bindSpinPause`).
+  if (!unchanged($('#view'), tpl)) keepUI(() => mount($('#view'), tpl));
   if (drawerId) syncDrawer();
+}
+
+/**
+ * Tab hiện lại: trả lượt vẽ còn nợ, hoặc ít nhất dựng lại khối quản gia.
+ *
+ * Khối quản gia phải dựng lại cả khi không nợ lượt nào: đồng hồ lật đã tắt lúc khuất, còn vạch
+ * .bspin là hoạt hình CSS vẫn chạy tới cuối. Không dựng lại thì vạch đứng đầy mà chữ không
+ * bao giờ đổi.
+ */
+function onVisible() {
+  if (renderOwed) render();
+  else if (app.state) renderButler(app.state);
+  if (!app.state) startBoot();
 }
 
 // ── Công tắc icon thanh menu ──────────────────────────────────────────────────
@@ -1100,6 +1169,9 @@ function repaintTip(el) {
  */
 const REPORT_TIP_MS = 9000;
 
+/** Hàm trả tooltip gốc đang chờ trên mỗi nút báo cáo, xem `copyReport`. */
+const reportTips = new WeakMap();
+
 /**
  * Chép báo cáo cả màn, rồi TRẢ LỜI ngay tại nút.
  *
@@ -1118,8 +1190,16 @@ async function copyReport(btn) {
     at: clock(app.state?.generatedAt),
     blocks: scrapeView($('#view')),
   });
+  // Câu trả lời của cú bấm trước còn treo thì trả tooltip gốc TRƯỚC khi chụp nó. Không làm
+  // vậy thì bấm hai lần liền, cú sau chụp nhầm câu trả lời làm "tooltip gốc" và trả nó về lúc
+  // con trỏ rời nút. Trước kia lượt vẽ 30 giây sau dựng lại nút nên lỗi tự biến mất; từ khi
+  // #view giữ nguyên DOM lúc HTML y hệt thì nút mang câu ấy tới khi màn đổi.
+  reportTips.get(btn)?.();
   const guide = btn.dataset.tip;
   const ok = await copy(text, btn);
+  // Lần nữa sau `await`: hai cú bấm sát nhau cùng chụp được tooltip gốc, và cú về sau phải
+  // gỡ hẹn giờ cùng listener của cú về trước.
+  reportTips.get(btn)?.();
   btn.dataset.tip = ok
     ? t('report.tipDone', {
         chars: text.length.toLocaleString(locale()),
@@ -1135,10 +1215,12 @@ async function copyReport(btn) {
     btn.removeEventListener('pointerleave', restore);
     btn.removeEventListener('focusout', restore);
     clearTimeout(timer);
+    if (reportTips.get(btn) === restore) reportTips.delete(btn);
   };
   const timer = setTimeout(restore, REPORT_TIP_MS);
   btn.addEventListener('pointerleave', restore);
   btn.addEventListener('focusout', restore);
+  reportTips.set(btn, restore);
 }
 
 /**
@@ -1420,7 +1502,11 @@ const stash = () => {
   if (app.state && !cached) saveState(app.state);
 };
 addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') stash();
+  if (hidden()) {
+    stash();
+    // Tắt đồng hồ lật ngay, đừng đợi nó nổ vào một tab khuất rồi mới tự chặn.
+    scheduleSpin();
+  } else onVisible();
 });
 addEventListener('pagehide', stash);
 

@@ -28,7 +28,7 @@
  * bộ thuật ngữ sản phẩm gánh thêm ba chục chuỗi của một cái tuốc-nơ-vít. Chỉ tên màn
  * (`nav.bench` / `title.bench`) đi qua i18n, vì nó nằm trên thanh rail cạnh bảy màn kia.
  */
-import { html } from '../lib/dom.js';
+import { html, mount } from '../lib/dom.js';
 import { setLang } from '../lib/i18n.js';
 import { setTheme } from '../lib/mbtheme.js';
 import { popoverView, DEFAULTS } from '../lib/menubar-view.js';
@@ -289,10 +289,12 @@ function measureSoon() {
     const th = track ? Math.round(track.getBoundingClientRect().height) : 0;
     const over = Math.round(box.height) - roof();
     const verdict = over > 0 ? `VƯỢT ${over}pt — macOS sẽ cắt` : `còn dư ${-over}pt`;
-    slot.innerHTML =
-      `<b>${Math.round(box.width)}×${Math.round(box.height)}pt</b>` +
-      ` · thân thanh ${tw}×${th}px · trần màn này ${roof()}pt ` +
-      `<span class="${over > 0 ? 'mbd-bad' : 'mbd-ok'}">${verdict}</span>`;
+    // Qua mount() như mọi lần ghi HTML khác (test/dom.test.js canh), dù dòng này không mang
+    // biến CSS nào: một cửa ghi duy nhất thì luật dời biến không có đường vòng nào để lọt.
+    mount(
+      slot,
+      html`<b>${Math.round(box.width)}×${Math.round(box.height)}pt</b> · thân thanh ${tw}×${th}px · trần màn này ${roof()}pt <span class="${over > 0 ? 'mbd-bad' : 'mbd-ok'}">${verdict}</span>`,
+    );
   });
 }
 

@@ -74,7 +74,7 @@
  * một thị trấn"; cho mỗi nhà một kiểu đổ sáng riêng là năm bức tranh dán cạnh nhau.
  */
 
-import { html } from './dom.js';
+import { html, phase } from './dom.js';
 import { outline, pixels } from './pixel.js';
 import { BUTLER_CHARS, BUTLER_H, BUTLER_W, butlerFace, butlerHand, butlerLook, butlerRows, doingArt, doingRing, faceArt, markArt, poseOf } from './pet.js';
 import { whereOf } from './petmath.js';
@@ -1623,8 +1623,12 @@ export function butlerArt(doing, place, nowMs = Date.now(), pet = null, cheer = 
   const hand = butlerHand(twin ? 'stand' : pose);
   // Pha của vòng lặp lấy từ đồng hồ MÁY chia dư, không lấy từ 0. Đó là thứ làm nhịp sống
   // sót qua mọi lượt vẽ lại — kể cả nhịp một giây lúc đang có việc chạy.
-  const lag = -(nowMs % PACE_MS);
-  const gait = pacing ? `;animation-delay:${lag}ms` : '';
+  //
+  // Con số bọc trong `phase()`: nó chỉ là pha, và ở #view lượt vẽ chỉ khác pha thì không dựng lại
+  // gì (xem khối "Giá trị pha" ở lib/dom.js). `gait` là template `html` vì `phase()` là giá trị
+  // `raw`, ghép vào chuỗi JS thường thì hỏng.
+  const lag = phase(-(nowMs % PACE_MS));
+  const gait = pacing ? html`;animation-delay:${lag}ms` : '';
   const mode = working ? 'typing' : street ? 'strolling' : pacing ? 'pacing' : 'busy';
   // BONG BÓNG NGHĨ treo trên vai — người dùng xin, lượt 18: "cho nhân vật ở web có suy nghĩ
   // (emoji) trạng thái", rồi lượt 19: "cho nó hiển thị như kiểu suy nghĩ trên pop-over".

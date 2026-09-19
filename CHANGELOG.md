@@ -7,6 +7,287 @@ own history in [`plugin/CHANGELOG.md`](plugin/CHANGELOG.md) and its own tags
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Safari kept reloading the dashboard web app with "This web app was reloaded because it was
+using significant memory." The leak lives in WebKit's style cache, and the fix lives in the
+one function that writes HTML.
+
+### Fixed
+
+- **Safari no longer grows the page's memory on every redraw.** Measured on Safari 17.6:
+  the WebContent process gained **64.5 MB per 100 redraws** of the Projects screen, linear,
+  untouched by a full JS garbage collection, while Chrome stayed flat. Bisecting inside the
+  page pinned it to one thing: custom properties declared in a `style="--x:…"` attribute. Each
+  `Style::Resolver` keeps a `MatchedDeclarationsCache` keyed partly by the *address* of the
+  parent's inherited custom-property data, and entries are only swept when one of their
+  declaration blocks loses its last owner. An element that declares custom properties inline
+  gets a fresh data object every time it is re-created, so every descendant (pseudo-elements
+  included) hashes to a key the cache has never seen and gets a new ~1 KB entry, built from
+  `styles.css` declarations that are never released. The Projects screen has 27 such elements
+  covering 346 of the 385 elements in `#view`, which is about 315 permanent entries per redraw.
+  WebKit acknowledged the unbounded growth (bug 312236, commit `ebcf88c1bc`) and capped it at
+  16k entries on main only; Safari 17.6 has no cap.
+
+  `mount()` now moves every `style` attribute that declares a custom property, whole, into one
+  generated rule such as `.nv-12 { --a: x !important; width: 3px !important }` in a
+  constructed stylesheet adopted by the document, and gives the element that class instead of
+  the attribute. The plain declarations in that attribute (`width`, `z-index`,
+  `animation-delay`) move with it, in written order: an element that keeps even one inline
+  declaration still brings a new declaration block on every rebuild, misses the cache, and
+  hands its descendants a fresh custom-property object. An attribute without custom properties
+  stays inline byte for byte, and an attribute with any declaration that cannot be copied into
+  a rule safely stays inline whole. Names and values are trimmed of CSS whitespace only (space,
+  tab, newline, carriage return, form feed), so a value that starts with a no-break space keeps
+  it, exactly as the inline style did. Re-applying the same declarations through
+  `element.style.setProperty` was measured too and is not a fix (54.5 MB), because it is still
+  inline style.
+
+  Measured on Safari 17.6 against this exact code, MB of process footprint per 100 redraws
+  with a state pushed twice a second, before the fix → after it: **Projects 64.5 → 0.1**,
+  Sessions 3.0 → 1.3, **Decisions 32.9 → 0.4**, Timeline 8.3 → 0.9, **Tokens 83.8 → 1.2**,
+  Health 7.0 → 0.4, Lookback flat → 0.7, Bench 1.6 → 2.4 over 338 redraws and 1.2 over 915,
+  which is where it sat before the fix as well, and the shop from a 127–829 MB
+  sawtooth to 0.5 MB per 100 pushes over 1,432 of them (85 → 92 MB, peak 96). Stats has no
+  usable "before": the run that was meant to measure it was confounded, and it reads 0.5 now.
+  The baselines were re-measured on the same harness in the same session and reproduced the
+  originals (Projects 64.4, Tokens 83.9), so the two columns compare like with like.
+
+  Those figures include the identical-HTML skip further down, which on several screens means
+  no redraw happens at all. Measured again on a copy of the tree with `unchanged()` forced to
+  `false` — one changed line, so the class move is priced on its own — the same screens read
+  Projects 0.5, Sessions 2.7, Decisions 0.6, Timeline 0.5, Stats −0.2, Tokens 3.7, Health 0.7,
+  Lookback 1.0, Bench 1.8 and the shop 1.0 over 343 real redraws. The long runs on that copy
+  are what rules out "merely slower": **1,398 consecutive Decisions redraws moved the
+  footprint from 70 to 71 MB**, 1,396 Projects redraws from 81 to 85, 1,396 Tokens redraws
+  0.6 per 100. `vmmap` says the same from the other side: across 674 Projects redraws,
+  WebKit's malloc zone stayed between 21.6 and 29.0 MB and between 113k and 137k live
+  allocations with no trend, where the same zone on Decisions before the table fix grew by
+  2.65k allocations per push, 23 → 63 MB.
+
+- **A `style` attribute that reads a variable moves to a class too.** WebKit shares identical
+  inline style blocks through a deduplication table
+  (`ImmutableStyleProperties::createDeduplicating`), but a value containing `var()` or `env()`
+  cannot be hashed, so such a block is never shared: every redraw hands the element a new
+  block, a cache miss and a new entry, which only the sweep a minute later removes. Memory
+  therefore swings with the number of redraws per minute. Measured on Safari 17.6 on the
+  Decisions screen redrawn every 500 ms with the identical-HTML skip disabled: 15.0 MB per 100
+  redraws, 4.3 with `var()` removed from inline styles. `mount()` and `setVars()` now move an
+  attribute that declares a custom property *or* reads one (`color:var(--dim)`) into a class.
+  An attribute that does neither still stays inline, because WebKit can share it.
+- **Tables are no longer re-created on every redraw.** Each WebKit `<table>` creates one
+  declaration block shared by all its cells (`HTMLTableElement::additionalCellStyle`, which
+  carries the default `padding: 1px`), and adds it to every `td`/`th` match as a cacheable
+  declaration. A new table means a new block, so every cell misses the cache. When a table has
+  two or more kinds of cells (`th` next to `td`, or a `td` with its own style), those entries
+  all hold the shared block, it never gets down to one owner, and the sweep never removes them.
+  Measured on Safari 17.6: the Decisions screen kept 40–50 KB per redraw until the resolver
+  was rebuilt, regardless of redraw rate (2nd-half slopes of 5.0 and 4.3 MB per 100 redraws at
+  500 ms and 2 s); Decisions and Health with inline `var()` removed and tables replaced by
+  `div`/`span` were flat (0.0 and −0.3 MB per 100 redraws). `mount()` now swaps each newly
+  parsed `<table>` for the table element it created in the same position on the previous
+  write: the old element takes the new attributes and
+  children and stands where the new one was, so the DOM is identical but the shared block keeps
+  its address and cells hit the cache. WebKit only drops that block when `border`, `frame`,
+  `rules` or `cellpadding` changes; no template sets them, and a test holds that. Tables left
+  over from a screen with more tables release their children and wait to be reused.
+
+  Measured on Safari 17.6 against this exact code, MB per 100 redraws: Decisions 0.4 with the
+  identical-HTML skip, which in the replay leaves it redrawing nothing at all, and 0.6 with the
+  skip disabled — against 18.7 with the skip disabled and the tables still re-created, and 32.9
+  before the fix. Health reads 0.4 and 0.7, against 7.0. The long run settles it: 1,398
+  consecutive Decisions redraws with the skip disabled moved the footprint from 70 to 71 MB,
+  with no sweep sawtooth and no drops. A census of the running DOM on both screens finds no
+  `style` attribute left that declares or reads a custom property, 4 tables and 202 cells on
+  Decisions, 2 tables and 82 cells on Health. The drawer of the Projects screen, which is where
+  that screen's own tables live, was not measured open.
+
+- **`!important` is kept away from the three places where it differs from inline style.** The
+  generated rules use `!important` to stand in for inline precedence over normal author rules.
+  It differs in three places. It beats CSS animations, which inline normal declarations do not.
+  It changes the ordering against any other author `!important` rule, in `styles.css` today or
+  in a stylesheet added later. And `revert-layer` (or `revert-rule`) rolls back to a different
+  place: inline, `font-size: revert-layer` falls back to the normal rules of `styles.css`, while
+  in an `!important` rule it falls back past them (measured in Chrome). A declaration whose value
+  contains either keyword is never moved, so its whole attribute stays inline; nothing in
+  `public/` uses them. For the first two, two tests hold the line.
+  No custom property registered with `@property` or animated by `@keyframes` may be set inline
+  anywhere in `public/`. No plain property in a `style` attribute that gets moved (one that
+  declares or reads a variable), in the screens rendered from the test fixture, in any template
+  in the source or in any `setVars()` call, may be animated by a `@keyframes` block or declared
+  `!important` in the page's CSS, where a shorthand, its longhands and logical aliases (`inset`
+  and `top`, `width` and `inline-size`, `transform` and `translate`) count as the same property.
+  A template value the scan cannot resolve counts as possibly reading a variable, unless a unit
+  follows it (`${w}px`). The reviewed exceptions, each re-checked against the CSS and the source
+  on every run: `height` on the town's roads and on food being eaten (the only animation of
+  `height` is `mb-blink-lid`, which runs solely on `.mb-lid`); `background` on the donut chart's
+  legend swatch, which can be `var(--later)` (`qb-march` runs solely on `.qb-pred`, whose style
+  is never moved, and `ring-out` runs solely through the countdown ring's inline `animation`,
+  whose style is all numbers); and `clip-path` on the area and donut charts, whose values are
+  `polygon()`s built from numbers and so never move.
+- **The generated stylesheet is bounded.** Once it passes max(512, 2 × the classes still in use
+  at the last sweep), rules for classes no longer present in the document are deleted, after
+  the new content is in the DOM. That matters on the screens whose markup changes on every
+  rebuild: the `--now` phase clock of the shop, the bench and the popover, the walkers'
+  `animation-delay` and the lag of food being eaten all produce a new set, and so a new rule,
+  on each rebuild. Each inserted rule makes WebKit discard the style resolver and restyle the
+  whole page. Measured on Safari 17.6: one inserted rule plus a style flush costs 24 ms on the
+  632-element Projects DOM and 49 ms on the 7,106-element shop, against 0 and 5 ms for a class
+  toggle; a shop redraw takes 81 ms of write against 64 ms before the fix, every one of them
+  inserting a rule, while the bench did not get slower at all (27.0 against 27.0 ms) because
+  the `<style>` block inside its `#view` already rebuilt the resolver on every redraw.
+  On the shop, that per-rebuild resolver reset is also what currently masks a second WebKit
+  effect: the town map carries 6,757 inline pixel styles with 2,216 distinct strings, over the
+  1,024-entry deduplication table, so shared blocks are evicted and re-created
+  constantly; with `--now` frozen and no rule inserted, memory swung between 148 and 819 MB. The
+  popover is bounded for a simpler reason: the menu-bar app reloads `menubar.html` every time
+  the popover opens (`showPopover` in `app/NowMenuBar.swift`), so each popover document lives for
+  a few redraws.
+
+  Measured on Safari 17.6 against this exact code. **The shop** holds: 0.5 MB per 100 pushes
+  over 1,432 of them, 85 → 92 MB, peak 96, with 11 real redraws in the lot; WebKit's malloc
+  zone stayed between 42.7 and 58.0 MB and between 230k and 249k allocations over 674 pushes
+  with no trend. With the identical-HTML skip disabled it redrew 343 times and sat between 99
+  and 118 MB, also with no trend, because each of those redraws inserts its `--now` rule and
+  resets the resolver. The CPU bill is where the skip pays for itself: a real shop redraw costs
+  81 ms of write against 64 ms before the fix, the extra 17 ms being the rule insert and the
+  restyle it forces, but only 3 pushes in 278 cause a redraw at all, so **a whole push fell
+  from 74.5 ms to 11.4 ms**. Projects went from 11.2 to 5.7 ms per push, on one redraw in the entire run. Where
+  the skip does not engage, the fix costs the string scan that finds the attributes to move:
+  Tokens redraws on every push in the replay and pays 40.2 ms per push against 36.4, the bench
+  33.7 against 31.6, even though the Tokens write itself came out 1.2 ms cheaper. **The bench**
+  shows no write-time regression (27.0 against 27.0 ms) for the reason above, and its memory
+  sits at baseline: 1.2 MB per 100 over 915 redraws, 91 → 104 MB and levelling, against 1.6
+  before the fix. The registry ends a 278-push run at 43 rules on the shop with the skip and
+  403 without, 285 on the bench, 73 on Tokens, 13 on Projects. **The popover** was not measured
+  this round; it is bounded by the reload described above. One caveat on all of it: the replay
+  pushes twice a second, roughly 60× the production cadence of one push per 30 s, so per unit
+  of time every cost above is two orders of magnitude smaller in use.
+
+- **New rules are inserted after the new markup and its classes are in place.** Reading the
+  Safari 17.6 source (not measured): the page uses `:has()`, so replacing `#view`'s children
+  makes WebKit build a style resolver right away, and a rule inserted before that would throw
+  it away and build it twice per redraw.
+- **Custom properties set from JavaScript follow the same rule.** `setVars()` routes them
+  through the same registry: plain declarations passed alongside a custom property join its
+  class, a set with no custom property or with a declaration that cannot be copied is set inline
+  whole, and inline properties left by an earlier fallback are removed when the element goes
+  back to a class. The town map's `--town-k` on `#view` uses it. While the window is being
+  resized below the town's width, the value is rounded down to hundredths, so a drag reuses at
+  most a hundred rules instead of inserting one per frame. Once the width has been still for
+  150 ms, the exact value is set, so at rest the town is exactly as wide as before (rounding
+  alone made it up to 1% narrower, 6.8 px in a 679 px `#view`). Checked in Chrome against the
+  old code at 600 px: within the settle window the factor reads 0.76 against 0.7617647, and
+  once settled both read 0.7617647 exactly, as does a page loaded at that width. `mount()` and
+  `setVars()` leave a detached element inline, because eviction only counts classes found in
+  the document.
+- **Every HTML write goes through `mount()`.** The bench's measurement line was the last write
+  outside it. New tests in `test/dom.test.js` cover the string transform on every screen's
+  real output, the bounded registry, the rule-insert order on a minimal fake DOM, and the
+  source guards: every HTML write goes through `mount()`, no custom property is set through the
+  CSSOM outside `setVars()`, the two `!important` guards above, no `<table>` sets `border`,
+  `frame`, `rules` or `cellpadding`, every `Date.now()` that flows into a `style` attribute is
+  wrapped in `phase()`, and `element.style` is touched only at listed, reviewed places. The last
+  one matters because reading `el.style` makes WebKit switch the element to a mutable inline
+  style, which is never cached; on an element that declares custom properties that hands its
+  descendants a new custom-property object on every restyle (measured: 24.6 MB per 100 shop
+  redraws when `.pet-art` styles were read).
+- **What is still not flat, in those same numbers.** Tokens climbs about 12 MB over its first
+  200 redraws and then holds 113–119 MB for the next 1,200, second-half slope −0.1. It is a
+  warm-up plateau and not either mechanism above: stripping every `style` attribute (2.3) and
+  replacing every table with `div`/`span` (2.2) leave the same shape. The bench drifts
+  91 → 104 MB over 915 redraws and levels off, at the rate it drifted before the fix (1.6). The
+  shop's markup still holds those 2,216 distinct inline pixel strings over WebKit's 1,024-entry
+  deduplication table, so the 148–819 MB sawtooth is still written down in the town map; it is
+  out of reach today only because the screen almost never redraws and any redraw that does
+  happen resets the resolver, and one refactor that redraws the town without inserting a rule
+  brings it back. Expressing sprite positions as classes or grid areas is what would remove it.
+  One 3-minute excursion to 110–138 MB turned up in the first long Projects run and released on
+  its own; 2,070 later redraws never reproduced it and the zone data stayed flat throughout, so
+  it is bounded and unattributed rather than accumulation.
+- **The fix renders identically to the code before it, checked in Chrome 152.** 424 paired
+  base-against-fix checks over 1,504,383 element pairs found **0 computed-style differences**
+  on the element, `::before` and `::after`, and 0 differences in tag, child count, direct text,
+  classes other than the generated `nv-*` ones and attributes other than `class`, `style` and
+  the temporary marker. Every timed check also found identical animation inventories, sampled
+  at 0, 250, 1,300 and 7,700 ms with the document timeline frozen. The coverage is the awkward
+  states, not just the happy path: both themes on all ten screens, the Projects drawer, the
+  five shop panels and all seven decor shelves, the three Tokens tabs across four skins with
+  every `<details>` open, the town at 600 px wide and dragged from 1,440 to 600 and back, the
+  butler walking, eating and strolling, `prefers-reduced-motion`, a 15-hash tour on one page,
+  seven content-changing pushes per screen, the menu-bar popover, and Pomicon private-use
+  characters injected into 634 text fields. Deliberately broken controls were caught
+  (shifting the fix's animations by 400 ms: 101 property differences on the shop) and returned
+  to 0 when reset. The table reuse was observed doing its job in the same harness: across nine
+  pushes the fix kept 13 of 13 Tokens tables and 2 of 2 Health tables, the base kept none, and
+  the resulting DOM compared equal.
+
+### Changed
+
+- **A hidden tab no longer redraws.** While `document.visibilityState` is `hidden`, SSE
+  pushes still update `app.state` and the stash still runs on hide, but `render()` does not
+  touch the DOM: it records that a redraw is owed and pays it once, with the latest state, when
+  the tab becomes visible. The butler's 8-second slide timer stops while hidden and restarts in
+  step with its progress bar on return, the first-load `/api/ping` poll pauses, and the
+  connection pulse skips its forced-layout heartbeat. The shop's one-second tick needs no gate
+  of its own: it only ever re-arms from inside a render. Verified on Safari 17.6 with the
+  window ordered out: across 264 hidden pushes every HTML-write counter stood still — 111
+  navigation bars, 2 `#view` writes — and the footprint stayed between 90 and 93 MB; the owed
+  redraw was paid once on return. Before the fix the same hidden phase kept redrawing (75 → 231
+  navigation bars) and swung between 160 and 965 MB.
+- **A redraw that produces identical HTML keeps the DOM.** When the freshly built `#view`
+  string is byte-identical to what `mount()` last wrote there, the view is left alone, so
+  focus, text selection and open `<details>` survive, and nothing is re-created for the style
+  cache to key on. The butler block is
+  deliberately excluded because its slide progress bar restarts by being re-mounted. On the
+  Projects screen the saving is the whole redraw: in a 337-push replay it was byte-identical
+  every single time, so `#view` was written once, and the cost of a push fell from 11.2 to
+  5.7 ms. Decisions, Timeline and Stats also wrote nothing after the first mount. Tokens and
+  the bench never take the shortcut in that replay, because their markup differs on every state
+  push beyond the phase values; whether their real-world redraws differ that much was not
+  tested. Keeping the DOM exposed one stale-state bug that the old
+  remount had been hiding: clicking a report button twice in a row left its tooltip stuck on
+  the "copied" message, because the second click saved that message as the tooltip to restore.
+  The button now restores any pending tooltip before saving it. Likewise, a hidden tab that
+  became visible again while the first-load `/api/ping` was still in flight no longer starts a
+  second poll loop.
+- **A `#view` redraw that differs only in animation phase keeps the DOM too.** The shop, the
+  bench and the popover lock animations to the wall clock with a negative `animation-delay`
+  computed at render time (`--now` from `lifeClock`, the walkers, the butler strolling or
+  pacing), so their HTML used to differ on every redraw and every redraw rebuilt the town,
+  inserted a new `--now` rule and paid the resolver rebuild above. Those values are now wrapped
+  in `phase()`, and the identical-HTML check of `#view` ignores them: when nothing else changed,
+  the running DOM is already at the phase the new numbers would set, so the redraw of the shop
+  or the bench is skipped. A redraw with any other change still rebuilds with fresh phase
+  values. The popover has no such check (`menubar.js` calls `mount()` directly), so it still
+  rebuilds and inserts a `--now` rule on every redraw; one opening redraws only a few times
+  (cached state, freshly built state, the butler ledger, then clicks) and the document is
+  discarded when the popover closes. `phase()` wraps its value in two private-use characters
+  (U+E000, U+E001) that `mount()` strips before anything reaches the DOM. Content can contain
+  those characters too (Nerd Fonts put their Pomicons glyphs there), so `esc()` writes them as
+  character references: such a glyph in a project name still renders, and an edit next to it
+  still redraws. Why not a fixed pool of `--now` rules reused in turn: the cache key is the
+  address of the parent's custom-property data, so every distinct `--now` still produces a new
+  generation of entries for every descendant of `.shop`, which only a resolver rebuild clears,
+  and editing a rule that is in use rebuilds the resolver just like inserting one.
+- **One-shot CSS animations inside `#view` no longer replay on a push with identical HTML.**
+  An animation that runs once (no `infinite`) used to start over on every push, because every
+  push re-created its element. The element is now kept when the HTML has not changed, so the
+  animation plays once and holds its end state until the screen's HTML actually changes.
+  Infinite animations are unaffected, and the navigation bar, the quota strip, the butler
+  slots and the drawer still remount on every redraw. One click depends on such an animation:
+  clicking the town place that is already open produces the same HTML, so the shop panel's
+  arrival animation (`came`) is restarted on the kept element instead, and the click still shows
+  something when the panel is already in view.
+- **A looping animation with a fixed delay now keeps its own phase instead of restarting.**
+  The same keeping of the DOM changes when a loop that is *not* locked to the wall clock
+  starts from. The bench's menu-bar lid (`mb-blink-lid`, a fixed `-5.3 s` delay) used to be
+  re-created, and so restarted, by every push; it now runs on from the mount that created it
+  (measured in Chrome after a soak: started 2,983 ms ago against 733 ms on the old code). The
+  same goes for the town's wall-clock loops, which come out a few tens of milliseconds off a
+  freshly mounted copy (61.8 ms against 46 ms after a 120-second soak, 109.5 against 75.7 after
+  30 seconds). That offset is mount latency, and it does not grow with time.
+
 ## [1.2.1] — 2026-09-10
 
 One test, red on every CI job at 1.2.0 and green on the author's machine, because it

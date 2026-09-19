@@ -15,7 +15,7 @@
  * màu chỉ để bảng gọn hơn là đổi một thứ đọc được lấy một thứ ngắn hơn.
  */
 
-import { html } from './dom.js';
+import { html, phase } from './dom.js';
 import { pixels } from './pixel.js';
 import { t } from './i18n.js';
 import { FULL_MS, HUNGER_MARKS, MOVES, REST_STAGE_MIN, rampAt, stateOf } from './petmath.js';
@@ -1984,8 +1984,27 @@ function drawArt(a, cls, eat) {
  *
  * Đo lại sau khi có nó: dựng lại giữa chừng làm opacity nhảy từ 0,304 sang 0,308 — 0,004.
  * Trước đó nó nhảy về 0,30 từ bất cứ đâu.
+ *
+ * ### Giá phải trả trên Safari
+ *
+ * `--now` đổi ở mọi lượt dựng lại, nên `mount()` dời nó thành một class mới và chèn một luật mới
+ * ở mọi lượt dựng lại của màn thị trấn, bench và popover. Mỗi luật mới làm WebKit bỏ cả
+ * `Style::Resolver` rồi tính lại style cả trang: đo trên WebKit, một lượt dựng lại màn thị trấn
+ * tốn 81 ms so với 64 ms trước bản chữa. Con số được bọc bằng `phase()`, nên ở #view (màn thị
+ * trấn và bench) lượt vẽ chỉ khác `--now` không dựng lại gì cả, xem khối "Giá trị pha" trong
+ * lib/dom.js: màn thị trấn chỉ dựng lại 3 lần trong 278 lượt đẩy, nên giá mỗi lượt đẩy còn
+ * 11,4 ms thay vì 74,5 ms. Popover thì không có phép so ấy (menubar.js gọi thẳng `mount()`),
+ * nên lượt vẽ thứ ba ở bảng trên vẫn dựng lại và chèn luật dù sổ về y hệt bản nhớ.
+ *
+ * Trả một template `html`, không trả chuỗi: `phase()` là giá trị `raw`, và ghép nó vào chuỗi JS
+ * thường thì ra "[object Object]".
+ *
+ * Đổi cách mang `--now` (làm tròn, bỏ, hay chuyển sang chỗ khác) thì phải đo lại bộ nhớ lẫn CPU
+ * của các màn ấy trên WebKit trước. Lần bỏ resolver ở mỗi lượt dựng lại đang che chỗ rò của
+ * 2.216 chuỗi style pixel khác nhau trên bản đồ: bỏ luật mà vẫn dựng lại bản đồ là bộ nhớ dao
+ * động 148–819 MB. Xem khối "Biến CSS nội tuyến" trong lib/dom.js.
  */
-export const lifeClock = () => `--now:${Date.now() % 3600000}`;
+export const lifeClock = () => html`--now:${phase(Date.now() % 3600000)}`;
 
 export function itemArt(id, eat = null) {
   // `Object.hasOwn` chứ không phải `ART[id]` trơn — cùng cái bẫy kế thừa `Object.prototype`

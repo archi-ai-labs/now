@@ -139,7 +139,12 @@ src/pet.js              the feedable butler's coin ledger: 1 coin = $1 of estima
                         price table; hunger measured from the last feeding timestamp.
                         Persisted to ~/.now-dashboard/pet.json
 public/app.js           shell: routing, keybindings, drawers, keeps scroll position across
-                        every redraw
+                        every redraw; skips an identical #view redraw, defers redraws while
+                        the tab is hidden
+public/lib/dom.js       html/esc/raw templates; mount(), the one place HTML is written, which
+                        moves inline styles that declare or read custom properties into
+                        shared classes and reuses <table> elements; setVars(); phase();
+                        time and clipboard helpers. See "Writing to the DOM" below
 public/lib/butler.js    the butler's voice: TWO fixed slots — worth-doing items + token quota
 public/lib/game.js      numbers measured directly: streak, done7, project status as text
 public/lib/chart.js     bar / area / lollipop / stacked bar / donut / treemap, plain HTML+CSS
@@ -166,6 +171,94 @@ renderer lives right inside `app.js` — just enough for headings, bullets, bold
 `code`, blockquotes, exactly what `/now update` generates. No library pulled in just to
 display a file the app generates itself; content is escaped first, then syntax is
 recognized.
+
+## Writing to the DOM
+
+Three rules hold for every file in `public/`, and `test/dom.test.js` scans the source to
+enforce them:
+
+1. **Every HTML write goes through `mount()`** in [`public/lib/dom.js`](../public/lib/dom.js).
+   No `innerHTML =`, `insertAdjacentHTML`, `DOMParser` or `document.write` anywhere else.
+2. **Custom properties set from JavaScript go through `setVars()`**, never through
+   `style.setProperty('--x', …)` or a hand-built `style` attribute. `element.style` is touched
+   only at the few reviewed places the test lists: reading it makes WebKit switch the element to
+   a mutable inline style that is never cached.
+3. **A value that only locks an animation to the wall clock is wrapped in `phase()`**, such as
+   `--now` from `lifeClock` or a walker's negative `animation-delay`. Every `Date.now()` that
+   flows into a `style` attribute must be wrapped.
+
+**Why: a style cache in Safari's WebKit that never shrinks.** Each style resolver keeps a
+`MatchedDeclarationsCache` keyed partly by the *address* of the custom-property data an
+element inherits from its parent, and an entry is only swept when one of its declaration
+blocks loses its last owner, which never happens for declarations from `styles.css`. An
+element that declares a custom property in its `style` attribute gets a fresh custom-property
+object every time it is rebuilt, so each of its descendants leaves a permanent ~1 KB entry
+behind on every redraw. That is what made Safari reload the Dock web app "because it was using
+significant memory". WebKit tracks it as bug 312236; the upstream fix (commit `ebcf88c1bc`)
+caps the cache at 16k entries on main only, and Safari 17.6 has no cap.
+
+`mount()` therefore moves every `style` attribute that declares a custom property, whole,
+into one shared generated rule (`.nv-12 { --a: x !important; width: 3px !important }`) in a
+constructed stylesheet adopted by the document, and gives the element that class. Identical
+attributes share one rule across redraws, so a rebuilt element points at the same declaration
+block and the cache stops growing. The registry is bounded: past its cap, rules for classes no
+longer in the document are deleted. `setVars()` applies the same rule to values set from
+JavaScript. The `!important` stands in for inline precedence, which it does not reproduce
+against CSS animations or against an existing `!important` rule, so a plain property that
+shares an attribute with a custom property must not be animated by `@keyframes` or declared
+`!important` in the CSS. The same test file checks that, and lists the reviewed exceptions.
+A value containing `revert-layer` or `revert-rule` is never moved, because inside an
+`!important` rule those keywords roll back past the normal rules that inline style falls back to.
+
+Two more WebKit effects shape `mount()`:
+
+- **A `style` attribute that reads a variable also moves.** WebKit shares identical inline
+  style blocks, except blocks with a `var()` or `env()` value, which cannot be hashed. Such an
+  element would get a new block, a cache miss and a new entry on every redraw, swept only a
+  minute later, so `color:var(--dim)` moves to a class like a declared custom property does.
+- **`<table>` elements are reused.** Each WebKit table creates one declaration block shared by
+  all its cells, so a new table makes every cell miss the cache, and a table with both `th` and
+  `td` cells leaves entries the sweep can never remove. `mount()` swaps each newly parsed table
+  for the table it created in the same position on the previous write, giving the old element
+  the new attributes and children. No template may set `border`, `frame`, `rules` or
+  `cellpadding` on a table, since changing those replaces the shared block.
+
+Every rule `mount()` inserts makes WebKit rebuild the style resolver and restyle the page,
+measured at 24 ms on the Projects screen and 49 ms on the shop. That is why wall-clock phase
+values are wrapped in `phase()`: they change on every redraw, but a `#view` redraw that differs
+only in them is skipped, because the running DOM is already at that phase. The popover
+(`public/menubar.js`) does not compare and rebuilds on every redraw, which is a few redraws per
+opening. `phase()` returns a `raw` value, so it only works inside an `html` template, and
+`esc()` writes the two marker characters (U+E000, U+E001) as character references, so escaped
+text from disk can never pass for a phase value.
+
+Two behaviours in `public/app.js` sit on top of this:
+
+- **Identical-HTML skip.** `render()` still calls the screen's render function on every
+  redraw, but when the `#view` string is byte-identical to what `mount()` last wrote there,
+  apart from `phase()` values (`unchanged()`), the DOM is left alone. Nothing is rebuilt for
+  the cache to key on, focus, selection and open `<details>` survive, one-shot CSS animations
+  inside `#view` do not
+  replay, and a looping one keeps the phase of the mount that created it instead of starting
+  over. The navigation bar, the butler block and the drawer still remount on every redraw.
+- **Hidden-render gate.** While `document.visibilityState` is `hidden`, SSE pushes still
+  update `app.state`, but `render()` only records that a redraw is owed and pays it once, with
+  the latest state, when the tab becomes visible. The butler's slide timer, the first-load
+  `/api/ping` poll and the connection pulse's heartbeat pause too.
+
+Measured on Safari 17.6, MB of process footprint per 100 redraws before the fix → after it:
+Projects 64.5 → 0.1, Decisions 32.9 → 0.4, Tokens 83.8 → 1.2, and the shop from a 127–829 MB
+sawtooth to 0.5 per 100 pushes. With the identical-HTML skip disabled, so that every push
+really does redraw, 1,398 consecutive Decisions redraws moved the footprint from 70 to 71 MB.
+The full ten-screen table, and what is still not flat, is in the CHANGELOG.
+
+One hazard the fix does not remove: the town map still writes 6,757 inline pixel styles with
+2,216 distinct strings, over the 1,024 entries WebKit keeps for sharing identical inline
+blocks. It is out of reach only because the shop almost never redraws and any redraw that does
+happen inserts a `--now` rule, which resets the resolver; a change that redraws the town
+without inserting a rule brings back a 148–819 MB sawtooth. Keep the number of distinct
+`style` strings on a screen well under 1,000, and express sprite positions as classes or grid
+areas rather than pixels if the town is ever rebuilt.
 
 ## Configuring
 

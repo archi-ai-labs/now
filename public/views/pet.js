@@ -27,7 +27,7 @@
  * Giấu chỗ ấy đi là biến một trò chơi lương thiện thành một thanh XP bịa.
  */
 
-import { html } from '../lib/dom.js';
+import { html, phase, setVars } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 import { CHEER_MS, artFit, itemArt, lifeClock, moveArt, doingArt, dressArt, nudgeOf, satChip, stateTable, statCells, coinNum } from '../lib/pet.js';
 import { LOTS, PLACES, PLACE_IDS, ROADS, SCENE_SPOTS, STROLL, TOWN_BOX, WALKERS, butlerArt, lotArt, placeArt, sceneArt, sizeOf, strollLag, strolling, walkerArt } from '../lib/town.js';
@@ -301,7 +301,9 @@ function onClick(e) {
     // Cú bấm phải NHÌN THẤY ĐƯỢC hậu quả của nó. Xem `arrive` và `showPanel`.
     arriving = true;
     cue('tap');
+    const panel = document.querySelector('.shop-panel');
     redraw();
+    replayArrival(panel);
     return showPanel();
   }
 
@@ -435,7 +437,7 @@ export function initPet(onChange) {
  * Gắn vào `#view` chứ không vào `.town`: `mount()` thay sạch DOM bên trong `#view` mỗi lượt
  * vẽ, tức `.town` là một thẻ MỚI mỗi 30 giây (và mỗi giây khi có việc đang chạy). Một
  * observer bám vào nó thì chết ngay lượt vẽ sau, còn `--town-k` đặt trên `#view` thì sống
- * qua mọi lượt — nó nằm ở thuộc tính `style` của một thẻ không bị thay.
+ * qua mọi lượt — nó nằm ở một class của một thẻ không bị thay.
  *
  * Không phóng TO quá 1: bức tranh là lưới 4px, và phóng lên là mỗi ô thành 5 hay 6 pixel
  * lệch nhau — chỗ nào cũng có một hàng dày hơn hàng bên cạnh. Thu nhỏ thì mềm đi đều, chấp
@@ -444,9 +446,34 @@ export function initPet(onChange) {
 function fitTown() {
   const host = document.getElementById('view');
   if (!host || typeof ResizeObserver !== 'function') return;
+  // Qua `setVars`, không qua `style.setProperty`: biến nội tuyến trên #view là đúng loại làm
+  // Safari rò bộ nhớ theo mỗi lượt vẽ, xem khối "Biến CSS nội tuyến" ở lib/dom.js.
+  //
+  // Mỗi giá trị mới là một luật mới, và mỗi luật mới làm WebKit dựng lại style cả trang. Kéo
+  // cửa sổ hẹp dưới khung thị trấn mà đặt hệ số đúng thì khung hình nào cũng trả giá ấy, ở mọi
+  // màn. Vì vậy lúc đang kéo, hệ số được làm tròn XUỐNG tới 1/100: cả dải chỉ có một trăm giá
+  // trị, lượt kéo sau dùng lại luật cũ, và tròn xuống thì bức tranh không tràn khung. Bề rộng
+  // đứng yên `SETTLE_MS` thì đặt hệ số đúng, nên lúc nghỉ bức tranh rộng đúng như trước bản
+  // chữa chứ không hụt tới 1% (6,8px ở khung 679px). Lần đặt đầu tiên thì đặt đúng luôn.
+  const SETTLE_MS = 150;
+  const exact = (w) => Math.min(1, w / TOWN_BOX.w);
+  let lastW = 0;
+  let settle = null;
   const fit = () => {
     const w = host.clientWidth;
-    if (w) host.style.setProperty('--town-k', String(Math.min(1, w / TOWN_BOX.w)));
+    // Chiều cao của #view đổi ở hầu hết lượt vẽ, mà hệ số chỉ theo bề rộng.
+    if (!w || w === lastW) return;
+    const first = !lastW;
+    lastW = w;
+    clearTimeout(settle);
+    if (first) {
+      setVars(host, { '--town-k': exact(w) });
+      return;
+    }
+    setVars(host, { '--town-k': Math.floor(exact(w) * 100) / 100 });
+    settle = setTimeout(() => {
+      if (host.clientWidth === lastW) setVars(host, { '--town-k': exact(lastW) });
+    }, SETTLE_MS);
   };
   new ResizeObserver(fit).observe(host);
   fit();
@@ -496,6 +523,26 @@ function showPanel() {
   const top = el.getBoundingClientRect().top - sc.getBoundingClientRect().top;
   if (top <= sc.clientHeight - ENOUGH) return;
   glide(sc, sc.scrollTop + top - KEEP);
+}
+
+/**
+ * Diễn lại hoạt hình `came` khi lượt vẽ của cú bấm bị bỏ qua.
+ *
+ * Bấm lại đúng chỗ đang mở thì lượt vẽ ra y hệt lượt trước, chỉ khác giá trị pha, nên `render()`
+ * của app.js giữ nguyên cây DOM (xem `unchanged` ở lib/dom.js). Khối trả lời vẫn là thẻ cũ, và
+ * hoạt hình của nó đã chạy xong từ cú bấm trước. Khối lại đang nằm trong tầm mắt thì `showPanel`
+ * không cuộn, nên cú bấm không để lại dấu gì trên màn hình.
+ *
+ * Nhận ra ca ấy bằng chính thẻ: trước và sau `redraw()` vẫn là một đối tượng, và nó mang `came`.
+ * Gỡ class, ép tính style, rồi gắn lại là cách chuẩn để khởi động lại một hoạt hình CSS. Không
+ * đổi HTML để ép dựng lại, vì dựng lại màn thị trấn là một lần WebKit dựng lại resolver cả trang.
+ */
+function replayArrival(before) {
+  const el = document.querySelector('.shop-panel');
+  if (!el || el !== before || !el.classList.contains('came')) return;
+  el.classList.remove('came');
+  void el.offsetWidth;
+  el.classList.add('came');
 }
 
 /**
@@ -697,8 +744,10 @@ function townMap() {
            Chữ trần, không quote: backtick trong comment HTML nằm trong template literal sẽ
            ĐÓNG LUÔN chuỗi — CLAUDE.md điều 3. -->
       ${WALKERS.map(
+        // Độ trễ bọc trong `phase()`: lượt vẽ chỉ khác độ trễ thì không dựng lại bản đồ, vì cây
+        // cũ đang chạy đúng pha ấy rồi. Xem khối "Giá trị pha" ở lib/dom.js.
         (w) => html`<i class="town-walker" aria-hidden="true"
-          style="--ax:${w.from.x}px;--ay:${w.from.y}px;--bx:${w.to.x}px;--by:${w.to.y}px;--dur:${w.dur}s;animation-delay:${-(Date.now() % (w.dur * 2000))}ms,${-(Date.now() % (w.dur * 1000))}ms"
+          style="--ax:${w.from.x}px;--ay:${w.from.y}px;--bx:${w.to.x}px;--by:${w.to.y}px;--dur:${w.dur}s;animation-delay:${phase(-(Date.now() % (w.dur * 2000)))}ms,${phase(-(Date.now() % (w.dur * 1000)))}ms"
           >${walkerArt(w.i)}</i
         >`,
       )}
@@ -708,7 +757,7 @@ function townMap() {
            một độ trễ âm, xem STROLL trong lib/town.js. -->
       ${strolling(doing)
         ? html`<i class="town-stroll" aria-hidden="true"
-            style="--ax:${STROLL.from.x}px;--ay:${STROLL.from.y}px;--bx:${STROLL.to.x}px;--by:${STROLL.to.y}px;--dur:${STROLL.ms}ms;animation-delay:${strollLag(Date.now())}ms"
+            style="--ax:${STROLL.from.x}px;--ay:${STROLL.from.y}px;--bx:${STROLL.to.x}px;--by:${STROLL.to.y}px;--dur:${STROLL.ms}ms;animation-delay:${phase(strollLag(Date.now()))}ms"
             >${butlerArt(doing, 'street', Date.now(), pet, cheering())}</i
           >`
         : ''}
